@@ -39,7 +39,7 @@ Resources:
       RoleName: !Sub 'tools-github-actions-${Environment}'
       Description: >
         Assumed by GitHub Actions via OIDC to deploy tools-platform stacks
-        and trigger Amplify builds for the jtamerius/portfolio monorepo.
+        and trigger Amplify builds for the jtamerius/website_hub monorepo.
       AssumeRolePolicyDocument:
         Version: '2012-10-17'
         Statement:
@@ -51,8 +51,8 @@ Resources:
               StringEquals:
                 'token.actions.githubusercontent.com:aud': sts.amazonaws.com
               StringLike:
-                # Allow any ref (branch, tag, PR) within the portfolio monorepo
-                'token.actions.githubusercontent.com:sub': 'repo:jtamerius/portfolio:*'
+                # Allow any ref (branch, tag, PR) within the website_hub monorepo
+                'token.actions.githubusercontent.com:sub': 'repo:jtamerius/website_hub:*'
       MaxSessionDuration: 3600
       Tags:
         - Key: Environment

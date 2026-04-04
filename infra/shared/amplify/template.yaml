@@ -1,7 +1,7 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
   AWS Amplify Hosting app for the tools landing page (tools.jtamerius.com).
-  Connects to the jtamerius/portfolio GitHub monorepo and deploys the
+  Connects to the jtamerius/website_hub GitHub monorepo and deploys the
   apps/landing-page workspace. Branch tracking follows environment:
     staging    → branch "staging"
     production → branch "main"
@@ -35,7 +35,7 @@ Resources:
     Type: AWS::Amplify::App
     Properties:
       Name: !Sub 'tools-landing-page-${Environment}'
-      Repository: https://github.com/jtamerius/portfolio
+      Repository: https://github.com/jtamerius/website_hub
       OauthToken: !Ref GitHubOAuthToken
       IAMServiceRole: !ImportValue
         'Fn::Sub': 'tools-shared-iam-${Environment}-AmplifyServiceRoleArn'

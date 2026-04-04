@@ -7,7 +7,7 @@ A serverless monorepo that hosts internal tools and personal projects at [jtamer
 ## Architecture Overview
 
 ```
-GitHub (jtamerius/portfolio)
+GitHub (jtamerius/website_hub)
         │
         ├── push → staging branch ──────► GitHub Actions (auto-deploy)
         │                                         │
@@ -33,7 +33,7 @@ GitHub (jtamerius/portfolio)
 ## Repository Structure
 
 ```
-portfolio/
+website_hub/
 ├── apps/
 │   └── landing-page/           # Vite + React SPA — tools.jtamerius.com
 │       ├── amplify.yml         # Amplify build spec (monorepo appRoot)
@@ -91,8 +91,8 @@ portfolio/
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/jtamerius/portfolio.git
-cd portfolio
+git clone https://github.com/jtamerius/website_hub.git
+cd website_hub
 
 # 2. Install dependencies for the landing page
 cd apps/landing-page

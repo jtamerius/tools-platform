@@ -84,7 +84,7 @@ jobs:
           # ── package.json ────────────────────────────────────────────────
           cat > "$APP_DIR/package.json" <<EOF
           {
-            "name": "@portfolio/$APP",
+            "name": "@website-hub/$APP",
             "private": true,
             "version": "0.1.0",
             "type": "module",

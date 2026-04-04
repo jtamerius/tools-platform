@@ -158,7 +158,7 @@ Open `infra/shared/amplify/template.yaml` and add a new `AWS::Amplify::App` and 
     Type: AWS::Amplify::App
     Properties:
       Name: !Sub 'tools-<app-name>-${Environment}'
-      Repository: https://github.com/jtamerius/portfolio
+      Repository: https://github.com/jtamerius/website_hub
       OauthToken: !Ref GitHubOAuthToken
       IAMServiceRole: !ImportValue
         'Fn::Sub': 'tools-shared-iam-${Environment}-AmplifyServiceRoleArn'
