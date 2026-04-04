@@ -1,0 +1,118 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  ACM certificates for the tools platform. Certificates are provisioned in
+  us-east-1 for CloudFront and Amplify Hosting compatibility. DNS validation
+  records are created automatically in the existing Route 53 hosted zone for
+  jtamerius.com.
+
+  PREREQUISITE: The Route 53 hosted zone for jtamerius.com must already exist
+  in this AWS account. Provide its hosted zone ID as the HostedZoneId parameter.
+
+  NOTE: This template must be deployed to us-east-1 (N. Virginia) because
+  Amplify Hosting and CloudFront require ACM certificates in us-east-1.
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - staging
+      - production
+    Description: Deployment environment
+
+  HostedZoneId:
+    Type: String
+    Description: >
+      The Route 53 Hosted Zone ID for jtamerius.com. This zone must already
+      exist in the account (e.g. Z1PA6795UKMFR9).
+    AllowedPattern: '[A-Z0-9]+'
+    ConstraintDescription: Must be a valid Route 53 Hosted Zone ID (uppercase alphanumeric).
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, production]
+  IsStaging: !Equals [!Ref Environment, staging]
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Production certificate: tools.jtamerius.com + *.jtamerius.com wildcard.
+  # The wildcard SAN covers any future tools subdomains added to the platform.
+  # Only created for the production environment.
+  # ---------------------------------------------------------------------------
+  LandingPageCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Condition: IsProduction
+    Properties:
+      DomainName: tools.jtamerius.com
+      SubjectAlternativeNames:
+        - '*.jtamerius.com'
+        - jtamerius.com
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: tools.jtamerius.com
+          HostedZoneId: !Ref HostedZoneId
+        - DomainName: '*.jtamerius.com'
+          HostedZoneId: !Ref HostedZoneId
+        - DomainName: jtamerius.com
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+        - Key: Name
+          Value: tools-jtamerius-com-production
+
+  # ---------------------------------------------------------------------------
+  # Staging certificate: tools.staging.jtamerius.com + *.staging.jtamerius.com
+  # The wildcard SAN covers any future staging subdomains.
+  # Only created for the staging environment.
+  # ---------------------------------------------------------------------------
+  LandingPageCertificateStagingSubdomain:
+    Type: AWS::CertificateManager::Certificate
+    Condition: IsStaging
+    Properties:
+      DomainName: tools.staging.jtamerius.com
+      SubjectAlternativeNames:
+        - '*.staging.jtamerius.com'
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: tools.staging.jtamerius.com
+          HostedZoneId: !Ref HostedZoneId
+        - DomainName: '*.staging.jtamerius.com'
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+        - Key: Name
+          Value: tools-staging-jtamerius-com-staging
+
+Outputs:
+  CertificateArn:
+    Description: >
+      ACM Certificate ARN for tools.jtamerius.com / *.jtamerius.com (production only).
+      Returns an empty string in staging — use StagingCertificateArn instead.
+    Value: !If
+      - IsProduction
+      - !Ref LandingPageCertificate
+      - ''
+    Export:
+      Name: !Sub 'tools-shared-dns-${Environment}-CertificateArn'
+
+  StagingCertificateArn:
+    Description: >
+      ACM Certificate ARN for tools.staging.jtamerius.com (staging only).
+      Returns an empty string in production — use CertificateArn instead.
+    Value: !If
+      - IsStaging
+      - !Ref LandingPageCertificateStagingSubdomain
+      - ''
+    Export:
+      Name: !Sub 'tools-shared-dns-${Environment}-StagingCertificateArn'
+
+  HostedZoneId:
+    Description: Route 53 Hosted Zone ID passed through for use by downstream stacks
+    Value: !Ref HostedZoneId
+    Export:
+      Name: !Sub 'tools-shared-dns-${Environment}-HostedZoneId'

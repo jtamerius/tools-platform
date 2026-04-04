@@ -1,0 +1,361 @@
+name: Add New App (Scaffold)
+
+# This workflow scaffolds a new app in the monorepo and opens a PR to staging.
+# Run it manually from the Actions tab whenever you need to onboard a new app.
+
+on:
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'App name (lowercase, hyphenated, e.g. "my-tool")'
+        required: true
+        type: string
+      subdomain:
+        description: 'Subdomain for the app (e.g. "my-tool" → my-tool.example.com)'
+        required: true
+        type: string
+      is_public:
+        description: 'Is this app publicly accessible? (false = internal-only)'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  id-token: write    # Required for OIDC token exchange (future infra steps)
+  contents: write    # Required to push the scaffold branch
+  pull-requests: write  # Required to open the PR
+
+jobs:
+  scaffold:
+    name: Scaffold — ${{ inputs.app_name }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # -------------------------------------------------------------------
+      # 1. Validate input format early so failures are obvious
+      # -------------------------------------------------------------------
+      - name: Validate app_name format
+        run: |
+          APP_NAME="${{ inputs.app_name }}"
+          if ! echo "$APP_NAME" | grep -qE '^[a-z][a-z0-9-]+$'; then
+            echo "ERROR: app_name must be lowercase alphanumeric + hyphens, starting with a letter."
+            echo "       Got: $APP_NAME"
+            exit 1
+          fi
+          echo "app_name is valid: $APP_NAME"
+
+      # -------------------------------------------------------------------
+      # 2. Checkout staging so the scaffold branch forks from it
+      # -------------------------------------------------------------------
+      - name: Checkout staging
+        uses: actions/checkout@v4
+        with:
+          ref: staging
+          fetch-depth: 0  # Full history so the PR diff is clean
+
+      # -------------------------------------------------------------------
+      # 3. Configure Git identity for the commit
+      # -------------------------------------------------------------------
+      - name: Configure Git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # -------------------------------------------------------------------
+      # 4. Create scaffold branch
+      # -------------------------------------------------------------------
+      - name: Create scaffold branch
+        run: |
+          BRANCH="scaffold/${{ inputs.app_name }}"
+          git checkout -b "$BRANCH"
+          echo "SCAFFOLD_BRANCH=$BRANCH" >> "$GITHUB_ENV"
+
+      # -------------------------------------------------------------------
+      # 5. Scaffold apps/<app_name>/ — minimal Vite + React template
+      # -------------------------------------------------------------------
+      - name: Create apps/${{ inputs.app_name }}/ directory structure
+        run: |
+          APP="${{ inputs.app_name }}"
+          APP_DIR="apps/$APP"
+          PASCAL=$(echo "$APP" | sed -E 's/(^|-)([a-z])/\U\2/g')  # my-tool → MyTool
+
+          mkdir -p "$APP_DIR/src"
+
+          # ── package.json ────────────────────────────────────────────────
+          cat > "$APP_DIR/package.json" <<EOF
+          {
+            "name": "@portfolio/$APP",
+            "private": true,
+            "version": "0.1.0",
+            "type": "module",
+            "scripts": {
+              "dev": "vite",
+              "build": "tsc && vite build",
+              "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+              "test": "vitest run",
+              "preview": "vite preview"
+            },
+            "dependencies": {
+              "react": "^18.3.1",
+              "react-dom": "^18.3.1"
+            },
+            "devDependencies": {
+              "@types/react": "^18.3.1",
+              "@types/react-dom": "^18.3.1",
+              "@vitejs/plugin-react": "^4.3.1",
+              "typescript": "^5.5.3",
+              "vite": "^5.4.0",
+              "vitest": "^2.0.5",
+              "eslint": "^9.9.0"
+            }
+          }
+          EOF
+
+          # ── tsconfig.json ────────────────────────────────────────────────
+          cat > "$APP_DIR/tsconfig.json" <<EOF
+          {
+            "compilerOptions": {
+              "target": "ES2020",
+              "useDefineForClassFields": true,
+              "lib": ["ES2020", "DOM", "DOM.Iterable"],
+              "module": "ESNext",
+              "skipLibCheck": true,
+              "moduleResolution": "bundler",
+              "allowImportingTsExtensions": true,
+              "resolveJsonModule": true,
+              "isolatedModules": true,
+              "noEmit": true,
+              "jsx": "react-jsx",
+              "strict": true
+            },
+            "include": ["src"]
+          }
+          EOF
+
+          # ── vite.config.ts ───────────────────────────────────────────────
+          cat > "$APP_DIR/vite.config.ts" <<EOF
+          import { defineConfig } from 'vite';
+          import react from '@vitejs/plugin-react';
+
+          export default defineConfig({
+            plugins: [react()],
+            build: {
+              outDir: 'dist',
+            },
+          });
+          EOF
+
+          # ── index.html ───────────────────────────────────────────────────
+          cat > "$APP_DIR/index.html" <<EOF
+          <!doctype html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>${PASCAL}</title>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/src/main.tsx"></script>
+            </body>
+          </html>
+          EOF
+
+          # ── src/main.tsx ─────────────────────────────────────────────────
+          cat > "$APP_DIR/src/main.tsx" <<EOF
+          import React from 'react';
+          import ReactDOM from 'react-dom/client';
+          import App from './App';
+
+          ReactDOM.createRoot(document.getElementById('root')!).render(
+            <React.StrictMode>
+              <App />
+            </React.StrictMode>,
+          );
+          EOF
+
+          # ── src/App.tsx ──────────────────────────────────────────────────
+          cat > "$APP_DIR/src/App.tsx" <<EOF
+          export default function App() {
+            return (
+              <main>
+                <h1>${PASCAL}</h1>
+                <p>App scaffolded successfully. Start building!</p>
+              </main>
+            );
+          }
+          EOF
+
+          # ── src/App.test.tsx ─────────────────────────────────────────────
+          cat > "$APP_DIR/src/App.test.tsx" <<EOF
+          import { describe, it, expect } from 'vitest';
+
+          describe('${PASCAL}', () => {
+            it('placeholder test passes', () => {
+              expect(true).toBe(true);
+            });
+          });
+          EOF
+
+          # ── .gitignore ───────────────────────────────────────────────────
+          cat > "$APP_DIR/.gitignore" <<EOF
+          node_modules
+          dist
+          .env
+          .env.*
+          !.env.example
+          EOF
+
+          echo "apps/$APP scaffold created."
+
+      # -------------------------------------------------------------------
+      # 6. Scaffold infra/apps/<app_name>/template.yaml stub
+      # -------------------------------------------------------------------
+      - name: Create infra/apps/${{ inputs.app_name }}/template.yaml
+        run: |
+          APP="${{ inputs.app_name }}"
+          SUBDOMAIN="${{ inputs.subdomain }}"
+          IS_PUBLIC="${{ inputs.is_public }}"
+          INFRA_DIR="infra/apps/$APP"
+
+          mkdir -p "$INFRA_DIR"
+
+          cat > "$INFRA_DIR/template.yaml" <<EOF
+          AWSTemplateFormatVersion: '2010-09-09'
+          Description: >
+            Infrastructure for the $APP app.
+            Subdomain: $SUBDOMAIN
+            Public: $IS_PUBLIC
+
+          Parameters:
+            Environment:
+              Type: String
+              AllowedValues: [staging, production]
+              Description: Deployment environment
+
+            AmplifyAppId:
+              Type: String
+              Description: Amplify App ID for $APP
+
+          # ---------------------------------------------------------------------------
+          # Mappings — per-environment overrides
+          # ---------------------------------------------------------------------------
+          Mappings:
+            EnvConfig:
+              staging:
+                BranchName: staging
+              production:
+                BranchName: production
+
+          Resources:
+            # ── Amplify Branch ──────────────────────────────────────────────────────
+            AmplifyBranch:
+              Type: AWS::Amplify::Branch
+              Properties:
+                AppId: !Ref AmplifyAppId
+                BranchName: !FindInMap [EnvConfig, !Ref Environment, BranchName]
+                EnableAutoBuild: false   # Deployments are triggered by the CI/CD workflow
+                Framework: React
+                Stage: !If [IsProd, PRODUCTION, DEVELOPMENT]
+                EnvironmentVariables:
+                  - Name: VITE_APP_ENV
+                    Value: !Ref Environment
+
+            # TODO: Add Route 53 record, ACM cert, WAF ACL, etc. as needed.
+
+          Conditions:
+            IsProd: !Equals [!Ref Environment, production]
+            IsPublic: !Equals ['$IS_PUBLIC', 'true']
+
+          Outputs:
+            AmplifyBranchUrl:
+              Description: Default Amplify branch URL
+              Value: !Sub 'https://\${Environment}.$SUBDOMAIN.example.com'
+          EOF
+
+          echo "infra/apps/$APP/template.yaml stub created."
+
+      # -------------------------------------------------------------------
+      # 7. Print a summary of what was created
+      # -------------------------------------------------------------------
+      - name: Print scaffold summary
+        run: |
+          echo "======================================================"
+          echo " Scaffold Summary"
+          echo "======================================================"
+          echo " App name  : ${{ inputs.app_name }}"
+          echo " Subdomain : ${{ inputs.subdomain }}"
+          echo " Is public : ${{ inputs.is_public }}"
+          echo ""
+          echo " Files created:"
+          find "apps/${{ inputs.app_name }}" "infra/apps/${{ inputs.app_name }}" \
+            -type f | sort | sed 's/^/   /'
+          echo ""
+          echo " Next steps after this PR is merged to staging:"
+          echo "   1. cd apps/${{ inputs.app_name }} && npm install"
+          echo "   2. Create the Amplify app in AWS Console / via CLI and"
+          echo "      add AMPLIFY_APP_ID_$(echo '${{ inputs.app_name }}' | tr '[:lower:]-' '[:upper:]_')"
+          echo "      as a GitHub secret."
+          echo "   3. Add deploy jobs for ${{ inputs.app_name }} to"
+          echo "      .github/workflows/deploy-staging.yml and deploy-production.yml."
+          echo "   4. Add the new app paths to the paths-filter in ci.yml,"
+          echo "      deploy-staging.yml, and deploy-production.yml."
+          echo "======================================================"
+
+      # -------------------------------------------------------------------
+      # 8. Commit scaffold files
+      # -------------------------------------------------------------------
+      - name: Commit scaffold files
+        run: |
+          git add "apps/${{ inputs.app_name }}/" "infra/apps/${{ inputs.app_name }}/"
+          git commit -m "chore: scaffold ${{ inputs.app_name }} app
+
+          - Vite + React template under apps/${{ inputs.app_name }}/
+          - CloudFormation stub under infra/apps/${{ inputs.app_name }}/
+          - Subdomain: ${{ inputs.subdomain }}
+          - Public: ${{ inputs.is_public }}
+
+          Generated by the 'Add New App' workflow."
+
+      # -------------------------------------------------------------------
+      # 9. Push scaffold branch and open PR against staging
+      # -------------------------------------------------------------------
+      - name: Push scaffold branch
+        run: |
+          git push origin "$SCAFFOLD_BRANCH"
+
+      - name: Create pull request
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh pr create \
+            --base staging \
+            --head "$SCAFFOLD_BRANCH" \
+            --title "chore: scaffold ${{ inputs.app_name }} app" \
+            --body "$(cat <<'PRBODY'
+          ## New App Scaffold: ${{ inputs.app_name }}
+
+          This PR was generated automatically by the **Add New App** workflow.
+
+          | Field      | Value |
+          |------------|-------|
+          | App name   | \`${{ inputs.app_name }}\` |
+          | Subdomain  | \`${{ inputs.subdomain }}\` |
+          | Is public  | \`${{ inputs.is_public }}\` |
+
+          ### What's included
+
+          - `apps/${{ inputs.app_name }}/` — minimal Vite + React TypeScript project
+          - `infra/apps/${{ inputs.app_name }}/template.yaml` — CloudFormation stub
+
+          ### Next steps (after merge)
+
+          1. `cd apps/${{ inputs.app_name }} && npm install` and start building.
+          2. Create the AWS Amplify app and store its ID as the GitHub secret
+             `AMPLIFY_APP_ID_$(echo "${{ inputs.app_name }}" | tr '[:lower:]-' '[:upper:]_')`.
+          3. Wire up deploy jobs for `${{ inputs.app_name }}` in
+             `deploy-staging.yml` and `deploy-production.yml`.
+          4. Add `${{ inputs.app_name }}` paths to the `paths-filter` in all three
+             workflow files (`ci.yml`, `deploy-staging.yml`, `deploy-production.yml`).
+          PRBODY
+          )"

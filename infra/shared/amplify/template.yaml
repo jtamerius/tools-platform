@@ -1,0 +1,153 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  AWS Amplify Hosting app for the tools landing page (tools.jtamerius.com).
+  Connects to the jtamerius/portfolio GitHub monorepo and deploys the
+  apps/landing-page workspace. Branch tracking follows environment:
+    staging    → branch "staging"
+    production → branch "main"
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - staging
+      - production
+    Description: Deployment environment
+
+  GitHubOAuthToken:
+    Type: String
+    NoEcho: true
+    Description: >
+      GitHub Personal Access Token (classic) with repo scope, used by Amplify
+      to pull source code. Store this value in AWS Secrets Manager or SSM
+      SecureString and inject it at deploy time — never commit the raw value.
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, production]
+  IsStaging: !Equals [!Ref Environment, staging]
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Amplify App
+  # ---------------------------------------------------------------------------
+  LandingPageAmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Sub 'tools-landing-page-${Environment}'
+      Repository: https://github.com/jtamerius/portfolio
+      OauthToken: !Ref GitHubOAuthToken
+      IAMServiceRole: !ImportValue
+        'Fn::Sub': 'tools-shared-iam-${Environment}-AmplifyServiceRoleArn'
+
+      # Inline build spec — delegates monorepo root detection to Amplify via the
+      # AMPLIFY_MONOREPO_APP_ROOT environment variable below, and mirrors what
+      # apps/landing-page/amplify.yml should contain.
+      BuildSpec: |
+        version: 1
+        applications:
+          - appRoot: apps/landing-page
+            frontend:
+              phases:
+                preBuild:
+                  commands:
+                    - npm ci
+                build:
+                  commands:
+                    - npm run build
+              artifacts:
+                baseDirectory: dist
+                files:
+                  - '**/*'
+              cache:
+                paths:
+                  - node_modules/**/*
+
+      EnvironmentVariables:
+        # Tell Amplify which subdirectory of the monorepo is this app's root
+        - Name: AMPLIFY_MONOREPO_APP_ROOT
+          Value: apps/landing-page
+        # Surface the current environment to the Vite build
+        - Name: VITE_ENV
+          Value: !Ref Environment
+        # Resolved at build time from SSM Parameter Store (written by the
+        # tools-app-landing-page stack after the Cognito stack is deployed)
+        - Name: VITE_COGNITO_USER_POOL_ID
+          Value: !Sub '{{resolve:ssm:/tools/${Environment}/cognito/user-pool-id}}'
+        - Name: VITE_COGNITO_CLIENT_ID
+          Value: !Sub '{{resolve:ssm:/tools/${Environment}/cognito/client-id}}'
+
+      # Custom rewrite/redirect rules for SPA routing
+      CustomRules:
+        # Redirect bare /index.html to / (canonical URL)
+        - Source: /index.html
+          Target: /
+          Status: '301'
+        # Serve index.html for any path that doesn't look like a static asset,
+        # enabling client-side routing (React Router, etc.)
+        - Source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>'
+          Target: /index.html
+          Status: '200'
+
+      # Automatically delete branch apps when the source branch is deleted
+      EnableBranchAutoDeletion: true
+
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+
+  # ---------------------------------------------------------------------------
+  # Amplify Branch — tracks the environment-appropriate git branch
+  # ---------------------------------------------------------------------------
+  LandingPageAmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt LandingPageAmplifyApp.AppId
+      # production environment tracks the "main" git branch;
+      # staging environment tracks the "staging" git branch.
+      # Note: the string "main" here is a git branch name, not a CFN function.
+      BranchName: !If [IsProduction, main, staging]
+      Description: !Sub 'Auto-tracked branch for the ${Environment} environment'
+      EnableAutoBuild: true
+      # Enable PR previews only in staging to avoid leaking unreleased content
+      EnablePullRequestPreview: !If [IsStaging, true, false]
+      Framework: Vite
+      Stage: !If [IsProduction, PRODUCTION, DEVELOPMENT]
+      EnvironmentVariables:
+        - Name: VITE_ENV
+          Value: !Ref Environment
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+
+Outputs:
+  AmplifyAppId:
+    Description: Amplify Application ID for the landing page
+    Value: !GetAtt LandingPageAmplifyApp.AppId
+    Export:
+      Name: !Sub 'tools-shared-amplify-${Environment}-AppId'
+
+  AmplifyAppArn:
+    Description: Amplify Application ARN for the landing page
+    Value: !GetAtt LandingPageAmplifyApp.Arn
+    Export:
+      Name: !Sub 'tools-shared-amplify-${Environment}-AppArn'
+
+  DefaultDomain:
+    Description: >
+      Amplify-generated default domain (e.g. d1234abcd.amplifyapp.com).
+      Use this to configure a custom domain or for smoke-testing before DNS
+      cutover.
+    Value: !GetAtt LandingPageAmplifyApp.DefaultDomain
+    Export:
+      Name: !Sub 'tools-shared-amplify-${Environment}-DefaultDomain'
+
+  BranchName:
+    Description: Git branch tracked by this environment
+    Value: !GetAtt LandingPageAmplifyBranch.BranchName
+    Export:
+      Name: !Sub 'tools-shared-amplify-${Environment}-BranchName'

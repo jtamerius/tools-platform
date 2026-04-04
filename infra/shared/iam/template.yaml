@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  IAM roles for the tools platform CI/CD pipeline and AWS Amplify service.
+  GitHubActionsRole uses OIDC federation — no long-lived credentials required.
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - staging
+      - production
+    Description: Deployment environment
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions OIDC provider (account-level singleton).
+  # Safe to redeploy: CloudFormation will adopt an existing provider at this URL
+  # rather than creating a duplicate. If the provider already exists outside of
+  # CloudFormation, import it before deploying this stack.
+  # ---------------------------------------------------------------------------
+  GitHubOIDCProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        # Stable GitHub Actions OIDC thumbprints (rotate if GitHub rotates cert)
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+        - 1c58a3a8518e8759bf075b76b750d4f2df264fcd
+
+  # ---------------------------------------------------------------------------
+  # GitHub Actions Role — assumed by GitHub Actions workflows via OIDC
+  # ---------------------------------------------------------------------------
+  GitHubActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'tools-github-actions-${Environment}'
+      Description: >
+        Assumed by GitHub Actions via OIDC to deploy tools-platform stacks
+        and trigger Amplify builds for the jtamerius/portfolio monorepo.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !Sub 'arn:aws:iam::${AWS::AccountId}:oidc-provider/token.actions.githubusercontent.com'
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                'token.actions.githubusercontent.com:aud': sts.amazonaws.com
+              StringLike:
+                # Allow any ref (branch, tag, PR) within the portfolio monorepo
+                'token.actions.githubusercontent.com:sub': 'repo:jtamerius/portfolio:*'
+      MaxSessionDuration: 3600
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+      Policies:
+        - PolicyName: CloudFormationDeployPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CloudFormationFullAccess
+                Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:ValidateTemplate
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:ListChangeSets
+                  - cloudformation:ListStacks
+                Resource: '*'
+
+        - PolicyName: S3DeployArtifactsPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3ArtifactBucketAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                  - s3:CreateBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::tools-cfn-artifacts-${Environment}-${AWS::AccountId}'
+                  - !Sub 'arn:aws:s3:::tools-cfn-artifacts-${Environment}-${AWS::AccountId}/*'
+
+        - PolicyName: AmplifyDeployPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: AmplifyStartJob
+                Effect: Allow
+                Action:
+                  - amplify:StartJob
+                  - amplify:StopJob
+                  - amplify:GetJob
+                  - amplify:ListJobs
+                  - amplify:GetApp
+                  - amplify:ListApps
+                  - amplify:GetBranch
+                  - amplify:ListBranches
+                Resource: '*'
+
+        - PolicyName: SSMReadPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: SSMGetParameter
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - ssm:GetParameters
+                  - ssm:GetParametersByPath
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tools/${Environment}/*'
+
+        - PolicyName: CognitoReadOnlyPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: CognitoReadOnly
+                Effect: Allow
+                Action:
+                  - cognito-idp:DescribeUserPool
+                  - cognito-idp:DescribeUserPoolClient
+                  - cognito-idp:ListUserPools
+                  - cognito-idp:ListUserPoolClients
+                  - cognito-idp:GetGroup
+                  - cognito-idp:ListGroups
+                Resource: '*'
+
+        - PolicyName: IAMPassRolePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: PassRoleToAmplify
+                Effect: Allow
+                Action:
+                  - iam:PassRole
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/tools-amplify-service-${Environment}'
+                Condition:
+                  StringEquals:
+                    'iam:PassedToService': amplify.amazonaws.com
+
+  # ---------------------------------------------------------------------------
+  # Amplify Service Role — assumed by AWS Amplify to access other AWS services
+  # ---------------------------------------------------------------------------
+  AmplifyServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'tools-amplify-service-${Environment}'
+      Description: Service role assumed by AWS Amplify Hosting for the tools platform.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: amplify.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AdministratorAccess-Amplify
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+
+Outputs:
+  GitHubActionsRoleArn:
+    Description: ARN of the GitHub Actions OIDC IAM role
+    Value: !GetAtt GitHubActionsRole.Arn
+    Export:
+      Name: !Sub 'tools-shared-iam-${Environment}-GitHubActionsRoleArn'
+
+  AmplifyServiceRoleArn:
+    Description: ARN of the Amplify service IAM role
+    Value: !GetAtt AmplifyServiceRole.Arn
+    Export:
+      Name: !Sub 'tools-shared-iam-${Environment}-AmplifyServiceRoleArn'

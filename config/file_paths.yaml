@@ -1,0 +1,4 @@
+# Configuration file containing brief names and relative paths of files
+ca_county_boundaries: data/processed/ca_county_boundaries.parquet
+hex_id_by_county: data/processed/hex_id_by_county.json
+weather_data: data/processed/weather_data.json

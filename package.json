@@ -1,0 +1,17 @@
+{
+  "name": "tools-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "shared/*"
+  ],
+  "scripts": {
+    "dev:landing": "npm run dev --workspace=apps/landing-page",
+    "build:landing": "npm run build --workspace=apps/landing-page",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

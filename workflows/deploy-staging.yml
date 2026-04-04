@@ -1,0 +1,197 @@
+name: Deploy — Staging
+
+on:
+  push:
+    branches:
+      - staging
+
+permissions:
+  id-token: write   # Required for OIDC token exchange
+  contents: read
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Job 1: Detect which parts of the monorepo changed
+  # -----------------------------------------------------------------------
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      landing-page: ${{ steps.filter.outputs.landing-page }}
+      infra-shared: ${{ steps.filter.outputs.infra-shared }}
+      infra-landing-page: ${{ steps.filter.outputs.infra-landing-page }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            landing-page:
+              - 'apps/landing-page/**'
+              - 'shared/**'
+            infra-shared:
+              - 'infra/shared/**'
+            infra-landing-page:
+              - 'infra/apps/landing-page/**'
+
+  # -----------------------------------------------------------------------
+  # Job 2: Deploy shared infrastructure to staging
+  # -----------------------------------------------------------------------
+  deploy-shared-infra-staging:
+    name: Deploy Shared Infra — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-shared == 'true'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy shared stacks
+        run: bash infra/scripts/deploy-shared.sh staging ${{ secrets.GITHUB_OAUTH_TOKEN }}
+
+      - name: Wait for shared stacks to stabilize
+        run: |
+          echo "Waiting for all shared stacks to reach a stable state..."
+          # Collect stack names deployed by the script; adjust the prefix to match your naming convention.
+          STACKS=$(aws cloudformation list-stacks \
+            --stack-status-filter CREATE_IN_PROGRESS UPDATE_IN_PROGRESS UPDATE_COMPLETE_CLEANUP_IN_PROGRESS \
+            --query "StackSummaries[?starts_with(StackName, 'tools-shared-') && ends_with(StackName, '-staging')].StackName" \
+            --output text \
+            --no-cli-pager)
+
+          for STACK in $STACKS; do
+            echo "  Waiting on stack: $STACK"
+            aws cloudformation wait stack-update-complete \
+              --stack-name "$STACK" \
+              --no-cli-pager || \
+            aws cloudformation wait stack-create-complete \
+              --stack-name "$STACK" \
+              --no-cli-pager
+          done
+
+          echo "All shared stacks are stable."
+
+  # -----------------------------------------------------------------------
+  # Job 3: Deploy landing-page infrastructure to staging
+  # -----------------------------------------------------------------------
+  deploy-landing-page-infra-staging:
+    name: Deploy landing-page Infra — Staging
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-shared-infra-staging
+    # Run when infra changed OR when the shared-infra job was skipped (no infra changes)
+    # but we still need to gate on infra-landing-page having changed.
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.infra-landing-page == 'true' &&
+      (needs.deploy-shared-infra-staging.result == 'success' ||
+       needs.deploy-shared-infra-staging.result == 'skipped')
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy landing-page app infrastructure
+        run: bash infra/scripts/deploy-app.sh landing-page staging
+
+  # -----------------------------------------------------------------------
+  # Job 4: Deploy landing-page frontend via Amplify (staging branch)
+  # -----------------------------------------------------------------------
+  deploy-landing-page-frontend-staging:
+    name: Deploy landing-page Frontend — Staging
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-landing-page-infra-staging
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.landing-page == 'true' &&
+      (needs.deploy-landing-page-infra-staging.result == 'success' ||
+       needs.deploy-landing-page-infra-staging.result == 'skipped')
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Trigger Amplify deployment (staging branch)
+        id: start-job
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id ${{ secrets.AMPLIFY_APP_ID_LANDING_PAGE }} \
+            --branch-name staging \
+            --job-type RELEASE \
+            --query 'jobSummary.jobId' \
+            --output text \
+            --no-cli-pager)
+
+          echo "Amplify job started: $JOB_ID"
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Amplify deployment to complete
+        run: |
+          JOB_ID="${{ steps.start-job.outputs.job_id }}"
+          APP_ID="${{ secrets.AMPLIFY_APP_ID_LANDING_PAGE }}"
+          BRANCH="staging"
+          MAX_ATTEMPTS=60   # 60 × 30s = 30 minutes max
+          ATTEMPT=0
+
+          echo "Polling Amplify job $JOB_ID on branch $BRANCH..."
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(aws amplify get-job \
+              --app-id "$APP_ID" \
+              --branch-name "$BRANCH" \
+              --job-id "$JOB_ID" \
+              --query 'job.summary.status' \
+              --output text \
+              --no-cli-pager)
+
+            echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
+
+            case "$STATUS" in
+              SUCCEED)
+                echo "Amplify deployment succeeded."
+                exit 0
+                ;;
+              FAILED|CANCELLED)
+                echo "Amplify deployment ended with status: $STATUS"
+                exit 1
+                ;;
+              RUNNING|PENDING|PROVISIONING)
+                ATTEMPT=$((ATTEMPT + 1))
+                sleep 30
+                ;;
+              *)
+                echo "Unexpected status: $STATUS — treating as failure."
+                exit 1
+                ;;
+            esac
+          done
+
+          echo "Timed out waiting for Amplify deployment."
+          exit 1

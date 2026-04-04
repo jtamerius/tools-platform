@@ -1,0 +1,84 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  App-specific infrastructure for the tools landing page.
+  Currently minimal — the app is a static SPA that relies on the shared
+  Cognito pool. This stack writes Cognito identifiers to SSM Parameter Store
+  so the Amplify build can resolve them at deploy time via
+  {{resolve:ssm:...}} dynamic references.
+
+  Add additional app-specific resources here as the landing page grows
+  (e.g. API Gateway endpoints, Lambda functions, DynamoDB tables).
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - staging
+      - production
+    Description: Deployment environment
+
+  UserPoolId:
+    Type: String
+    Description: >
+      Cognito User Pool ID. Passed from the shared cognito stack output,
+      e.g. via --parameter-overrides in the deploy script.
+    AllowedPattern: '[a-z]{2}-[a-z]+-[0-9]_[A-Za-z0-9]+'
+    ConstraintDescription: Must be a valid Cognito User Pool ID (e.g. us-east-1_AbCdEfGhI).
+
+  UserPoolClientId:
+    Type: String
+    Description: >
+      Cognito User Pool Client ID. Passed from the shared cognito stack output.
+    AllowedPattern: '[a-z0-9]+'
+    ConstraintDescription: Must be a valid Cognito User Pool Client ID (lowercase alphanumeric).
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # SSM Parameters — written here so Amplify environment variables can use
+  # the {{resolve:ssm:...}} dynamic reference without hard-coding IDs.
+  # ---------------------------------------------------------------------------
+  LandingPageSSMUserPoolId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/tools/${Environment}/cognito/user-pool-id'
+      Type: String
+      Value: !Ref UserPoolId
+      Description: !Sub 'Cognito User Pool ID for the tools platform (${Environment})'
+      Tags:
+        Environment: !Ref Environment
+        Project: tools-platform
+        App: landing-page
+
+  LandingPageSSMClientId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/tools/${Environment}/cognito/client-id'
+      Type: String
+      Value: !Ref UserPoolClientId
+      Description: !Sub 'Cognito User Pool Client ID for the tools platform (${Environment})'
+      Tags:
+        Environment: !Ref Environment
+        Project: tools-platform
+        App: landing-page
+
+Outputs:
+  SSMUserPoolIdPath:
+    Description: SSM Parameter Store path for the Cognito User Pool ID
+    Value: !Ref LandingPageSSMUserPoolId
+    Export:
+      Name: !Sub 'tools-app-landing-page-${Environment}-SSMUserPoolIdPath'
+
+  SSMClientIdPath:
+    Description: SSM Parameter Store path for the Cognito Client ID
+    Value: !Ref LandingPageSSMClientId
+    Export:
+      Name: !Sub 'tools-app-landing-page-${Environment}-SSMClientIdPath'
+
+  UserPoolId:
+    Description: Cognito User Pool ID (passed through for convenience)
+    Value: !Ref UserPoolId
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID (passed through for convenience)
+    Value: !Ref UserPoolClientId

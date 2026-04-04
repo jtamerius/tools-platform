@@ -1,0 +1,139 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Monitoring stack — billing alarm and Amplify build failure notifications.
+  Deploy once per AWS account (billing alarms are account-wide).
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [staging, production]
+    Description: Deployment environment
+
+  AlertEmail:
+    Type: String
+    Description: Email address to receive billing and build failure alerts
+    AllowedPattern: '^[^@]+@[^@]+\.[^@]+$'
+    ConstraintDescription: Must be a valid email address
+
+  BillingAlarmThresholdUSD:
+    Type: Number
+    Default: 20
+    MinValue: 1
+    Description: Monthly spend (USD) that triggers the billing alert
+
+  # Comma-separated list of Amplify App IDs to monitor for build failures.
+  # Leave empty to skip build-failure monitoring.
+  AmplifyAppIds:
+    Type: CommaDelimitedList
+    Default: ''
+    Description: Amplify App IDs to monitor (comma-separated, e.g. "abc123,def456")
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, production]
+  HasAmplifyApps: !Not [!Equals [!Join ['', !Ref AmplifyAppIds], '']]
+
+Resources:
+
+  # ── SNS Topic ───────────────────────────────────────────────────────────────
+
+  AlertTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub 'tools-alerts-${Environment}'
+      DisplayName: !Sub 'Tools Platform Alerts (${Environment})'
+
+  AlertEmailSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  # ── Billing alarm ────────────────────────────────────────────────────────────
+  # Note: billing metrics are only available in us-east-1.
+  # Deploy this stack in us-east-1 or use a separate regional stack for the alarm.
+
+  BillingAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmName: !Sub 'tools-monthly-billing-${Environment}'
+      AlarmDescription: !Sub >
+        Monthly AWS spend exceeded $${BillingAlarmThresholdUSD}.
+        Check the Cost Explorer for unexpected charges.
+      Namespace: AWS/Billing
+      MetricName: EstimatedCharges
+      Dimensions:
+        - Name: Currency
+          Value: USD
+      Statistic: Maximum
+      Period: 86400          # 24 hours — billing metrics update ~once/day
+      EvaluationPeriods: 1
+      Threshold: !Ref BillingAlarmThresholdUSD
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+      AlarmActions:
+        - !Ref AlertTopic
+      OKActions:
+        - !Ref AlertTopic
+
+  # ── Amplify build failure notifications ─────────────────────────────────────
+  # EventBridge captures Amplify build state-change events and forwards
+  # FAILED/CANCELLED builds to SNS.
+
+  AmplifyBuildFailureRule:
+    Type: AWS::Events::Rule
+    Condition: HasAmplifyApps
+    Properties:
+      Name: !Sub 'tools-amplify-build-failures-${Environment}'
+      Description: Alert when an Amplify build fails or is cancelled
+      EventPattern:
+        source:
+          - aws.amplify
+        detail-type:
+          - Amplify Deployment Status Change
+        detail:
+          appId: !Ref AmplifyAppIds
+          jobStatus:
+            - FAILED
+            - CANCELLED
+      State: ENABLED
+      Targets:
+        - Id: AlertTopic
+          Arn: !Ref AlertTopic
+          InputTransformer:
+            InputPathsMap:
+              appId: '$.detail.appId'
+              branchName: '$.detail.branchName'
+              jobStatus: '$.detail.jobStatus'
+              jobId: '$.detail.jobId'
+            InputTemplate: >
+              "Amplify build <jobStatus> on app <appId> branch <branchName> (job <jobId>).
+              Check the Amplify console for logs: https://console.aws.amazon.com/amplify/home"
+
+  # Allow EventBridge to publish to the SNS topic.
+  AlertTopicPolicy:
+    Type: AWS::SNS::TopicPolicy
+    Condition: HasAmplifyApps
+    Properties:
+      Topics:
+        - !Ref AlertTopic
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Sid: AllowEventBridge
+            Effect: Allow
+            Principal:
+              Service: events.amazonaws.com
+            Action: sns:Publish
+            Resource: !Ref AlertTopic
+
+Outputs:
+  AlertTopicArn:
+    Description: SNS topic ARN for platform alerts
+    Value: !Ref AlertTopic
+    Export:
+      Name: !Sub 'tools-${Environment}-alert-topic-arn'
+
+  BillingAlarmName:
+    Description: CloudWatch billing alarm name
+    Value: !Ref BillingAlarm

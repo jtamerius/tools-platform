@@ -1,0 +1,155 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Shared Cognito User Pool for the tools platform. Provides authentication
+  for all internal tools apps across staging and production environments.
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - staging
+      - production
+    Description: Deployment environment
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, production]
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # User Pool
+  # ---------------------------------------------------------------------------
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: !Sub 'tools-platform-${Environment}'
+      # Allow sign-in with email address
+      UsernameAttributes:
+        - email
+      # Email address must be verified before the account is usable
+      AutoVerifiedAttributes:
+        - email
+      # Self sign-up is enabled; set AllowAdminCreateUserOnly: true to disable
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+        InviteMessageTemplate:
+          EmailMessage: |
+            You have been invited to the tools platform.
+            Your temporary password is {####}.
+            Please sign in at https://tools.jtamerius.com and set a new password.
+          EmailSubject: 'Your tools platform invitation'
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailMessage: 'Your email verification code for tools.jtamerius.com is {####}.'
+        EmailSubject: 'Verify your email – tools.jtamerius.com'
+      EmailConfiguration:
+        EmailSendingAccount: COGNITO_DEFAULT
+      # MFA is optional – users may enrol a TOTP authenticator app
+      MfaConfiguration: OPTIONAL
+      EnabledMfas:
+        - SOFTWARE_TOKEN_MFA
+      # Password policy: min 8 chars, uppercase and numbers required
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+      # User attribute schema
+      Schema:
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+      # Self-service account recovery via verified email
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+            Priority: 1
+      # Protect against accidental deletion in production
+      DeletionProtection: !If [IsProduction, ACTIVE, INACTIVE]
+      UserPoolTags:
+        Environment: !Ref Environment
+        Project: tools-platform
+
+  # ---------------------------------------------------------------------------
+  # User Pool Client  (SPA – no client secret)
+  # ---------------------------------------------------------------------------
+  CognitoUserPoolClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: !Sub 'tools-platform-spa-${Environment}'
+      UserPoolId: !Ref CognitoUserPool
+      # No secret — this client is used from browser-side JavaScript
+      GenerateSecret: false
+      ExplicitAuthFlows:
+        - ALLOW_USER_PASSWORD_AUTH
+        - ALLOW_REFRESH_TOKEN_AUTH
+        - ALLOW_USER_SRP_AUTH
+      # Token validity
+      AccessTokenValidity: 1      # 1 hour
+      RefreshTokenValidity: 30    # 30 days
+      IdTokenValidity: 1          # 1 hour
+      TokenValidityUnits:
+        AccessToken: hours
+        RefreshToken: days
+        IdToken: hours
+      # Prevent account enumeration via auth errors
+      PreventUserExistenceErrors: ENABLED
+      EnableTokenRevocation: true
+      SupportedIdentityProviders:
+        - COGNITO
+      # OAuth / hosted UI disabled for now; can be enabled later
+      AllowedOAuthFlowsUserPoolClient: false
+
+  # ---------------------------------------------------------------------------
+  # User Pool Groups
+  # ---------------------------------------------------------------------------
+  CognitoAdminGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: admin
+      UserPoolId: !Ref CognitoUserPool
+      Description: Platform administrators with full access to all internal tools
+      Precedence: 1
+
+  CognitoMemberGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: member
+      UserPoolId: !Ref CognitoUserPool
+      Description: Authenticated members with standard access to tooling
+      Precedence: 10
+
+  CognitoGuestGroup:
+    Type: AWS::Cognito::UserPoolGroup
+    Properties:
+      GroupName: guest
+      UserPoolId: !Ref CognitoUserPool
+      Description: Guest users with limited read-only access to selected tools
+      Precedence: 20
+
+Outputs:
+  UserPoolId:
+    Description: Cognito User Pool ID
+    Value: !Ref CognitoUserPool
+    Export:
+      Name: !Sub 'tools-shared-cognito-${Environment}-UserPoolId'
+
+  UserPoolArn:
+    Description: Cognito User Pool ARN
+    Value: !GetAtt CognitoUserPool.Arn
+    Export:
+      Name: !Sub 'tools-shared-cognito-${Environment}-UserPoolArn'
+
+  UserPoolClientId:
+    Description: Cognito User Pool Client ID (SPA client, no secret)
+    Value: !Ref CognitoUserPoolClient
+    Export:
+      Name: !Sub 'tools-shared-cognito-${Environment}-UserPoolClientId'
