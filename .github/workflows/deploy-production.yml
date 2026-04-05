@@ -12,8 +12,9 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  id-token: write   # Required for OIDC token exchange
-  contents: read
+  id-token: write      # Required for OIDC token exchange
+  contents: read       # Required for checkout
+  pull-requests: read  # Required for dorny/paths-filter on private repos
 
 jobs:
   # -----------------------------------------------------------------------
