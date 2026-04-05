@@ -11,16 +11,30 @@ Parameters:
       - production
     Description: Deployment environment
 
+  CreateOIDCProvider:
+    Type: String
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Default: 'true'
+    Description: >
+      Set to "false" if the GitHub Actions OIDC provider already exists in this
+      account (e.g. when deploying a second environment). The provider is
+      account-level and can only exist once per account.
+
+Conditions:
+  ShouldCreateOIDCProvider: !Equals [!Ref CreateOIDCProvider, 'true']
+
 Resources:
 
   # ---------------------------------------------------------------------------
   # GitHub Actions OIDC provider (account-level singleton).
-  # Safe to redeploy: CloudFormation will adopt an existing provider at this URL
-  # rather than creating a duplicate. If the provider already exists outside of
-  # CloudFormation, import it before deploying this stack.
+  # Only created when CreateOIDCProvider=true. Set to false for the second
+  # environment deployment — the provider already exists from the first.
   # ---------------------------------------------------------------------------
   GitHubOIDCProvider:
     Type: AWS::IAM::OIDCProvider
+    Condition: ShouldCreateOIDCProvider
     Properties:
       Url: https://token.actions.githubusercontent.com
       ClientIdList:
@@ -104,13 +118,15 @@ Resources:
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
-              - Sid: AmplifyStartJob
+              - Sid: AmplifyDeploy
                 Effect: Allow
                 Action:
                   - amplify:StartJob
                   - amplify:StopJob
                   - amplify:GetJob
                   - amplify:ListJobs
+                  - amplify:CreateDeployment
+                  - amplify:StartDeployment
                   - amplify:GetApp
                   - amplify:ListApps
                   - amplify:GetBranch

@@ -45,14 +45,11 @@ Resources:
       DomainName: tools.jtamerius.com
       SubjectAlternativeNames:
         - '*.jtamerius.com'
-        - jtamerius.com
       ValidationMethod: DNS
       DomainValidationOptions:
         - DomainName: tools.jtamerius.com
           HostedZoneId: !Ref HostedZoneId
         - DomainName: '*.jtamerius.com'
-          HostedZoneId: !Ref HostedZoneId
-        - DomainName: jtamerius.com
           HostedZoneId: !Ref HostedZoneId
       Tags:
         - Key: Environment
@@ -91,23 +88,19 @@ Resources:
 Outputs:
   CertificateArn:
     Description: >
-      ACM Certificate ARN for tools.jtamerius.com / *.jtamerius.com (production only).
-      Returns an empty string in staging — use StagingCertificateArn instead.
-    Value: !If
-      - IsProduction
-      - !Ref LandingPageCertificate
-      - ''
+      ACM Certificate ARN for tools.jtamerius.com / *.jtamerius.com.
+      Only present in production.
+    Condition: IsProduction
+    Value: !Ref LandingPageCertificate
     Export:
       Name: !Sub 'tools-shared-dns-${Environment}-CertificateArn'
 
   StagingCertificateArn:
     Description: >
-      ACM Certificate ARN for tools.staging.jtamerius.com (staging only).
-      Returns an empty string in production — use CertificateArn instead.
-    Value: !If
-      - IsStaging
-      - !Ref LandingPageCertificateStagingSubdomain
-      - ''
+      ACM Certificate ARN for tools.staging.jtamerius.com / *.staging.jtamerius.com.
+      Only present in staging.
+    Condition: IsStaging
+    Value: !Ref LandingPageCertificateStagingSubdomain
     Export:
       Name: !Sub 'tools-shared-dns-${Environment}-StagingCertificateArn'
 

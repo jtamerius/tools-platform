@@ -8,14 +8,22 @@ export const APPS = [
     isPublic: true,
     requiredGroup: null,
   },
-  // Placeholder for future apps - add more here
-  // {
-  //   id: 'app-one',
-  //   name: 'App One',
-  //   description: 'Description of app one',
-  //   url: 'https://app-one.jtamerius.com',
-  //   subdomain: 'app-one',
-  //   isPublic: false,
-  //   requiredGroup: 'member',
-  // },
+  {
+    id: 'weather-app',
+    name: 'Ensemble Weather',
+    description: 'Multi-model ensemble forecasts for the Southwest US',
+    url: 'https://weather.jtamerius.com',
+    subdomain: 'weather',
+    isPublic: true,
+    requiredGroup: null,
+  },
+  {
+    id: 'finance-app',
+    name: 'Finance Tracker',
+    description: 'Personal finance tracking and analysis',
+    url: 'https://finance.jtamerius.com',
+    subdomain: 'finance',
+    isPublic: false,
+    requiredGroup: 'member',
+  },
 ]

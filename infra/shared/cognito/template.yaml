@@ -35,7 +35,7 @@ Resources:
         InviteMessageTemplate:
           EmailMessage: |
             You have been invited to the tools platform.
-            Your temporary password is {####}.
+            Your username is {username} and your temporary password is {####}.
             Please sign in at https://tools.jtamerius.com and set a new password.
           EmailSubject: 'Your tools platform invitation'
       VerificationMessageTemplate:

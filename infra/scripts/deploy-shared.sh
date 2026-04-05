@@ -2,19 +2,20 @@
 # deploy-shared.sh — Deploy all shared infrastructure stacks in dependency order.
 #
 # Usage:
-#   ./infra/scripts/deploy-shared.sh <environment> <github-oauth-token>
+#   ./infra/scripts/deploy-shared.sh <environment>
 #
 # Arguments:
-#   environment         staging | production
-#   github-oauth-token  GitHub PAT with repo scope for Amplify source connection.
-#                       On subsequent runs, pass the existing token or retrieve
-#                       it from AWS Secrets Manager before calling this script.
+#   environment  staging | production
 #
 # Stacks deployed (in order):
 #   1. tools-shared-iam-<env>      — OIDC role + Amplify service role
 #   2. tools-shared-cognito-<env>  — Cognito User Pool + groups
 #   3. tools-shared-dns-<env>      — ACM certificates (must deploy to us-east-1)
-#   4. tools-shared-amplify-<env>  — Amplify app + branch
+#   4. tools-shared-amplify-<env>  — Amplify app + branch (landing-page, hosting-only)
+#   4b. tools-shared-amplify-weather-<env>  — Weather app (hosting-only)
+#   4c. tools-shared-amplify-finance-<env>  — Finance app (hosting-only)
+#
+# All Amplify apps use GHA-built artifacts (no GitHub source connection needed).
 #
 # Requires: aws CLI v2, bash >= 4
 # AWS credentials must be configured before running (e.g. via OIDC or aws configure).
@@ -23,16 +24,14 @@ set -euo pipefail
 
 # ─── Arguments ───────────────────────────────────────────────────────────────
 ENV="${1:-}"
-GITHUB_OAUTH_TOKEN="${2:-}"
 
-if [[ -z "$ENV" || -z "$GITHUB_OAUTH_TOKEN" ]]; then
-  echo "Usage: $0 <environment> <github-oauth-token>"
+if [[ -z "$ENV" ]]; then
+  echo "Usage: $0 <environment>"
   echo ""
-  echo "  environment:         staging | production"
-  echo "  github-oauth-token:  GitHub PAT with repo scope (NoEcho)"
+  echo "  environment:  staging | production"
   echo ""
   echo "Example:"
-  echo "  $0 staging ghp_xxxxxxxxxxxx"
+  echo "  $0 staging"
   exit 1
 fi
 
@@ -153,9 +152,22 @@ info "Hosted Zone ID: $HOSTED_ZONE_ID"
 
 # ─── 1. IAM stack ────────────────────────────────────────────────────────────
 # OIDC provider and IAM roles must exist before other stacks reference their exports.
+# The GitHub OIDC provider is account-level (one per account). Skip creating it
+# for the second environment (production) since staging already created it.
+CREATE_OIDC="true"
+if [[ "$ENV" == "production" ]]; then
+  # Check if the OIDC provider already exists (created by the staging stack)
+  if AWS_PROFILE=jtam aws iam get-open-id-connect-provider \
+    --open-id-connect-provider-arn "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):oidc-provider/token.actions.githubusercontent.com" \
+    --region "$REGION" >/dev/null 2>&1; then
+    info "GitHub OIDC provider already exists — skipping creation for production."
+    CREATE_OIDC="false"
+  fi
+fi
 deploy_stack "$STACK_IAM" \
   "$INFRA_DIR/shared/iam/template.yaml" \
-  "Environment=$ENV"
+  "Environment=$ENV" \
+  "CreateOIDCProvider=$CREATE_OIDC"
 
 # ─── 2. Cognito stack ────────────────────────────────────────────────────────
 deploy_stack "$STACK_COGNITO" \
@@ -169,12 +181,24 @@ deploy_stack "$STACK_DNS" \
   "Environment=$ENV" \
   "HostedZoneId=$HOSTED_ZONE_ID"
 
-# ─── 4. Amplify stack ────────────────────────────────────────────────────────
+# ─── 4. Amplify stack (landing-page) ─────────────────────────────────────────
 # Depends on IAM exports (AmplifyServiceRoleArn).
+# Hosting-only; GHA builds and deploys artifacts — no GitHub OAuth token needed.
 deploy_stack "$STACK_AMPLIFY" \
   "$INFRA_DIR/shared/amplify/template.yaml" \
-  "Environment=$ENV" \
-  "GitHubOAuthToken=$GITHUB_OAUTH_TOKEN"
+  "Environment=$ENV"
+
+# ─── 4b. Amplify stack (weather-app) ─────────────────────────────────────────
+# No GitHubOAuthToken needed — GHA builds artifacts and deploys manually.
+deploy_stack "tools-shared-amplify-weather-$ENV" \
+  "$INFRA_DIR/shared/amplify/weather-app-template.yaml" \
+  "Environment=$ENV"
+
+# ─── 4c. Amplify stack (finance-app) ─────────────────────────────────────────
+# No GitHubOAuthToken needed — GHA builds artifacts and deploys manually.
+deploy_stack "tools-shared-amplify-finance-$ENV" \
+  "$INFRA_DIR/shared/amplify/finance-app-template.yaml" \
+  "Environment=$ENV"
 
 # ─── 5. Monitoring stack ─────────────────────────────────────────────────────
 # Optional — only deployed when ALERT_EMAIL is provided.

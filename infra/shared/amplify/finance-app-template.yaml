@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  AWS Amplify Hosting app for the tools landing page (tools.jtamerius.com).
+  AWS Amplify Hosting app for the finance tracker (finance.jtamerius.com).
   Provides hosting, custom domain, and SPA routing only.
   Builds are performed by GitHub Actions, which deploys artifacts manually
   via aws amplify create-deployment / start-deployment.
@@ -22,10 +22,10 @@ Resources:
   # ---------------------------------------------------------------------------
   # Amplify App — hosting only, no GitHub source connection
   # ---------------------------------------------------------------------------
-  LandingPageAmplifyApp:
+  FinanceAppAmplifyApp:
     Type: AWS::Amplify::App
     Properties:
-      Name: !Sub 'tools-landing-page-${Environment}'
+      Name: !Sub 'tools-finance-app-${Environment}'
       IAMServiceRole: !ImportValue
         'Fn::Sub': 'tools-shared-iam-${Environment}-AmplifyServiceRoleArn'
 
@@ -48,14 +48,16 @@ Resources:
           Value: !Ref Environment
         - Key: Project
           Value: tools-platform
+        - Key: App
+          Value: finance-app
 
   # ---------------------------------------------------------------------------
   # Amplify Branch — receives manual artifact deployments from GitHub Actions
   # ---------------------------------------------------------------------------
-  LandingPageAmplifyBranch:
+  FinanceAppAmplifyBranch:
     Type: AWS::Amplify::Branch
     Properties:
-      AppId: !GetAtt LandingPageAmplifyApp.AppId
+      AppId: !GetAtt FinanceAppAmplifyApp.AppId
       BranchName: !If [IsProduction, main, staging]
       Description: !Sub 'Deployment target for the ${Environment} environment'
       EnableAutoBuild: false
@@ -67,45 +69,52 @@ Resources:
           Value: !Ref Environment
         - Key: Project
           Value: tools-platform
+        - Key: App
+          Value: finance-app
 
   # ---------------------------------------------------------------------------
-  # Amplify Custom Domain — tools.jtamerius.com
+  # Amplify Custom Domain — finance.jtamerius.com
   # Covered by the existing *.jtamerius.com ACM certificate.
   # Only created in production; staging uses the default amplifyapp.com domain.
   # ---------------------------------------------------------------------------
-  LandingPageAmplifyDomain:
+  FinanceAppAmplifyDomain:
     Type: AWS::Amplify::Domain
     Condition: IsProduction
     Properties:
-      AppId: !GetAtt LandingPageAmplifyApp.AppId
+      AppId: !GetAtt FinanceAppAmplifyApp.AppId
       DomainName: jtamerius.com
       SubDomainSettings:
-        - Prefix: tools
-          BranchName: !GetAtt LandingPageAmplifyBranch.BranchName
+        - Prefix: finance
+          BranchName: !GetAtt FinanceAppAmplifyBranch.BranchName
 
 Outputs:
   AmplifyAppId:
-    Description: Amplify Application ID for the landing page
-    Value: !GetAtt LandingPageAmplifyApp.AppId
+    Description: Amplify Application ID for the finance app
+    Value: !GetAtt FinanceAppAmplifyApp.AppId
     Export:
-      Name: !Sub 'tools-shared-amplify-${Environment}-AppId'
+      Name: !Sub 'tools-shared-amplify-finance-${Environment}-AppId'
 
   AmplifyAppArn:
-    Description: Amplify Application ARN for the landing page
-    Value: !GetAtt LandingPageAmplifyApp.Arn
+    Description: Amplify Application ARN for the finance app
+    Value: !GetAtt FinanceAppAmplifyApp.Arn
     Export:
-      Name: !Sub 'tools-shared-amplify-${Environment}-AppArn'
+      Name: !Sub 'tools-shared-amplify-finance-${Environment}-AppArn'
 
   DefaultDomain:
     Description: >
       Amplify-generated default domain (e.g. d1234abcd.amplifyapp.com).
       Use this for smoke-testing before DNS cutover.
-    Value: !GetAtt LandingPageAmplifyApp.DefaultDomain
+    Value: !GetAtt FinanceAppAmplifyApp.DefaultDomain
     Export:
-      Name: !Sub 'tools-shared-amplify-${Environment}-DefaultDomain'
+      Name: !Sub 'tools-shared-amplify-finance-${Environment}-DefaultDomain'
 
   BranchName:
     Description: Branch receiving deployments for this environment
-    Value: !GetAtt LandingPageAmplifyBranch.BranchName
+    Value: !GetAtt FinanceAppAmplifyBranch.BranchName
     Export:
-      Name: !Sub 'tools-shared-amplify-${Environment}-BranchName'
+      Name: !Sub 'tools-shared-amplify-finance-${Environment}-BranchName'
+
+  SiteURL:
+    Description: Production URL for the finance app
+    Condition: IsProduction
+    Value: https://finance.jtamerius.com
