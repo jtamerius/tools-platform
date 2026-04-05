@@ -95,6 +95,7 @@ Resources:
                   - cloudformation:DeleteChangeSet
                   - cloudformation:ListChangeSets
                   - cloudformation:ListStacks
+                  - cloudformation:GetTemplateSummary
                 Resource: '*'
 
         - PolicyName: S3DeployArtifactsPolicy
