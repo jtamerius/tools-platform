@@ -14,12 +14,13 @@ import { forgotPassword, confirmForgotPassword, createUserPool } from '@tools/au
  *   onClose  {function} - Called when the modal should close
  *   onSignIn {function} - async (email, password) => void
  */
-export default function SignInModal({ isOpen, onClose, onSignIn }) {
+export default function SignInModal({ isOpen, onClose, onSignIn, onNewPassword }) {
   const [view, setView] = useState('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [newPassword, setNewPassword] = useState('')
+  const [pendingCognitoUser, setPendingCognitoUser] = useState(null)
   const [error, setError] = useState(null)
   const [info, setInfo] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -33,6 +34,7 @@ export default function SignInModal({ isOpen, onClose, onSignIn }) {
       setPassword('')
       setCode('')
       setNewPassword('')
+      setPendingCognitoUser(null)
       setError(null)
       setInfo(null)
       setIsSubmitting(false)
@@ -60,7 +62,29 @@ export default function SignInModal({ isOpen, onClose, onSignIn }) {
     try {
       await onSignIn(email.trim(), password)
     } catch (err) {
-      setError(err.message ?? 'Sign in failed. Please try again.')
+      if (err.code === 'NewPasswordRequired' && err.cognitoUser) {
+        setPendingCognitoUser(err.cognitoUser)
+        setNewPassword('')
+        setError(null)
+        setView('newpassword')
+      } else {
+        setError(err.message ?? 'Sign in failed. Please try again.')
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // ── New password required (first sign-in for admin-created accounts) ────────
+
+  async function handleNewPasswordSubmit(e) {
+    e.preventDefault()
+    setError(null)
+    setIsSubmitting(true)
+    try {
+      await onNewPassword(pendingCognitoUser, newPassword)
+    } catch (err) {
+      setError(err.message ?? 'Could not set password. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
@@ -165,6 +189,35 @@ export default function SignInModal({ isOpen, onClose, onSignIn }) {
             <button style={s.textLink} type="button" onClick={() => { setError(null); setInfo(null); setView('forgot') }}>
               Forgot password?
             </button>
+          </>
+        )}
+
+        {/* ── New password required (admin-created accounts) ───────────── */}
+        {view === 'newpassword' && (
+          <>
+            <h2 id="modal-title" style={s.title}>Set a new password</h2>
+            <p style={s.subtitle}>Your account requires a new password before you can sign in.</p>
+            {error && <div style={s.errorBox} role="alert">{error}</div>}
+            <form onSubmit={handleNewPasswordSubmit} noValidate>
+              <div style={s.fields}>
+                <label style={s.label}>
+                  New password
+                  <input ref={emailRef} style={s.input} type="password" value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)} autoComplete="new-password"
+                    required placeholder="••••••••" disabled={isSubmitting}
+                    onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--text)' }}
+                    onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)' }}
+                  />
+                </label>
+              </div>
+              <button style={{ ...s.submitBtn, background: isSubmitting ? '#555' : 'var(--accent)' }}
+                type="submit" disabled={isSubmitting || !newPassword}
+                onMouseEnter={(e) => { if (!isSubmitting) e.currentTarget.style.background = 'var(--accent-hover)' }}
+                onMouseLeave={(e) => { if (!isSubmitting) e.currentTarget.style.background = 'var(--accent)' }}
+              >
+                {isSubmitting ? 'Setting password…' : 'Set password & sign in'}
+              </button>
+            </form>
           </>
         )}
 

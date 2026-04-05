@@ -13,7 +13,7 @@ const AUTH_CONFIG = {
 }
 
 export default function App() {
-  const { user, groups, isLoading, signIn, signOut } = useAuth(AUTH_CONFIG)
+  const { user, groups, isLoading, signIn, signOut, completeNewPasswordChallenge } = useAuth(AUTH_CONFIG)
   const [modalOpen, setModalOpen] = useState(false)
 
   function openSignIn() {
@@ -46,6 +46,10 @@ export default function App() {
           onClose={() => setModalOpen(false)}
           onSignIn={async (email, password) => {
             await signIn(email, password)
+            setModalOpen(false)
+          }}
+          onNewPassword={async (cognitoUser, newPassword) => {
+            await completeNewPasswordChallenge(cognitoUser, newPassword)
             setModalOpen(false)
           }}
         />

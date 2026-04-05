@@ -130,6 +130,25 @@ export function forgotPassword(userPool, email) {
 }
 
 /**
+ * Completes the NEW_PASSWORD_REQUIRED challenge for admin-created users.
+ * @param {import('amazon-cognito-identity-js').CognitoUser} cognitoUser - The user object from the signIn error
+ * @param {string} newPassword
+ * @returns {Promise<{ user: CognitoUser, session: import('amazon-cognito-identity-js').CognitoUserSession }>}
+ */
+export function completeNewPassword(cognitoUser, newPassword) {
+  return new Promise((resolve, reject) => {
+    cognitoUser.completeNewPasswordChallenge(newPassword, {}, {
+      onSuccess(session) {
+        resolve({ user: cognitoUser, session });
+      },
+      onFailure(err) {
+        reject(err);
+      },
+    });
+  });
+}
+
+/**
  * Completes the forgot-password flow by submitting the verification code and
  * the new password chosen by the user.
  * @param {CognitoUserPool} userPool

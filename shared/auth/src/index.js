@@ -7,6 +7,7 @@ export {
   getUserAttributesFromToken,
   forgotPassword,
   confirmForgotPassword,
+  completeNewPassword,
 } from './cognito.js';
 
 export { useAuth } from './useAuth.js';

@@ -6,6 +6,7 @@ import {
   signOut as cognitoSignOut,
   getGroupsFromToken,
   getUserAttributesFromToken,
+  completeNewPassword as cognitoCompleteNewPassword,
 } from './cognito.js';
 
 // Re-validate the session every 30 minutes. The Cognito SDK automatically
@@ -137,6 +138,30 @@ export function useAuth({ userPoolId, clientId }) {
   );
 
   /**
+   * Completes the NEW_PASSWORD_REQUIRED challenge for admin-created users.
+   * @param {import('amazon-cognito-identity-js').CognitoUser} cognitoUser
+   * @param {string} newPassword
+   * @returns {Promise<void>}
+   */
+  const completeNewPasswordChallenge = useCallback(
+    async (cognitoUser, newPassword) => {
+      setError(null);
+      setIsLoading(true);
+      try {
+        const { session } = await cognitoCompleteNewPassword(cognitoUser, newPassword);
+        hydrateFromSession(session);
+      } catch (err) {
+        const wrapped = err instanceof Error ? err : new Error(String(err));
+        setError(wrapped);
+        throw wrapped;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [hydrateFromSession]
+  );
+
+  /**
    * Signs the current user out and clears auth state.
    */
   const signOut = useCallback(() => {
@@ -165,6 +190,7 @@ export function useAuth({ userPoolId, clientId }) {
     error,
     signIn,
     signOut,
+    completeNewPasswordChallenge,
     hasGroup,
     isAdmin,
   };
