@@ -40,6 +40,6 @@ export const APPS = [
     url: isProd ? 'https://finance.jtamerius.com' : 'https://staging.d1k4zfq8stlbd.amplifyapp.com',
     subdomain: 'finance',
     isPublic: false,
-    requiredGroup: 'member',
+    requiredGroup: 'admin',
   },
 ]

@@ -16,7 +16,7 @@ export default function FinancePage({ user, groups, isLoading, onSignIn }) {
       <div style={s.center}>
         <div style={s.card}>
           <h2 style={s.heading}>Finance Tracker</h2>
-          <p style={s.body}>Sign in with a member account to access the finance tracker.</p>
+          <p style={s.body}>Sign in with an admin account to access the finance tracker.</p>
           <button
             style={s.btn}
             onClick={onSignIn}
@@ -31,7 +31,7 @@ export default function FinancePage({ user, groups, isLoading, onSignIn }) {
     )
   }
 
-  if (!groups.includes('member')) {
+  if (!groups.includes('admin')) {
     return (
       <div style={s.center}>
         <div style={s.card}>

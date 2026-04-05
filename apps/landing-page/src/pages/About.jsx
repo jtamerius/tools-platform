@@ -63,12 +63,12 @@ export default function About() {
             <p style={styles.body}>
               Reach me at{' '}
               <a
-                href="mailto:contact@jtamerius.com"
+                href="mailto:james.tamerius@gmail.com"
                 style={styles.link}
                 onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
               >
-                contact@jtamerius.com
+                james.tamerius@gmail.com
               </a>
               {' '}or find me on{' '}
               <a
@@ -90,9 +90,9 @@ export default function About() {
 }
 
 const FACTS = [
-  { label: 'Location', value: 'United States' },
+  { label: 'Location', value: 'Colorado, USA' },
   { label: 'Primary stack', value: 'Python · AWS · React' },
-  { label: 'Interests', value: 'Geospatial · Climate · Data pipelines' },
+  { label: 'Interests', value: 'Spatiotemporal analysis · Energy · Visualization · Management · Leadership' },
   { label: 'Infrastructure', value: 'Serverless · CloudFormation · Amplify' },
 ]
 
