@@ -7,6 +7,7 @@
     ".": "./src/index.jsx"
   },
   "peerDependencies": {
+    "@tools/auth": "*",
     "@tools/config": "*",
     "react": "^18.3.1"
   }

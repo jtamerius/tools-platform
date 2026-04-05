@@ -5,19 +5,27 @@ const LANDING_URL = import.meta.env.VITE_ENV === 'production'
   ? 'https://tools.jtamerius.com'
   : 'https://staging.d223wq48sddq6t.amplifyapp.com'
 
+// Default Home/About links point to the landing page.
+// Apps that handle these routes internally (e.g. landing-page with HashRouter)
+// should pass their own extraLinks to override.
+const DEFAULT_NAV_LINKS = [
+  { label: 'Home', href: LANDING_URL },
+  { label: 'About', href: `${LANDING_URL}/#/about` },
+]
+
 /**
  * Shared platform navigation bar used by all apps.
  *
  * @param {{
  *   appTitle?: string         — subtitle next to JT logo (e.g. "Ensemble Weather")
  *   currentAppId?: string     — id from APPS; excluded from the dropdown
- *   extraLinks?: Array<{label: string, href: string}> — nav links before the Apps dropdown
+ *   extraLinks?: Array<{label: string, href: string}> — nav links before the Apps dropdown (defaults to Home + About)
  *   user?: {email: string}    — authenticated user; renders email + Sign out
  *   onSignIn?: () => void     — if provided, renders Sign in button when logged out
  *   onSignOut?: () => void    — called on Sign out click
  * }} props
  */
-export function Nav({ appTitle, currentAppId, extraLinks = [], user, onSignIn, onSignOut }) {
+export function Nav({ appTitle, currentAppId, extraLinks = DEFAULT_NAV_LINKS, user, onSignIn, onSignOut }) {
   const [open, setOpen] = useState(false)
   const dropdownRef = useRef(null)
 

@@ -1,4 +1,5 @@
 export { Nav } from './Nav.jsx';
+export { SignInModal } from './SignInModal.jsx';
 
 // ---------------------------------------------------------------------------
 // Button
