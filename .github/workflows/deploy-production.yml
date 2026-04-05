@@ -28,6 +28,8 @@ jobs:
       finance-app: ${{ steps.filter.outputs.finance-app }}
       infra-shared: ${{ steps.filter.outputs.infra-shared }}
       infra-landing-page: ${{ steps.filter.outputs.infra-landing-page }}
+      weather-collector: ${{ steps.filter.outputs.weather-collector }}
+      finance-tracker: ${{ steps.filter.outputs.finance-tracker }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -50,6 +52,10 @@ jobs:
               - 'infra/shared/**'
             infra-landing-page:
               - 'infra/apps/landing-page/**'
+            weather-collector:
+              - 'apps/weather_app/ensemble-plumes/**'
+            finance-tracker:
+              - 'apps/weather_app/finance-tracker/**'
 
   # -----------------------------------------------------------------------
   # Job 2: Deploy shared infrastructure to production
@@ -470,3 +476,135 @@ jobs:
 
           echo "Timed out waiting for Amplify deployment."
           exit 1
+
+  # -----------------------------------------------------------------------
+  # Job 7: Package and deploy weather-collector Lambda (production only)
+  # -----------------------------------------------------------------------
+  deploy-weather-collector-production:
+    name: Deploy weather-collector — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.weather-collector == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Package Lambda
+        run: bash apps/weather_app/ensemble-plumes/package_lambda.sh
+
+      - name: Upload zip to S3
+        run: |
+          aws s3 cp apps/weather_app/ensemble-plumes/lambda_package.zip \
+            s3://jtamerius-website-deploy/lambda_package.zip --no-cli-pager
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --stack-name jtamerius-weather-collector \
+            --template-file apps/weather_app/ensemble-plumes/infrastructure/weather-collector/template.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
+            --no-cli-pager \
+            --parameter-overrides \
+              ProjectName=jtamerius \
+              DomainName=jtamerius.com \
+              WebsiteBucketName=jtamerius \
+              WebsiteBucketArn=arn:aws:s3:::jtamerius \
+              LambdaCodeBucket=jtamerius-website-deploy \
+              LambdaMemory=2048 \
+              LambdaTimeout=600
+
+      - name: Force Lambda code update
+        run: |
+          aws lambda update-function-code \
+            --function-name jtamerius-weather-collector \
+            --s3-bucket jtamerius-website-deploy \
+            --s3-key lambda_package.zip \
+            --no-cli-pager \
+            --query '[LastModified,CodeSize]' --output text
+
+  # -----------------------------------------------------------------------
+  # Job 8: Package and deploy finance-tracker Lambda (production only)
+  # -----------------------------------------------------------------------
+  deploy-finance-tracker-production:
+    name: Deploy finance-tracker — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.finance-tracker == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Fetch auth secret from SSM
+        run: |
+          echo "FINANCE_AUTH_SECRET=$(aws ssm get-parameter \
+            --name finance-tracker \
+            --with-decryption \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+
+      - name: Package Lambda
+        run: bash apps/weather_app/finance-tracker/package_lambda.sh
+
+      - name: Upload zip to S3
+        run: |
+          aws s3 cp apps/weather_app/finance-tracker/finance_package.zip \
+            s3://jtamerius-website-deploy/finance_package.zip --no-cli-pager
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --stack-name jtamerius-finance-tracker \
+            --template-file apps/weather_app/ensemble-plumes/infrastructure/finance-tracker/template.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --no-fail-on-empty-changeset \
+            --no-cli-pager \
+            --parameter-overrides \
+              ProjectName=jtamerius \
+              WebsiteBucketName=jtamerius \
+              LambdaCodeBucket=jtamerius-website-deploy \
+              "AuthSecret=$FINANCE_AUTH_SECRET"
+
+      - name: Force Lambda code update
+        run: |
+          aws lambda update-function-code \
+            --function-name jtamerius-finance-tracker \
+            --s3-bucket jtamerius-website-deploy \
+            --s3-key finance_package.zip \
+            --no-cli-pager \
+            --query '[LastModified,CodeSize]' --output text
+
+      - name: Inject Function URL into finance.html and upload to S3
+        run: |
+          FUNC_URL=$(aws cloudformation describe-stacks \
+            --stack-name jtamerius-finance-tracker \
+            --query 'Stacks[0].Outputs[?OutputKey==`FunctionUrl`].OutputValue' \
+            --output text --no-cli-pager)
+
+          STRIPPED_URL="${FUNC_URL%/}"
+          sed "s|__API_URL__|${STRIPPED_URL}|g" \
+            apps/weather_app/finance-tracker/finance.html > /tmp/finance_built.html
+
+          aws s3 cp /tmp/finance_built.html s3://jtamerius/finance/index.html \
+            --content-type text/html \
+            --cache-control "no-cache, max-age=0" \
+            --no-cli-pager

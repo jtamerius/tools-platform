@@ -24,6 +24,8 @@ jobs:
       finance-app: ${{ steps.filter.outputs.finance-app }}
       infra-shared: ${{ steps.filter.outputs.infra-shared }}
       infra-landing-page: ${{ steps.filter.outputs.infra-landing-page }}
+      weather-collector: ${{ steps.filter.outputs.weather-collector }}
+      finance-tracker: ${{ steps.filter.outputs.finance-tracker }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -46,6 +48,10 @@ jobs:
               - 'infra/shared/**'
             infra-landing-page:
               - 'infra/apps/landing-page/**'
+            weather-collector:
+              - 'apps/weather_app/ensemble-plumes/**'
+            finance-tracker:
+              - 'apps/weather_app/finance-tracker/**'
 
   # -----------------------------------------------------------------------
   # Job 2: Lint, test, and build the landing-page app
@@ -161,7 +167,9 @@ jobs:
     needs: detect-changes
     if: >
       needs.detect-changes.outputs.infra-shared == 'true' ||
-      needs.detect-changes.outputs.infra-landing-page == 'true'
+      needs.detect-changes.outputs.infra-landing-page == 'true' ||
+      needs.detect-changes.outputs.weather-collector == 'true' ||
+      needs.detect-changes.outputs.finance-tracker == 'true'
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -193,3 +201,19 @@ jobs:
               --template-body "file://${template}" \
               --no-cli-pager
           done
+
+      - name: Validate weather-collector template
+        if: needs.detect-changes.outputs.weather-collector == 'true'
+        run: |
+          echo "Validating weather-collector template..."
+          aws cloudformation validate-template \
+            --template-body file://apps/weather_app/ensemble-plumes/infrastructure/weather-collector/template.yaml \
+            --no-cli-pager
+
+      - name: Validate finance-tracker template
+        if: needs.detect-changes.outputs.finance-tracker == 'true'
+        run: |
+          echo "Validating finance-tracker template..."
+          aws cloudformation validate-template \
+            --template-body file://apps/weather_app/ensemble-plumes/infrastructure/finance-tracker/template.yaml \
+            --no-cli-pager
