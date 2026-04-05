@@ -177,7 +177,7 @@ jobs:
           cd ..
 
           RESULT=$(aws amplify create-deployment \
-            --app-id ${{ secrets.AMPLIFY_APP_ID_LANDING_PAGE }} \
+            --app-id d223wq48sddq6t \
             --branch-name staging \
             --output json \
             --no-cli-pager)
@@ -189,7 +189,7 @@ jobs:
           curl --fail -T dist.zip "$ZIP_URL"
 
           aws amplify start-deployment \
-            --app-id ${{ secrets.AMPLIFY_APP_ID_LANDING_PAGE }} \
+            --app-id d223wq48sddq6t \
             --branch-name staging \
             --job-id "$JOB_ID" \
             --no-cli-pager
@@ -200,7 +200,7 @@ jobs:
       - name: Wait for deployment to complete
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
-          APP_ID="${{ secrets.AMPLIFY_APP_ID_LANDING_PAGE }}"
+          APP_ID="d223wq48sddq6t"
           BRANCH="staging"
           MAX_ATTEMPTS=60   # 60 × 30s = 30 minutes max
           ATTEMPT=0
@@ -288,7 +288,7 @@ jobs:
           cd ..
 
           RESULT=$(aws amplify create-deployment \
-            --app-id ${{ secrets.AMPLIFY_APP_ID_WEATHER_APP }} \
+            --app-id d26oqifvpt9ysq \
             --branch-name staging \
             --output json \
             --no-cli-pager)
@@ -300,7 +300,7 @@ jobs:
           curl --fail -T dist.zip "$ZIP_URL"
 
           aws amplify start-deployment \
-            --app-id ${{ secrets.AMPLIFY_APP_ID_WEATHER_APP }} \
+            --app-id d26oqifvpt9ysq \
             --branch-name staging \
             --job-id "$JOB_ID" \
             --no-cli-pager
@@ -311,7 +311,7 @@ jobs:
       - name: Wait for deployment to complete
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
-          APP_ID="${{ secrets.AMPLIFY_APP_ID_WEATHER_APP }}"
+          APP_ID="d26oqifvpt9ysq"
           BRANCH="staging"
           MAX_ATTEMPTS=60   # 60 × 30s = 30 minutes max
           ATTEMPT=0
@@ -410,7 +410,7 @@ jobs:
           cd ..
 
           RESULT=$(aws amplify create-deployment \
-            --app-id ${{ secrets.AMPLIFY_APP_ID_FINANCE_APP }} \
+            --app-id d1k4zfq8stlbd \
             --branch-name staging \
             --output json \
             --no-cli-pager)
@@ -422,7 +422,7 @@ jobs:
           curl --fail -T dist.zip "$ZIP_URL"
 
           aws amplify start-deployment \
-            --app-id ${{ secrets.AMPLIFY_APP_ID_FINANCE_APP }} \
+            --app-id d1k4zfq8stlbd \
             --branch-name staging \
             --job-id "$JOB_ID" \
             --no-cli-pager
@@ -433,7 +433,7 @@ jobs:
       - name: Wait for deployment to complete
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
-          APP_ID="${{ secrets.AMPLIFY_APP_ID_FINANCE_APP }}"
+          APP_ID="d1k4zfq8stlbd"
           BRANCH="staging"
           MAX_ATTEMPTS=60
           ATTEMPT=0
