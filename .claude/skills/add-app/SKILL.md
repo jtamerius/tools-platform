@@ -37,8 +37,9 @@ Copy verbatim from `apps/landing-page/src/`.
 Minimal placeholder page component.
 
 ### 7. `apps/{app-id}/src/components/Nav.jsx`
-- If **public**: logo + title only (model after `apps/weather-app/src/components/Nav.jsx`)
-- If **auth-gated**: logo + title + auth bar (model after `apps/finance-app/src/components/Nav.jsx`)
+Use the shared Nav from `@tools/ui` — see `/nav-standard` for the exact pattern.
+- If **public**: `<Nav appTitle="{display-name}" currentAppId="{app-id}" />`
+- If **auth-gated**: pass `user`, `onSignIn`, `onSignOut` props as well
 
 ### 8. `infra/shared/amplify/{app-id}-template.yaml`
 Copy `apps/weather-app`'s template (`infra/shared/amplify/weather-app-template.yaml`), replace:
@@ -50,8 +51,8 @@ Copy `apps/weather-app`'s template (`infra/shared/amplify/weather-app-template.y
 
 ## Files to modify
 
-### `apps/landing-page/src/config/apps.js`
-Add an entry to the `APPS` array:
+### `shared/config/src/apps.js`
+Add an entry to the `APPS` array (this is the authoritative registry, shared by all apps):
 ```js
 {
   id: '{app-id}',

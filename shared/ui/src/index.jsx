@@ -1,4 +1,3 @@
-import React from 'react';
 export { Nav } from './Nav.jsx';
 
 // ---------------------------------------------------------------------------
@@ -38,19 +37,6 @@ const BUTTON_VARIANTS = {
   },
 };
 
-/**
- * Button component with primary / secondary / danger variants.
- *
- * @param {{
- *   variant?: 'primary' | 'secondary' | 'danger',
- *   disabled?: boolean,
- *   loading?: boolean,
- *   onClick?: React.MouseEventHandler<HTMLButtonElement>,
- *   type?: 'button' | 'submit' | 'reset',
- *   style?: React.CSSProperties,
- *   children: React.ReactNode,
- * }} props
- */
 export function Button({
   variant = 'primary',
   disabled = false,
@@ -88,14 +74,6 @@ export function Button({
 // Card
 // ---------------------------------------------------------------------------
 
-/**
- * Card wrapper with a subtle shadow, border and rounded corners.
- *
- * @param {{
- *   style?: React.CSSProperties,
- *   children: React.ReactNode,
- * }} props
- */
 export function Card({ style, children, ...rest }) {
   const cardStyle = {
     backgroundColor: '#ffffff',
@@ -125,15 +103,6 @@ const BADGE_VARIANTS = {
   danger: { backgroundColor: '#fee2e2', color: '#991b1b' },
 };
 
-/**
- * Small pill badge for status labels (e.g. "Public", "Members Only").
- *
- * @param {{
- *   variant?: 'default' | 'public' | 'members' | 'admin' | 'danger',
- *   style?: React.CSSProperties,
- *   children: React.ReactNode,
- * }} props
- */
 export function Badge({ variant = 'default', style, children, ...rest }) {
   const badgeStyle = {
     display: 'inline-block',
@@ -159,15 +128,6 @@ export function Badge({ variant = 'default', style, children, ...rest }) {
 // LoadingSpinner
 // ---------------------------------------------------------------------------
 
-/**
- * Animated SVG loading spinner.
- *
- * @param {{
- *   size?: number,
- *   color?: string,
- *   style?: React.CSSProperties,
- * }} props
- */
 export function LoadingSpinner({ size = 24, color = '#2563eb', style, ...rest }) {
   const spinnerStyle = {
     display: 'inline-block',
@@ -179,7 +139,6 @@ export function LoadingSpinner({ size = 24, color = '#2563eb', style, ...rest })
 
   return (
     <>
-      {/* Inject keyframes once via a <style> tag rendered inline. */}
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       <svg
         viewBox="0 0 24 24"
@@ -190,20 +149,8 @@ export function LoadingSpinner({ size = 24, color = '#2563eb', style, ...rest })
         role="status"
         {...rest}
       >
-        <circle
-          cx="12"
-          cy="12"
-          r="10"
-          stroke={color}
-          strokeWidth="3"
-          strokeOpacity="0.25"
-        />
-        <path
-          d="M12 2a10 10 0 0 1 10 10"
-          stroke={color}
-          strokeWidth="3"
-          strokeLinecap="round"
-        />
+        <circle cx="12" cy="12" r="10" stroke={color} strokeWidth="3" strokeOpacity="0.25" />
+        <path d="M12 2a10 10 0 0 1 10 10" stroke={color} strokeWidth="3" strokeLinecap="round" />
       </svg>
     </>
   );

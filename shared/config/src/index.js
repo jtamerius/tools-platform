@@ -1,3 +1,5 @@
+export { APPS } from './apps.js';
+
 /** Base domain used across all apps in the platform. */
 export const DOMAIN_BASE = 'jtamerius.com';
 

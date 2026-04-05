@@ -2,11 +2,12 @@
   "name": "@tools/ui",
   "version": "0.1.0",
   "type": "module",
-  "main": "src/index.js",
+  "main": "src/index.jsx",
   "exports": {
-    ".": "./src/index.js"
+    ".": "./src/index.jsx"
   },
   "peerDependencies": {
+    "@tools/config": "*",
     "react": "^18.3.1"
   }
 }
