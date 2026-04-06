@@ -200,6 +200,11 @@ deploy_stack "tools-shared-amplify-finance-$ENV" \
   "$INFRA_DIR/shared/amplify/finance-app-template.yaml" \
   "Environment=$ENV"
 
+# ─── 4d. Amplify stack (globe-app) ───────────────────────────────────────────
+deploy_stack "tools-shared-amplify-globe-$ENV" \
+  "$INFRA_DIR/shared/amplify/globe-app-template.yaml" \
+  "Environment=$ENV"
+
 # ─── 5. Monitoring stack ─────────────────────────────────────────────────────
 # Optional — only deployed when ALERT_EMAIL is provided.
 if [[ -n "$ALERT_EMAIL" ]]; then

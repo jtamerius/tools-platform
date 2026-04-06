@@ -1,0 +1,120 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  AWS Amplify Hosting app for the globe app (globe.jtamerius.com).
+  Provides hosting, custom domain, and SPA routing only.
+  Builds are performed by GitHub Actions, which deploys artifacts manually
+  via aws amplify create-deployment / start-deployment.
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues:
+      - staging
+      - production
+    Description: Deployment environment
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, production]
+  IsStaging: !Equals [!Ref Environment, staging]
+
+Resources:
+
+  # ---------------------------------------------------------------------------
+  # Amplify App — hosting only, no GitHub source connection
+  # ---------------------------------------------------------------------------
+  GlobeAppAmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Sub 'tools-globe-app-${Environment}'
+      IAMServiceRole: !ImportValue
+        'Fn::Sub': 'tools-shared-iam-${Environment}-AmplifyServiceRoleArn'
+
+      # Custom rewrite/redirect rules for SPA routing
+      CustomRules:
+        # Redirect bare /index.html to / (canonical URL)
+        - Source: /index.html
+          Target: /
+          Status: '301'
+        # Serve index.html for any path that doesn't look like a static asset,
+        # enabling client-side routing (React Router, etc.)
+        - Source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>'
+          Target: /index.html
+          Status: '200'
+
+      EnableBranchAutoDeletion: true
+
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+        - Key: App
+          Value: globe-app
+
+  # ---------------------------------------------------------------------------
+  # Amplify Branch — receives manual artifact deployments from GitHub Actions
+  # ---------------------------------------------------------------------------
+  GlobeAppAmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt GlobeAppAmplifyApp.AppId
+      BranchName: !If [IsProduction, main, staging]
+      Description: !Sub 'Deployment target for the ${Environment} environment'
+      EnableAutoBuild: false
+      EnablePullRequestPreview: false
+      Framework: Vite
+      Stage: !If [IsProduction, PRODUCTION, DEVELOPMENT]
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+        - Key: App
+          Value: globe-app
+
+  # ---------------------------------------------------------------------------
+  # Amplify Custom Domain — globe.jtamerius.com
+  # Covered by the existing *.jtamerius.com ACM certificate.
+  # Only created in production; staging uses the default amplifyapp.com domain.
+  # ---------------------------------------------------------------------------
+  GlobeAppAmplifyDomain:
+    Type: AWS::Amplify::Domain
+    Condition: IsProduction
+    Properties:
+      AppId: !GetAtt GlobeAppAmplifyApp.AppId
+      DomainName: jtamerius.com
+      SubDomainSettings:
+        - Prefix: globe
+          BranchName: !GetAtt GlobeAppAmplifyBranch.BranchName
+
+Outputs:
+  AmplifyAppId:
+    Description: Amplify Application ID for the globe app
+    Value: !GetAtt GlobeAppAmplifyApp.AppId
+    Export:
+      Name: !Sub 'tools-shared-amplify-globe-${Environment}-AppId'
+
+  AmplifyAppArn:
+    Description: Amplify Application ARN for the globe app
+    Value: !GetAtt GlobeAppAmplifyApp.Arn
+    Export:
+      Name: !Sub 'tools-shared-amplify-globe-${Environment}-AppArn'
+
+  DefaultDomain:
+    Description: >
+      Amplify-generated default domain (e.g. d1234abcd.amplifyapp.com).
+      Use this for smoke-testing before DNS cutover.
+    Value: !GetAtt GlobeAppAmplifyApp.DefaultDomain
+    Export:
+      Name: !Sub 'tools-shared-amplify-globe-${Environment}-DefaultDomain'
+
+  BranchName:
+    Description: Git branch tracked by this environment
+    Value: !GetAtt GlobeAppAmplifyBranch.BranchName
+    Export:
+      Name: !Sub 'tools-shared-amplify-globe-${Environment}-BranchName'
+
+  SiteURL:
+    Description: Production URL for the globe app
+    Condition: IsProduction
+    Value: https://globe.jtamerius.com
