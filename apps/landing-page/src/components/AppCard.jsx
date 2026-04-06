@@ -10,9 +10,10 @@
  *   requiredGroup {string|null} - Cognito group required to access the app
  */
 export default function AppCard({ name, description, url, isPublic, isAccessible, requiredGroup }) {
+  const badgeLabel = isPublic ? 'Public' : requiredGroup === 'admin' ? 'Admin Only' : 'Members Only'
   const badge = isPublic
-    ? { label: 'Public', bg: '#e8f5e9', color: '#2e7d32' }
-    : { label: 'Members Only', bg: '#fff8e1', color: '#f57f17' }
+    ? { label: badgeLabel, bg: '#e8f5e9', color: '#2e7d32' }
+    : { label: badgeLabel, bg: '#fff8e1', color: '#f57f17' }
 
   const tooltipText = !isAccessible
     ? requiredGroup
