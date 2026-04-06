@@ -54,15 +54,6 @@ const EARTH_FRAG = /* glsl */`
     float diffuse = max(0.0, sunDot + bump);
     earth.rgb  *= 0.15 + 0.85 * diffuse;
 
-    // — Specular glint on ocean (waterTex red channel)
-    vec4  water  = texture2D(waterTex, vUv);
-    if (water.r > 0.1 && sunDot > 0.0) {
-      vec3  V       = normalize(camPos - vWorldPos);
-      vec3  H       = normalize(normalize(sunDir) + V);
-      float spec    = pow(max(dot(N, H), 0.0), 64.0) * water.r * sunDot;
-      earth.rgb    += spec * vec3(0.55, 0.70, 1.00);
-    }
-
     // — Subtle ambient so dark side isn't pure black
     earth.rgb = max(earth.rgb, nightColor.rgb * 0.06);
 
@@ -176,21 +167,12 @@ const STARS_FRAG = /* glsl */`
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 function calcSunDirection() {
-  const now      = new Date()
-  const dayOfYear= Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000)
-  // Solar declination
-  const decl     = -23.45 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10))
-  const declRad  = decl * (Math.PI / 180)
-  // UTC fraction → longitude of subsolar point
-  const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600
-  const lng      = (utcHours / 24 - 0.5) * -360 // 0 UTC = 180° opposite sun
-  const lngRad   = lng * (Math.PI / 180)
-  // Convert subsolar lat/lng to unit vector
-  return new THREE.Vector3(
-    Math.cos(declRad) * Math.cos(lngRad),
-    Math.sin(declRad),
-    Math.cos(declRad) * Math.sin(lngRad),
-  ).normalize()
+  const now         = new Date()
+  const dayOfYear   = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 86400000)
+  const decl        = -23.45 * Math.cos((2 * Math.PI / 365) * (dayOfYear + 10))
+  const utcHours    = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600
+  const subSolarLon = (utcHours / 24 - 0.5) * -360
+  return latLngToVec3(decl, subSolarLon, 1.0).normalize()
 }
 
 function latLngToVec3(lat, lng, r = 1) {
@@ -396,10 +378,7 @@ export default function Globe({ overlays = [] }) {
 
       controls.update()
 
-      // Update sun direction every ~2 seconds (60fps → every 120 frames)
-      if (frame % 120 === 0) {
-        sharedUniforms.sunDir.value.copy(calcSunDirection())
-      }
+      sharedUniforms.sunDir.value.copy(calcSunDirection())
 
       // Slowly drift clouds (≈2× Earth rotation speed)
       if (cloudMesh) {
