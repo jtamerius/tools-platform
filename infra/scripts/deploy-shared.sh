@@ -14,6 +14,7 @@
 #   4. tools-shared-amplify-<env>  — Amplify app + branch (landing-page, hosting-only)
 #   4b. tools-shared-amplify-weather-<env>  — Weather app (hosting-only)
 #   4c. tools-shared-amplify-finance-<env>  — Finance app (hosting-only)
+#   4d. tools-shared-amplify-globe-<env>    — Globe app (hosting-only)
 #
 # All Amplify apps use GHA-built artifacts (no GitHub source connection needed).
 #
@@ -198,6 +199,11 @@ deploy_stack "tools-shared-amplify-weather-$ENV" \
 # No GitHubOAuthToken needed — GHA builds artifacts and deploys manually.
 deploy_stack "tools-shared-amplify-finance-$ENV" \
   "$INFRA_DIR/shared/amplify/finance-app-template.yaml" \
+  "Environment=$ENV"
+
+# ─── 4d. Amplify stack (globe-app) ───────────────────────────────────────────
+deploy_stack "tools-shared-amplify-globe-$ENV" \
+  "$INFRA_DIR/shared/amplify/globe-app-template.yaml" \
   "Environment=$ENV"
 
 # ─── 5. Monitoring stack ─────────────────────────────────────────────────────

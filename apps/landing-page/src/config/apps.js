@@ -26,4 +26,13 @@ export const APPS = [
     isPublic: false,
     requiredGroup: 'member',
   },
+  {
+    id: 'globe-app',
+    name: 'Interactive Globe',
+    description: 'Real-time 3D Earth with day/night cycle, atmosphere, and interactive overlays',
+    url: 'https://globe.jtamerius.com',
+    subdomain: 'globe',
+    isPublic: true,
+    requiredGroup: null,
+  },
 ]
