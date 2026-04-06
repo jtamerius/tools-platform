@@ -406,11 +406,7 @@ export default function Globe({ overlays = [] }) {
         cloudMesh.rotation.y += 0.00008
       }
 
-      // Gentle auto-rotation when user is idle
-      if (!controls.isDragging) {
-        earthMesh.rotation.y += 0.0003
-        cloudMesh.rotation.y += 0.0003
-      }
+
 
       projectOverlays()
       renderer.render(scene, camera)
