@@ -20,6 +20,7 @@ export default function App() {
     CITIES.map(c => c.id),
   )
   const [panelOpen, setPanelOpen] = useState(true)
+  const [showLightning, setShowLightning] = useState(false)
 
   const visibleOverlays = CITIES.filter(c => activeOverlays.includes(c.id))
 
@@ -33,7 +34,7 @@ export default function App() {
     <div style={styles.root}>
       {/* ── Globe fills the entire viewport ── */}
       <div style={styles.globeWrap}>
-        <Globe overlays={visibleOverlays} />
+        <Globe overlays={visibleOverlays} showLightning={showLightning} />
       </div>
 
       {/* ── Header bar ── */}
@@ -64,6 +65,27 @@ export default function App() {
       {/* ── Overlay panel ── */}
       {panelOpen && (
         <aside style={styles.panel}>
+          <p style={styles.panelTitle}>Data Layers</p>
+          <button
+            style={{
+              ...styles.cityBtn,
+              background: showLightning ? 'rgba(255,220,80,0.1)' : 'transparent',
+              borderColor: showLightning ? '#ffdc50' : 'rgba(255,255,255,0.1)',
+              color: showLightning ? '#ffdc50' : '#888',
+              marginBottom: '12px',
+            }}
+            onClick={() => setShowLightning(v => !v)}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,220,80,0.15)'}
+            onMouseLeave={e => e.currentTarget.style.background = showLightning ? 'rgba(255,220,80,0.1)' : 'transparent'}
+          >
+            <span style={{
+              ...styles.cityDot,
+              background: showLightning ? '#ffdc50' : '#444',
+              boxShadow: showLightning ? '0 0 6px #ffdc50' : 'none',
+            }} />
+            Lightning Climatology
+          </button>
+
           <p style={styles.panelTitle}>City Markers</p>
           <div style={styles.cityList}>
             {CITIES.map(city => {
@@ -97,8 +119,8 @@ export default function App() {
           <div style={styles.divider} />
 
           <p style={styles.infoText}>
-            Day &amp; night cycle reflects the real current time (UTC).
-            The sun position updates every 2 seconds.
+            Day &amp; night cycle reflects real current time (UTC).
+            Lightning layer: NASA LIS/OTD flash rate climatology.
           </p>
         </aside>
       )}

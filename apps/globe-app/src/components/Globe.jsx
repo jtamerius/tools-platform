@@ -38,6 +38,8 @@ const EARTH_FRAG = /* glsl */`
   uniform sampler2D nightTex;
   uniform sampler2D topoTex;
   uniform sampler2D waterTex;
+  uniform sampler2D lightningTex;
+  uniform float     lightningOpacity;
   uniform vec3      sunDir;
   uniform vec3      camPos;
 
@@ -65,6 +67,12 @@ const EARTH_FRAG = /* glsl */`
 
     // — Subtle ambient so dark side isn't pure black
     earth.rgb = max(earth.rgb, nightColor.rgb * 0.06);
+
+    // — Lightning climatology overlay (additive blend)
+    if (lightningOpacity > 0.0) {
+      vec4 lightning = texture2D(lightningTex, vUv);
+      earth.rgb += lightning.rgb * lightning.a * lightningOpacity;
+    }
 
     gl_FragColor = vec4(earth.rgb, 1.0);
   }
@@ -216,15 +224,16 @@ function buildStarField(count = 8000) {
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────────
-export default function Globe({ overlays = [] }) {
-  const mountRef    = useRef(null)
-  const rendererRef = useRef(null)
-  const sceneRef    = useRef(null)
-  const cameraRef   = useRef(null)
-  const controlsRef = useRef(null)
-  const uniformsRef = useRef(null)
-  const rafRef      = useRef(null)
-  const cloudMeshRef= useRef(null)
+export default function Globe({ overlays = [], showLightning = false }) {
+  const mountRef       = useRef(null)
+  const rendererRef    = useRef(null)
+  const sceneRef       = useRef(null)
+  const cameraRef      = useRef(null)
+  const controlsRef    = useRef(null)
+  const uniformsRef    = useRef(null)
+  const rafRef         = useRef(null)
+  const cloudMeshRef   = useRef(null)
+  const earthUniformsRef = useRef(null)
 
   // For overlay screen-position tracking
   const [overlayPositions, setOverlayPositions] = useState([])
@@ -234,6 +243,12 @@ export default function Globe({ overlays = [] }) {
   useEffect(() => {
     overlayWorldPosRef.current = overlays.map(o => latLngToVec3(o.lat, o.lng, 1.02))
   }, [overlays])
+
+  // Toggle lightning overlay opacity
+  useEffect(() => {
+    if (!earthUniformsRef.current) return
+    earthUniformsRef.current.lightningOpacity.value = showLightning ? 1.2 : 0.0
+  }, [showLightning])
 
   const projectOverlays = useCallback(() => {
     if (!cameraRef.current || !rendererRef.current) return
@@ -319,11 +334,14 @@ export default function Globe({ overlays = [] }) {
     const earthGeo = new THREE.SphereGeometry(1, 128, 128)
     const earthUniforms = {
       ...sharedUniforms,
-      dayTex:   { value: null },
-      nightTex: { value: null },
-      topoTex:  { value: null },
-      waterTex: { value: null },
+      dayTex:          { value: null },
+      nightTex:        { value: null },
+      topoTex:         { value: null },
+      waterTex:        { value: null },
+      lightningTex:    { value: null },
+      lightningOpacity:{ value: 0.0 },
     }
+    earthUniformsRef.current = earthUniforms
     const earthMat = new THREE.ShaderMaterial({
       vertexShader:   EARTH_VERT,
       fragmentShader: EARTH_FRAG,
@@ -363,11 +381,12 @@ export default function Globe({ overlays = [] }) {
     scene.add(new THREE.Mesh(atmoGeo, atmoMat))
 
     // ── Load Textures ──
-    load(TEX_DAY,    t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthUniforms.dayTex.value   = t })
-    load(TEX_NIGHT,  t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthUniforms.nightTex.value = t })
-    load(TEX_TOPO,   t => { earthUniforms.topoTex.value  = t })
-    load(TEX_WATER,  t => { earthUniforms.waterTex.value = t })
-    load(TEX_CLOUDS, t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); cloudUniforms.cloudTex.value = t })
+    load(TEX_DAY,       t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthUniforms.dayTex.value      = t })
+    load(TEX_NIGHT,     t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthUniforms.nightTex.value    = t })
+    load(TEX_TOPO,      t => { earthUniforms.topoTex.value     = t })
+    load(TEX_WATER,     t => { earthUniforms.waterTex.value    = t })
+    load(TEX_CLOUDS,    t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); cloudUniforms.cloudTex.value    = t })
+    load(TEX_LIGHTNING, t => { earthUniforms.lightningTex.value = t })
 
     // ── Resize ──
     const ro = new ResizeObserver(() => {
