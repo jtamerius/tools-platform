@@ -1,123 +1,181 @@
 """
 Multi-LLM headline categorizer.
 
-Sends each headline to all enabled free LLM providers in parallel and
-collects a short category label from each. This lets you compare how
-different models categorize the same news.
+Takes the full article list for a country's top story cluster and asks
+each LLM to produce:
+  - label:   a short category label (2–5 words, Title Case)
+  - summary: a 2–3 sentence summary of what is happening
 
 Supported providers:
-  - groq       (Llama 3.3 70B / Mixtral — free tier)
-  - gemini     (Gemini 2.0 Flash — free tier)
-  - huggingface(Mistral 7B via HF Inference API — free tier)
-  - openrouter (Llama 3.2 3B free model)
+  groq        — Llama 3.3 70B via Groq API (free tier, very fast)
+  gemini      — Gemini 2.0 Flash via Google AI Studio (free tier)
+  huggingface — Mistral 7B via HF Inference API (free tier)
+  openrouter  — Llama 3.2 3B via OpenRouter free model
 """
 
 import asyncio
 import json
 import logging
 import os
+import re
 from typing import Optional
 
 import aiohttp
 
 logger = logging.getLogger(__name__)
 
-CATEGORIZE_PROMPT = """You are a news analyst. Given the following news headline, respond with ONLY a short category label (2–5 words, title case) that captures the main topic or event. Do not explain, do not use quotes, just the label.
+# Max articles sent to the LLM per country (to stay within context limits)
+MAX_ARTICLES_IN_PROMPT = 10
 
-Headline: {headline}
+SYSTEM_PROMPT = (
+    "You are a concise news analyst. When given a list of article headlines and snippets, "
+    "you always respond ONLY with valid JSON — no markdown, no explanation, nothing else."
+)
 
-Category:"""
+def _build_user_prompt(country_name: str, articles: list[dict]) -> str:
+    lines = []
+    for i, art in enumerate(articles[:MAX_ARTICLES_IN_PROMPT], 1):
+        title = art.get("title", "").strip()
+        snippet = art.get("snippet", "").strip()
+        line = f"{i}. {title}"
+        if snippet:
+            line += f" — {snippet}"
+        lines.append(line)
+
+    article_block = "\n".join(lines)
+
+    return f"""The following headlines and snippets are from the top news story in {country_name} right now:
+
+{article_block}
+
+Based on these, respond ONLY with this JSON (no markdown fences, no extra keys):
+{{"label": "<2-5 word Title Case category>", "summary": "<2-3 sentence summary of what is happening>"}}"""
+
+
+# ---------------------------------------------------------------------------
+# Response parser — handles LLMs that wrap JSON in markdown code fences
+# ---------------------------------------------------------------------------
+
+def _parse_label_summary(raw: str) -> Optional[dict]:
+    """
+    Extract {label, summary} from a raw LLM response string.
+    Handles:
+      - Clean JSON: {"label": "...", "summary": "..."}
+      - Markdown-fenced: ```json\n{...}\n```
+      - Partial / malformed JSON (best-effort)
+    """
+    if not raw:
+        return None
+
+    # Strip markdown code fences
+    clean = re.sub(r"```(?:json)?\s*", "", raw).strip().strip("`").strip()
+
+    # Try direct parse
+    try:
+        data = json.loads(clean)
+        if "label" in data and "summary" in data:
+            return {"label": str(data["label"]).strip(), "summary": str(data["summary"]).strip()}
+    except json.JSONDecodeError:
+        pass
+
+    # Fallback: regex extract
+    label_match = re.search(r'"label"\s*:\s*"([^"]+)"', clean)
+    summary_match = re.search(r'"summary"\s*:\s*"([^"]+)"', clean)
+    if label_match and summary_match:
+        return {"label": label_match.group(1).strip(), "summary": summary_match.group(1).strip()}
+
+    logger.debug("Could not parse LLM response: %s", raw[:200])
+    return None
 
 
 # ---------------------------------------------------------------------------
 # Provider implementations
 # ---------------------------------------------------------------------------
 
-async def _call_groq(session: aiohttp.ClientSession, headline: str, cfg: dict) -> Optional[str]:
-    """Groq API — OpenAI-compatible chat completions."""
+async def _call_groq(
+    session: aiohttp.ClientSession, country_name: str, articles: list[dict], cfg: dict
+) -> Optional[dict]:
     url = "https://api.groq.com/openai/v1/chat/completions"
     payload = {
         "model": cfg["model"],
-        "messages": [{"role": "user", "content": CATEGORIZE_PROMPT.format(headline=headline)}],
-        "max_tokens": 20,
-        "temperature": 0.1,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": _build_user_prompt(country_name, articles)},
+        ],
+        "max_tokens": 200,
+        "temperature": 0.2,
     }
-    headers = {
-        "Authorization": f"Bearer {cfg['api_key']}",
-        "Content-Type": "application/json",
-    }
-    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+    headers = {"Authorization": f"Bearer {cfg['api_key']}", "Content-Type": "application/json"}
+    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=25)) as resp:
         if resp.status != 200:
-            body = await resp.text()
-            logger.warning("Groq error %s: %s", resp.status, body[:200])
+            logger.warning("Groq error %s for %s", resp.status, country_name)
             return None
         data = await resp.json()
-        return data["choices"][0]["message"]["content"].strip()
+        return _parse_label_summary(data["choices"][0]["message"]["content"])
 
 
-async def _call_gemini(session: aiohttp.ClientSession, headline: str, cfg: dict) -> Optional[str]:
-    """Google Gemini REST API."""
+async def _call_gemini(
+    session: aiohttp.ClientSession, country_name: str, articles: list[dict], cfg: dict
+) -> Optional[dict]:
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/{cfg['model']}:generateContent"
         f"?key={cfg['api_key']}"
     )
+    full_prompt = SYSTEM_PROMPT + "\n\n" + _build_user_prompt(country_name, articles)
     payload = {
-        "contents": [{"parts": [{"text": CATEGORIZE_PROMPT.format(headline=headline)}]}],
-        "generationConfig": {"maxOutputTokens": 20, "temperature": 0.1},
+        "contents": [{"parts": [{"text": full_prompt}]}],
+        "generationConfig": {"maxOutputTokens": 200, "temperature": 0.2},
     }
     headers = {"Content-Type": "application/json"}
-    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=25)) as resp:
         if resp.status != 200:
-            body = await resp.text()
-            logger.warning("Gemini error %s: %s", resp.status, body[:200])
+            logger.warning("Gemini error %s for %s", resp.status, country_name)
             return None
         data = await resp.json()
         try:
-            return data["candidates"][0]["content"]["parts"][0]["text"].strip()
+            raw = data["candidates"][0]["content"]["parts"][0]["text"]
+            return _parse_label_summary(raw)
         except (KeyError, IndexError):
-            logger.warning("Unexpected Gemini response shape: %s", data)
             return None
 
 
-async def _call_huggingface(session: aiohttp.ClientSession, headline: str, cfg: dict) -> Optional[str]:
-    """HuggingFace Inference API — text generation."""
+async def _call_huggingface(
+    session: aiohttp.ClientSession, country_name: str, articles: list[dict], cfg: dict
+) -> Optional[dict]:
     url = f"https://api-inference.huggingface.co/models/{cfg['model']}"
-    prompt = CATEGORIZE_PROMPT.format(headline=headline)
+    prompt = (
+        f"<s>[INST] {SYSTEM_PROMPT}\n\n{_build_user_prompt(country_name, articles)} [/INST]"
+    )
     payload = {
         "inputs": prompt,
-        "parameters": {"max_new_tokens": 20, "temperature": 0.1, "return_full_text": False},
+        "parameters": {"max_new_tokens": 200, "temperature": 0.2, "return_full_text": False},
     }
-    headers = {
-        "Authorization": f"Bearer {cfg['api_key']}",
-        "Content-Type": "application/json",
-    }
-    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as resp:
+    headers = {"Authorization": f"Bearer {cfg['api_key']}", "Content-Type": "application/json"}
+    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=40)) as resp:
         if resp.status == 503:
-            # Model loading — common on free tier
-            logger.warning("HuggingFace model loading (503), skipping")
+            logger.warning("HuggingFace model loading (503) for %s, skipping", country_name)
             return None
         if resp.status != 200:
-            body = await resp.text()
-            logger.warning("HuggingFace error %s: %s", resp.status, body[:200])
+            logger.warning("HuggingFace error %s for %s", resp.status, country_name)
             return None
         data = await resp.json()
         if isinstance(data, list) and data:
-            raw = data[0].get("generated_text", "")
-            # Strip the prompt if the model echoed it back
-            if raw.startswith(prompt):
-                raw = raw[len(prompt):]
-            return raw.strip().split("\n")[0].strip()
+            return _parse_label_summary(data[0].get("generated_text", ""))
         return None
 
 
-async def _call_openrouter(session: aiohttp.ClientSession, headline: str, cfg: dict) -> Optional[str]:
-    """OpenRouter API — OpenAI-compatible, free models available."""
+async def _call_openrouter(
+    session: aiohttp.ClientSession, country_name: str, articles: list[dict], cfg: dict
+) -> Optional[dict]:
     url = "https://openrouter.ai/api/v1/chat/completions"
     payload = {
         "model": cfg["model"],
-        "messages": [{"role": "user", "content": CATEGORIZE_PROMPT.format(headline=headline)}],
-        "max_tokens": 20,
-        "temperature": 0.1,
+        "messages": [
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": _build_user_prompt(country_name, articles)},
+        ],
+        "max_tokens": 200,
+        "temperature": 0.2,
     }
     headers = {
         "Authorization": f"Bearer {cfg['api_key']}",
@@ -125,13 +183,12 @@ async def _call_openrouter(session: aiohttp.ClientSession, headline: str, cfg: d
         "HTTP-Referer": "https://github.com/jtamerius/website_hub",
         "X-Title": "News Scraper Categorizer",
     }
-    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=20)) as resp:
+    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=25)) as resp:
         if resp.status != 200:
-            body = await resp.text()
-            logger.warning("OpenRouter error %s: %s", resp.status, body[:200])
+            logger.warning("OpenRouter error %s for %s", resp.status, country_name)
             return None
         data = await resp.json()
-        return data["choices"][0]["message"]["content"].strip()
+        return _parse_label_summary(data["choices"][0]["message"]["content"])
 
 
 # ---------------------------------------------------------------------------
@@ -146,61 +203,51 @@ PROVIDER_FNS = {
 }
 
 
-async def _categorize_with_provider(
+async def _run_provider(
     session: aiohttp.ClientSession,
-    provider_name: str,
+    name: str,
     cfg: dict,
-    headline: str,
+    country_name: str,
+    articles: list[dict],
     semaphore: asyncio.Semaphore,
-) -> tuple[str, Optional[str]]:
-    """Call a single provider and return (provider_name, category_label)."""
-    fn = PROVIDER_FNS[provider_name]
+) -> tuple[str, Optional[dict]]:
+    fn = PROVIDER_FNS[name]
     async with semaphore:
         try:
-            label = await fn(session, headline, cfg)
-            # Sanitize: strip surrounding quotes/whitespace
-            if label:
-                label = label.strip().strip('"').strip("'").strip()
-            return provider_name, label
+            result = await fn(session, country_name, articles, cfg)
+            return name, result
         except Exception as e:
-            logger.warning("Provider %s raised: %s", provider_name, e)
-            return provider_name, None
+            logger.warning("Provider %s raised for %s: %s", name, country_name, e)
+            return name, None
 
 
-async def categorize_headline(
+async def categorize_country(
     session: aiohttp.ClientSession,
-    headline: str,
+    country_name: str,
+    articles: list[dict],
     providers: dict,
     semaphore: asyncio.Semaphore,
 ) -> dict:
     """
-    Categorize a single headline using all enabled providers in parallel.
+    Categorize a country's top story cluster using all enabled providers in parallel.
 
     Returns:
         {
-            "headline": str,
-            "categories": {
-                "groq": "Iran Nuclear Deal",
-                "gemini": "Iran Nuclear Negotiations",
-                ...
-            }
+            "groq":        {"label": "Iran Nuclear Deal", "summary": "..."},
+            "gemini":      {"label": "Iran Nuclear Talks", "summary": "..."},
+            "huggingface": {"label": "Middle East Diplomacy", "summary": "..."},
+            "openrouter":  {"label": "Iran Nuclear Deal", "summary": "..."},
         }
     """
     tasks = [
-        _categorize_with_provider(session, name, cfg, headline, semaphore)
+        _run_provider(session, name, cfg, country_name, articles, semaphore)
         for name, cfg in providers.items()
         if cfg.get("enabled") and cfg.get("api_key")
     ]
-
     if not tasks:
-        logger.warning("No LLM providers are enabled/configured. Skipping categorization.")
-        return {"headline": headline, "categories": {}}
-
+        return {}
     results = await asyncio.gather(*tasks)
-    return {
-        "headline": headline,
-        "categories": {name: label for name, label in results},
-    }
+    return {name: result for name, result in results}
 
 
 async def categorize_all(
@@ -209,30 +256,23 @@ async def categorize_all(
     max_concurrent_llm: int = 5,
 ) -> list[dict]:
     """
-    Attach LLM category labels to every headline in every country result.
+    Attach LLM categorization to every country's top_story in-place.
 
-    Modifies each headline dict in-place to add a "categorization" key:
+    Adds a "categorization" key to each top_story:
         {
-            "title": "...",
-            "link": "...",
+            "groq":    {"label": "...", "summary": "..."},
+            "gemini":  {"label": "...", "summary": "..."},
             ...
-            "categorization": {
-                "groq": "Iran Nuclear Deal",
-                "gemini": "Iran Nuclear Negotiations",
-            }
         }
 
     Returns the enriched scraped_results list.
     """
     semaphore = asyncio.Semaphore(max_concurrent_llm)
-
-    # Collect all (country_idx, headline_idx, headline_text) triples
-    to_categorize = []
-    for ci, country in enumerate(scraped_results):
-        for hi, headline in enumerate(country.get("headlines", [])):
-            title = headline.get("title", "")
-            if title:
-                to_categorize.append((ci, hi, title))
+    to_categorize = [
+        (ci, r)
+        for ci, r in enumerate(scraped_results)
+        if r.get("top_story") and r["top_story"].get("articles")
+    ]
 
     if not to_categorize:
         return scraped_results
@@ -240,31 +280,40 @@ async def categorize_all(
     connector = aiohttp.TCPConnector(limit=20)
     async with aiohttp.ClientSession(connector=connector) as session:
         tasks = [
-            categorize_headline(session, title, providers, semaphore)
-            for _, _, title in to_categorize
+            categorize_country(
+                session,
+                r["country_name"],
+                r["top_story"]["articles"],
+                providers,
+                semaphore,
+            )
+            for _, r in to_categorize
         ]
         results = await asyncio.gather(*tasks)
 
-    for (ci, hi, _), cat_result in zip(to_categorize, results):
-        scraped_results[ci]["headlines"][hi]["categorization"] = cat_result["categories"]
+    for (ci, _), cat in zip(to_categorize, results):
+        scraped_results[ci]["top_story"]["categorization"] = cat
 
-    total = len(to_categorize)
-    logger.info("Categorized %d headlines across %d countries", total, len(scraped_results))
+    logger.info(
+        "Categorized top stories for %d countries with providers: %s",
+        len(to_categorize),
+        ", ".join(providers.keys()),
+    )
     return scraped_results
 
 
 def build_providers_from_config(provider_configs: dict) -> dict:
-    """
-    Resolve API keys from environment variables and return only enabled,
-    key-bearing providers.
-    """
+    """Resolve API keys from environment and return only ready providers."""
     resolved = {}
     for name, cfg in provider_configs.items():
         if not cfg.get("enabled", False):
             continue
         api_key = os.environ.get(cfg.get("api_key_env", ""), "")
         if not api_key:
-            logger.warning("Provider '%s' enabled but %s is not set — skipping.", name, cfg.get("api_key_env"))
+            logger.warning(
+                "Provider '%s' enabled but %s not set — skipping.",
+                name, cfg.get("api_key_env"),
+            )
             continue
         resolved[name] = {**cfg, "api_key": api_key}
     return resolved

@@ -1,137 +1,223 @@
 """
-Async Google News RSS scraper.
-Fetches the top N headlines for each country using Google News RSS feeds.
+SerpAPI-based Google News scraper.
+
+For each country this performs two API calls:
+  1. Google News search  → get top story cluster + its story_token
+  2. story_token lookup  → get every article in that cluster (with snippets)
+
+The result per country is structured as:
+  {
+      "country_code": str,
+      "country_name": str,
+      "top_story": {
+          "story_token":   str | None,
+          "cluster_title": str,        # Google's label for the story cluster
+          "articles": [
+              {"title": str, "snippet": str, "source": str, "link": str, "date": str}
+          ]
+      },
+      "scraped_at": str (ISO),
+      "error": str | None
+  }
+
+NOTE on SerpAPI quotas:
+  Free tier = 100 searches/month.
+  This scraper makes up to 2 calls per country, so ~200 calls per full run.
+  A paid plan is required for full coverage of all ~100 countries.
 """
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 import aiohttp
-import feedparser
 
 from countries import COUNTRIES
 
 logger = logging.getLogger(__name__)
 
-GOOGLE_NEWS_RSS = "https://news.google.com/rss?hl={locale}&gl={country_code}&ceid={country_code}:{lang}"
+SERPAPI_BASE = "https://serpapi.com/search.json"
 
-# Realistic browser headers to avoid 429s
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ),
-    "Accept": "application/rss+xml, application/xml, text/xml, */*",
-}
-
-# Max concurrent RSS requests to avoid hammering Google
-MAX_CONCURRENT = 10
+# Respect SerpAPI rate limits — keep concurrent calls low
+MAX_CONCURRENT = 5
 
 
-async def fetch_feed(
+async def _get(
+    session: aiohttp.ClientSession,
+    params: dict,
+) -> Optional[dict]:
+    """GET a SerpAPI endpoint, returning parsed JSON or None on error."""
+    try:
+        async with session.get(
+            SERPAPI_BASE,
+            params=params,
+            timeout=aiohttp.ClientTimeout(total=20),
+        ) as resp:
+            if resp.status == 429:
+                logger.warning("SerpAPI rate limit hit (429)")
+                return None
+            if resp.status != 200:
+                body = await resp.text()
+                logger.warning("SerpAPI HTTP %s: %s", resp.status, body[:200])
+                return None
+            return await resp.json()
+    except asyncio.TimeoutError:
+        logger.warning("SerpAPI request timed out")
+        return None
+    except aiohttp.ClientError as e:
+        logger.warning("SerpAPI client error: %s", e)
+        return None
+
+
+def _extract_story_token(cluster: dict) -> Optional[str]:
+    """
+    Find the story_token in a news_results cluster item.
+    SerpAPI can put it directly on the cluster or inside its stories list.
+    """
+    token = cluster.get("story_token")
+    if token:
+        return token
+    for story in cluster.get("stories", []):
+        token = story.get("story_token")
+        if token:
+            return token
+    return None
+
+
+def _parse_articles(raw_articles: list[dict]) -> list[dict]:
+    """Normalize a list of raw SerpAPI article dicts."""
+    out = []
+    for art in raw_articles:
+        source = art.get("source", {})
+        source_name = source.get("name", "") if isinstance(source, dict) else str(source)
+        title = art.get("title", "").strip()
+        if not title:
+            continue
+        out.append({
+            "title": title,
+            "snippet": art.get("snippet", "").strip(),
+            "source": source_name,
+            "link": art.get("link", ""),
+            "date": art.get("date", ""),
+        })
+    return out
+
+
+async def fetch_country_top_story(
     session: aiohttp.ClientSession,
     country_code: str,
     lang: str,
     locale: str,
     display_name: str,
-    top_n: int,
+    api_key: str,
     semaphore: asyncio.Semaphore,
 ) -> dict:
-    """Fetch and parse Google News RSS for a single country."""
-    url = GOOGLE_NEWS_RSS.format(locale=locale, country_code=country_code, lang=lang)
+    """
+    Fetch the top story cluster for one country using SerpAPI.
+    Makes up to 2 API calls: news search + story_token cluster drill-down.
+    """
+    scraped_at = datetime.now(timezone.utc).isoformat()
+
+    def _empty(error: str) -> dict:
+        return {
+            "country_code": country_code,
+            "country_name": display_name,
+            "top_story": None,
+            "scraped_at": scraped_at,
+            "error": error,
+        }
+
     async with semaphore:
-        try:
-            async with session.get(url, headers=HEADERS, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                if resp.status != 200:
-                    logger.warning("HTTP %s for %s (%s)", resp.status, display_name, url)
-                    return _empty_result(country_code, display_name, url, error=f"HTTP {resp.status}")
-                content = await resp.read()
-        except asyncio.TimeoutError:
-            logger.warning("Timeout fetching %s", display_name)
-            return _empty_result(country_code, display_name, url, error="timeout")
-        except aiohttp.ClientError as e:
-            logger.warning("Client error fetching %s: %s", display_name, e)
-            return _empty_result(country_code, display_name, url, error=str(e))
-
-    feed = feedparser.parse(content)
-    entries = feed.entries[:top_n]
-
-    headlines = []
-    for entry in entries:
-        published = None
-        if hasattr(entry, "published_parsed") and entry.published_parsed:
-            try:
-                published = datetime(*entry.published_parsed[:6]).isoformat()
-            except Exception:
-                pass
-
-        headlines.append({
-            "title": entry.get("title", "").strip(),
-            "link": entry.get("link", ""),
-            "published": published,
-            "source": _extract_source(entry),
+        # ── Call 1: Get news results for this country ──────────────────
+        data = await _get(session, {
+            "engine": "google_news",
+            "gl": country_code,
+            "hl": lang,
+            "api_key": api_key,
         })
+
+    if not data:
+        return _empty("serpapi_call_failed")
+
+    news_results = data.get("news_results", [])
+    if not news_results:
+        return _empty("no_news_results")
+
+    top_cluster = news_results[0]
+    cluster_title: str = top_cluster.get("title", "").strip()
+    story_token: Optional[str] = _extract_story_token(top_cluster)
+
+    # ── Call 2: Drill into story cluster via story_token ───────────────
+    articles: list[dict] = []
+
+    if story_token:
+        async with semaphore:
+            cluster_data = await _get(session, {
+                "engine": "google_news",
+                "story_token": story_token,
+                "api_key": api_key,
+            })
+
+        if cluster_data:
+            # SerpAPI returns the full article list under "cluster_articles"
+            raw = cluster_data.get("cluster_articles", [])
+            articles = _parse_articles(raw)
+
+    # Fallback: use the stories embedded in the first call's cluster
+    if not articles:
+        fallback = top_cluster.get("stories", [])
+        articles = _parse_articles(fallback)
+        if not story_token:
+            logger.debug(
+                "%s: no story_token found, using %d inline stories",
+                display_name, len(articles),
+            )
+
+    if not articles:
+        return _empty("no_articles_found")
+
+    logger.info(
+        "%-30s top story: %d articles — %s",
+        display_name, len(articles), cluster_title[:60],
+    )
 
     return {
         "country_code": country_code,
         "country_name": display_name,
-        "language": lang,
-        "locale": locale,
-        "feed_url": url,
-        "scraped_at": datetime.utcnow().isoformat(),
-        "headlines": headlines,
+        "top_story": {
+            "story_token": story_token,
+            "cluster_title": cluster_title,
+            "articles": articles,
+        },
+        "scraped_at": scraped_at,
         "error": None,
     }
 
 
-def _extract_source(entry) -> Optional[str]:
-    """Pull the publisher name out of the RSS entry if available."""
-    # Google News RSS includes <source> tags
-    if hasattr(entry, "source") and isinstance(entry.source, dict):
-        return entry.source.get("title")
-    # Sometimes it's in tags
-    if hasattr(entry, "tags"):
-        for tag in entry.tags:
-            if tag.get("scheme", "").endswith("source"):
-                return tag.get("term")
-    return None
-
-
-def _empty_result(country_code: str, display_name: str, url: str, error: str) -> dict:
-    return {
-        "country_code": country_code,
-        "country_name": display_name,
-        "language": None,
-        "locale": None,
-        "feed_url": url,
-        "scraped_at": datetime.utcnow().isoformat(),
-        "headlines": [],
-        "error": error,
-    }
-
-
-async def scrape_all(top_n: int = 1) -> list[dict]:
+async def scrape_all(api_key: str) -> list[dict]:
     """
-    Scrape Google News RSS for all countries concurrently.
+    Scrape the top story for every country in countries.COUNTRIES.
 
     Args:
-        top_n: Number of top headlines to fetch per country (default 1).
+        api_key: SerpAPI API key.
 
     Returns:
-        List of country result dicts, including those with errors.
+        List of country result dicts (including those with errors).
     """
     semaphore = asyncio.Semaphore(MAX_CONCURRENT)
     connector = aiohttp.TCPConnector(limit=MAX_CONCURRENT)
 
     async with aiohttp.ClientSession(connector=connector) as session:
         tasks = [
-            fetch_feed(session, code, lang, locale, name, top_n, semaphore)
+            fetch_country_top_story(session, code, lang, locale, name, api_key, semaphore)
             for code, lang, locale, name in COUNTRIES
         ]
         results = await asyncio.gather(*tasks)
 
-    successful = sum(1 for r in results if not r["error"] and r["headlines"])
-    logger.info("Scraped %d/%d countries successfully", successful, len(COUNTRIES))
+    successful = sum(1 for r in results if not r["error"])
+    logger.info(
+        "Scraping complete: %d/%d countries returned a top story",
+        successful, len(COUNTRIES),
+    )
     return list(results)

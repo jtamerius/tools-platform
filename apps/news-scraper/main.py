@@ -2,16 +2,16 @@
 """
 News Scraper & Categorization Engine
 =====================================
-Scrapes Google News RSS for every supported country, categorizes
-each top headline with multiple free LLMs, optionally clusters
-headlines by semantic similarity, and saves results to JSON.
+For each country, fetches the top story cluster from Google News via SerpAPI,
+categorizes it with multiple free LLMs (producing a label + summary per provider),
+optionally clusters countries by semantic similarity, and saves results to JSON.
 
 Usage:
-    python main.py                    # run once with defaults from .env
-    python main.py --top-n 3          # fetch top 3 headlines per country
-    python main.py --no-categorize    # scrape only, skip LLM calls
-    python main.py --no-embed         # skip embedding/clustering
-    python main.py --countries US GB  # only scrape specific countries
+    python main.py                      # run with defaults from .env
+    python main.py --no-categorize      # scrape only, skip LLM calls
+    python main.py --no-embed           # skip embedding/clustering
+    python main.py --countries US GB DE # only scrape specific countries
+    python main.py --threshold 0.75     # tighter topic clusters
 """
 
 import argparse
@@ -23,7 +23,6 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-# Ensure we can import sibling modules when run directly
 sys.path.insert(0, str(Path(__file__).parent))
 
 import config
@@ -42,12 +41,6 @@ logger = logging.getLogger("main")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="News Scraper & Categorization Engine")
-    parser.add_argument(
-        "--top-n",
-        type=int,
-        default=config.TOP_N_HEADLINES,
-        help=f"Headlines to fetch per country (default: {config.TOP_N_HEADLINES})",
-    )
     parser.add_argument(
         "--no-categorize",
         action="store_true",
@@ -84,38 +77,43 @@ async def run(args: argparse.Namespace) -> None:
     run_start = datetime.now(timezone.utc).isoformat()
 
     logger.info("=" * 60)
-    logger.info("News Scraper starting  [top_n=%d]", args.top_n)
+    logger.info("News Scraper starting")
     logger.info("=" * 60)
 
-    # ------------------------------------------------------------------
-    # 1. Scrape
-    # ------------------------------------------------------------------
-    logger.info("Step 1/3 — Scraping Google News RSS...")
-    scraped = await scrape_all(top_n=args.top_n)
+    # ── Validate SerpAPI key ───────────────────────────────────────────
+    serpapi_key = config.SERPAPI_API_KEY
+    if not serpapi_key:
+        logger.error(
+            "SERPAPI_API_KEY is not set. Copy .env.example to .env and add your key."
+        )
+        sys.exit(1)
 
-    # Filter to requested countries if specified
+    # ── 1. Scrape ──────────────────────────────────────────────────────
+    logger.info("Step 1/3 — Scraping Google News via SerpAPI...")
+    scraped = await scrape_all(api_key=serpapi_key)
+
     if args.countries:
         codes = {c.upper() for c in args.countries}
         scraped = [r for r in scraped if r["country_code"] in codes]
         logger.info("Filtered to %d countries: %s", len(scraped), sorted(codes))
 
-    successful = [r for r in scraped if r["headlines"]]
+    successful = [r for r in scraped if r.get("top_story")]
     logger.info(
-        "Scraping complete: %d/%d countries returned headlines",
+        "Scraping complete: %d/%d countries returned a top story",
         len(successful), len(scraped),
     )
 
-    # ------------------------------------------------------------------
-    # 2. Categorize
-    # ------------------------------------------------------------------
+    # ── 2. Categorize ─────────────────────────────────────────────────
     clusters: list[dict] = []
+    providers_used: list[str] = []
 
     if not args.no_categorize:
         logger.info("Step 2/3 — Categorizing with LLMs...")
         providers = build_providers_from_config(config.LLM_PROVIDERS)
 
         if providers:
-            logger.info("Active providers: %s", ", ".join(providers.keys()))
+            providers_used = list(providers.keys())
+            logger.info("Active providers: %s", ", ".join(providers_used))
             scraped = await categorize_all(
                 scraped,
                 providers=providers,
@@ -124,20 +122,18 @@ async def run(args: argparse.Namespace) -> None:
         else:
             logger.warning(
                 "No LLM providers configured. Set at least one *_API_KEY in .env "
-                "and make sure *_ENABLED=true."
+                "and ensure *_ENABLED=true."
             )
     else:
         logger.info("Step 2/3 — Categorization skipped (--no-categorize)")
 
-    # ------------------------------------------------------------------
-    # 3. Embed & cluster
-    # ------------------------------------------------------------------
+    # ── 3. Embed & cluster ────────────────────────────────────────────
     if not args.no_embed and config.ENABLE_EMBEDDINGS:
-        logger.info("Step 3/3 — Embedding headlines and clustering...")
+        logger.info("Step 3/3 — Embedding cluster titles and grouping by topic...")
         hf_key = os.environ.get(config.EMBEDDING_API_KEY_ENV, "")
         if not hf_key:
             logger.warning(
-                "ENABLE_EMBEDDINGS=true but %s is not set — skipping embeddings.",
+                "ENABLE_EMBEDDINGS=true but %s is not set — skipping.",
                 config.EMBEDDING_API_KEY_ENV,
             )
         else:
@@ -149,25 +145,19 @@ async def run(args: argparse.Namespace) -> None:
                 store_embeddings=config.STORE_EMBEDDINGS,
                 batch_size=config.EMBEDDING_BATCH_SIZE,
             )
-            logger.info("Found %d topic clusters", len(clusters))
+            logger.info("Grouped countries into %d topic clusters", len(clusters))
     else:
         logger.info("Step 3/3 — Embedding/clustering skipped")
 
-    # ------------------------------------------------------------------
-    # 4. Save
-    # ------------------------------------------------------------------
+    # ── 4. Save ────────────────────────────────────────────────────────
     elapsed = time.monotonic() - start_time
     run_metadata = {
         "run_started_at": run_start,
-        "top_n_headlines": args.top_n,
         "categorization_enabled": not args.no_categorize,
         "embeddings_enabled": not args.no_embed and config.ENABLE_EMBEDDINGS,
         "similarity_threshold": args.threshold,
         "elapsed_seconds": round(elapsed, 2),
-        "providers_used": (
-            list(build_providers_from_config(config.LLM_PROVIDERS).keys())
-            if not args.no_categorize else []
-        ),
+        "providers_used": providers_used,
     }
 
     output_dir = Path(args.output_dir)
@@ -177,18 +167,17 @@ async def run(args: argparse.Namespace) -> None:
     filepath = save_results(scraped, clusters, run_metadata, output_dir=output_dir)
 
     logger.info("=" * 60)
-    logger.info("Done in %.1fs", elapsed)
-    logger.info("Output: %s", filepath)
+    logger.info("Done in %.1fs — output: %s", elapsed, filepath)
+
     if clusters:
-        logger.info("Top 5 clusters:")
+        logger.info("Top 5 topic clusters across countries:")
         for c in clusters[:5]:
-            country_names = ", ".join(m["country_name"] for m in c["countries"][:6])
+            names = ", ".join(m["country_name"] for m in c["countries"][:6])
             if len(c["countries"]) > 6:
-                country_names += f" +{len(c['countries']) - 6} more"
-            logger.info(
-                "  [%d countries] %s — %s",
-                c["size"], c["representative_title"][:60], country_names,
-            )
+                names += f" +{len(c['countries']) - 6} more"
+            logger.info("  [%2d countries] %s", c["size"], c["representative_title"][:70])
+            logger.info("                 %s", names)
+
     logger.info("=" * 60)
 
 
