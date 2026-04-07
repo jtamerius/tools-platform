@@ -13,8 +13,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+import xml.etree.ElementTree as ET
+
 import aiohttp
-import feedparser
 
 from countries import COUNTRIES
 
@@ -61,22 +62,7 @@ async def fetch_feed(
         except aiohttp.ClientError as e:
             return _empty(country_code, display_name, lang, locale, url, str(e))
 
-    feed = feedparser.parse(content)
-    headlines = []
-    for entry in feed.entries[:top_n]:
-        published = None
-        if hasattr(entry, "published_parsed") and entry.published_parsed:
-            try:
-                published = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc).isoformat()
-            except Exception:
-                pass
-
-        headlines.append({
-            "title": entry.get("title", "").strip(),
-            "link": entry.get("link", ""),
-            "published": published,
-            "source": _extract_source(entry),
-        })
+    headlines = _parse_rss(content, top_n)
 
     logger.info("%-30s %d headline(s)", display_name, len(headlines))
 
@@ -92,14 +78,37 @@ async def fetch_feed(
     }
 
 
-def _extract_source(entry) -> Optional[str]:
-    if hasattr(entry, "source") and isinstance(entry.source, dict):
-        return entry.source.get("title")
-    if hasattr(entry, "tags"):
-        for tag in entry.tags:
-            if tag.get("scheme", "").endswith("source"):
-                return tag.get("term")
-    return None
+def _parse_rss(content: bytes, top_n: int) -> list[dict]:
+    """Parse RSS XML bytes into a list of headline dicts."""
+    try:
+        root = ET.fromstring(content)
+    except ET.ParseError:
+        return []
+
+    # Namespace used by Google News RSS for <source>
+    ns = {"news": "http://www.google.com/schemas/news/1.0"}
+    channel = root.find("channel")
+    if channel is None:
+        return []
+
+    headlines = []
+    for item in channel.findall("item")[:top_n]:
+        title = (item.findtext("title") or "").strip()
+        if not title:
+            continue
+
+        # Google News wraps source name in <source url="...">Name</source>
+        source_el = item.find("source")
+        source = source_el.text.strip() if source_el is not None and source_el.text else None
+
+        headlines.append({
+            "title": title,
+            "link": (item.findtext("link") or "").strip(),
+            "published": (item.findtext("pubDate") or "").strip() or None,
+            "source": source,
+        })
+
+    return headlines
 
 
 def _empty(country_code, display_name, lang, locale, url, error) -> dict:
