@@ -289,7 +289,16 @@ export default function Globe({ overlays = [], showLightning = false }) {
   const uniformsRef    = useRef(null)
   const rafRef         = useRef(null)
   const cloudMeshRef   = useRef(null)
-  const earthUniformsRef = useRef(null)
+  const earthUniformsRef  = useRef(null)
+  const showLightningRef  = useRef(showLightning)
+
+  // Keep ref in sync so the animation loop can read it without stale closure
+  useEffect(() => {
+    showLightningRef.current = showLightning
+    if (earthUniformsRef.current) {
+      earthUniformsRef.current.lightningOpacity.value = showLightning ? 1.2 : 0.0
+    }
+  }, [showLightning])
 
   // For overlay screen-position tracking
   const [overlayPositions, setOverlayPositions] = useState([])
@@ -299,12 +308,6 @@ export default function Globe({ overlays = [], showLightning = false }) {
   useEffect(() => {
     overlayWorldPosRef.current = overlays.map(o => latLngToVec3(o.lat, o.lng, 1.02))
   }, [overlays])
-
-  // Toggle lightning overlay opacity
-  useEffect(() => {
-    if (!earthUniformsRef.current) return
-    earthUniformsRef.current.lightningOpacity.value = showLightning ? 1.2 : 0.0
-  }, [showLightning])
 
   const projectOverlays = useCallback(() => {
     if (!cameraRef.current || !rendererRef.current) return
@@ -398,6 +401,7 @@ export default function Globe({ overlays = [], showLightning = false }) {
       lightningOpacity:{ value: 0.0 },
     }
     earthUniformsRef.current = earthUniforms
+    earthUniforms.lightningOpacity.value = showLightningRef.current ? 1.2 : 0.0
     const earthMat = new THREE.ShaderMaterial({
       vertexShader:   EARTH_VERT,
       fragmentShader: EARTH_FRAG,
