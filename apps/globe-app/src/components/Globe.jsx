@@ -40,6 +40,14 @@ const LIGHTNING_VERT = /* glsl */`
   varying float vIntensity;
   void main() {
     vIntensity = aIntensity;
+    // Cull points on the back side of the globe
+    vec3 worldNormal = normalize((modelMatrix * vec4(position, 0.0)).xyz);
+    float facing = dot(worldNormal, normalize(cameraPosition));
+    if (facing < 0.05) {
+      gl_Position  = vec4(0.0, 0.0, -2.0, 1.0);
+      gl_PointSize = 0.0;
+      return;
+    }
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position  = projectionMatrix * mv;
     gl_PointSize = clamp(aIntensity * 28.0 + 6.0, 8.0, 36.0) * (600.0 / -mv.z);
