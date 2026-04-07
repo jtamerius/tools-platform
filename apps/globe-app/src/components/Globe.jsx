@@ -38,13 +38,14 @@ const LIGHTNING_SPOTS = [
 const LIGHTNING_VERT = /* glsl */`
   attribute float aIntensity;
   varying float vIntensity;
+  varying float vFacing;
   void main() {
     vIntensity = aIntensity;
-    // Cull points on the back side of the globe
     vec3 worldNormal = normalize((modelMatrix * vec4(position, 0.0)).xyz);
-    float facing = dot(worldNormal, normalize(cameraPosition));
-    if (facing < 0.05) {
-      gl_Position  = vec4(0.0, 0.0, -2.0, 1.0);
+    vFacing = dot(worldNormal, normalize(cameraPosition));
+    // Push back-facing and limb points out of clip space
+    if (vFacing < 0.25) {
+      gl_Position  = vec4(2.0, 2.0, 2.0, 1.0);
       gl_PointSize = 0.0;
       return;
     }
@@ -56,7 +57,9 @@ const LIGHTNING_VERT = /* glsl */`
 
 const LIGHTNING_FRAG = /* glsl */`
   varying float vIntensity;
+  varying float vFacing;
   void main() {
+    if (vFacing < 0.25) discard;
     vec2  uv   = gl_PointCoord - 0.5;
     float dist = length(uv);
     if (dist > 0.5) discard;
