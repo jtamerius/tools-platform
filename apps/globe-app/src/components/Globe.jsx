@@ -10,69 +10,71 @@ const TEX_TOPO     = `${TEXTURE_BASE}/earth-topology.png`
 const TEX_WATER    = `${TEXTURE_BASE}/earth-water.png`
 const TEX_CLOUDS   = `${TEXTURE_BASE}/clouds.png`
 
-// ─── Lightning Climatology Texture (built client-side from LIS/OTD hotspot data) ──
-// Major hotspots: [lat, lon, peak_flash_rate, sigma_degrees]
-// Source: NASA LIS/OTD annual mean flash rate climatology
+// ─── Lightning Climatology — LIS/OTD hotspot data ─────────────────────────────
+// [lat, lon, intensity 0–1]  source: NASA LIS/OTD annual mean flash rate
 const LIGHTNING_SPOTS = [
-  [  4,  24,  90, 14],  // Congo basin (global max)
-  [  6,  14,  62, 11],  // Cameroon highlands
-  [ 10,   5,  55, 10],  // W Africa / Sahel
-  [ -1,  33,  78,  8],  // Lake Victoria
-  [  0,  36,  50,  9],  // East Africa rift
-  [ 15,  38,  36,  9],  // Ethiopian highlands
-  [ 10, -72, 115,  6],  // Lake Maracaibo (world record)
-  [ -5, -60,  40, 14],  // Amazon basin
-  [-23, -54,  58, 11],  // S Brazil / Paraguay
-  [ 15, -90,  50,  9],  // Central America
-  [ 28, -83,  30,  7],  // Florida peninsula
-  [ 35, -95,  24,  9],  // Central US / tornado alley
-  [ 25,  88,  50, 11],  // Bangladesh / Assam
-  [ 27,  80,  40,  9],  // N India / Ganges plain
-  [ 12, 125,  40, 11],  // Philippines
-  [ -1, 103,  50,  7],  // Sumatra
-  [  4, 113,  44,  9],  // Borneo
-  [ -6, 107,  34,  7],  // Java
-  [-16, 131,  24,  7],  // N Australia / Darwin
+  [  4,  24, 1.00],  // Congo basin (global max)
+  [  6,  14, 0.69],  // Cameroon highlands
+  [ 10,   5, 0.61],  // W Africa / Sahel
+  [ -1,  33, 0.87],  // Lake Victoria
+  [  0,  36, 0.56],  // East Africa rift
+  [ 15,  38, 0.40],  // Ethiopian highlands
+  [ 10, -72, 1.00],  // Lake Maracaibo (world record)
+  [ -5, -60, 0.44],  // Amazon basin
+  [-23, -54, 0.64],  // S Brazil / Paraguay
+  [ 15, -90, 0.56],  // Central America
+  [ 28, -83, 0.33],  // Florida peninsula
+  [ 35, -95, 0.27],  // Central US / tornado alley
+  [ 25,  88, 0.56],  // Bangladesh / Assam
+  [ 27,  80, 0.44],  // N India / Ganges plain
+  [ 12, 125, 0.44],  // Philippines
+  [ -1, 103, 0.56],  // Sumatra
+  [  4, 113, 0.49],  // Borneo
+  [ -6, 107, 0.38],  // Java
+  [-16, 131, 0.27],  // N Australia / Darwin
 ]
 
-function buildLightningTexture() {
-  const W = 360, H = 180
-  const rates = new Float32Array(W * H)
-
-  for (const [lat0, lon0, peak, sigma] of LIGHTNING_SPOTS) {
-    const sig2 = sigma * sigma * 2
-    const span = sigma * 3.5
-    const yMin = Math.max(0,   Math.floor((90 - lat0 - span) * H / 180))
-    const yMax = Math.min(H-1, Math.ceil ((90 - lat0 + span) * H / 180))
-    for (let y = yMin; y <= yMax; y++) {
-      const lat  = 90 - (y + 0.5) * 180 / H
-      const dLat = lat - lat0
-      for (let x = 0; x < W; x++) {
-        let dLon = ((x + 0.5) * 360 / W - 180) - lon0
-        if (dLon >  180) dLon -= 360
-        if (dLon < -180) dLon += 360
-        rates[y * W + x] += peak * Math.exp(-(dLat*dLat + dLon*dLon) / sig2)
-      }
-    }
+// ─── Lightning Point Shaders ───────────────────────────────────────────────────
+const LIGHTNING_VERT = /* glsl */`
+  attribute float aIntensity;
+  varying float vIntensity;
+  void main() {
+    vIntensity = aIntensity;
+    vec4 mv = modelViewMatrix * vec4(position, 1.0);
+    gl_Position  = projectionMatrix * mv;
+    gl_PointSize = clamp(aIntensity * 28.0 + 6.0, 8.0, 36.0) * (600.0 / -mv.z);
   }
+`
 
-  const data = new Uint8Array(W * H * 4)
-  for (let i = 0; i < W * H; i++) {
-    const t = Math.min(1, rates[i] / 80)
-    if (t > 0.015) {
-      data[i*4+0] = 255
-      data[i*4+1] = Math.round(180 * t)
-      data[i*4+2] = Math.round(60  * t * t)
-      data[i*4+3] = Math.round(240 * t)
-    }
+const LIGHTNING_FRAG = /* glsl */`
+  varying float vIntensity;
+  void main() {
+    vec2  uv   = gl_PointCoord - 0.5;
+    float dist = length(uv);
+    if (dist > 0.5) discard;
+    float core  = smoothstep(0.5, 0.08, dist);
+    float halo  = smoothstep(0.5, 0.20, dist) * 0.4;
+    float alpha = (core + halo) * min(vIntensity * 1.4, 1.0);
+    vec3  col   = mix(vec3(1.0, 0.55, 0.05), vec3(1.0, 1.0, 0.80), core);
+    gl_FragColor = vec4(col, alpha);
   }
+`
 
-  const tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat)
-  tex.magFilter  = THREE.LinearFilter
-  tex.minFilter  = THREE.LinearFilter
-  tex.flipY      = true
-  tex.needsUpdate = true
-  return tex
+function buildLightningPoints() {
+  const n          = LIGHTNING_SPOTS.length
+  const positions  = new Float32Array(n * 3)
+  const intensities = new Float32Array(n)
+  LIGHTNING_SPOTS.forEach(([lat, lon, intensity], i) => {
+    const v = latLngToVec3(lat, lon, 1.003)
+    positions[i*3]   = v.x
+    positions[i*3+1] = v.y
+    positions[i*3+2] = v.z
+    intensities[i]   = intensity
+  })
+  const geo = new THREE.BufferGeometry()
+  geo.setAttribute('position',   new THREE.BufferAttribute(positions,   3))
+  geo.setAttribute('aIntensity', new THREE.BufferAttribute(intensities, 1))
+  return geo
 }
 
 // ─── Earth Shaders ─────────────────────────────────────────────────────────────
@@ -94,8 +96,6 @@ const EARTH_FRAG = /* glsl */`
   uniform sampler2D nightTex;
   uniform sampler2D topoTex;
   uniform sampler2D waterTex;
-  uniform sampler2D lightningTex;
-  uniform float     lightningOpacity;
   uniform vec3      sunDir;
   uniform vec3      camPos;
 
@@ -123,12 +123,6 @@ const EARTH_FRAG = /* glsl */`
 
     // — Subtle ambient so dark side isn't pure black
     earth.rgb = max(earth.rgb, nightColor.rgb * 0.06);
-
-    // — Lightning climatology overlay (additive blend)
-    if (lightningOpacity > 0.0) {
-      vec4 lightning = texture2D(lightningTex, vUv);
-      earth.rgb += lightning.rgb * lightning.a * lightningOpacity;
-    }
 
     gl_FragColor = vec4(earth.rgb, 1.0);
   }
@@ -289,14 +283,13 @@ export default function Globe({ overlays = [], showLightning = false }) {
   const uniformsRef    = useRef(null)
   const rafRef         = useRef(null)
   const cloudMeshRef   = useRef(null)
-  const earthUniformsRef  = useRef(null)
+  const lightningMeshRef  = useRef(null)
   const showLightningRef  = useRef(showLightning)
 
-  // Keep ref in sync so the animation loop can read it without stale closure
   useEffect(() => {
     showLightningRef.current = showLightning
-    if (earthUniformsRef.current) {
-      earthUniformsRef.current.lightningOpacity.value = showLightning ? 1.2 : 0.0
+    if (lightningMeshRef.current) {
+      lightningMeshRef.current.visible = showLightning
     }
   }, [showLightning])
 
@@ -393,15 +386,11 @@ export default function Globe({ overlays = [], showLightning = false }) {
     const earthGeo = new THREE.SphereGeometry(1, 128, 128)
     const earthUniforms = {
       ...sharedUniforms,
-      dayTex:          { value: null },
-      nightTex:        { value: null },
-      topoTex:         { value: null },
-      waterTex:        { value: null },
-      lightningTex:    { value: null },
-      lightningOpacity:{ value: 0.0 },
+      dayTex:   { value: null },
+      nightTex: { value: null },
+      topoTex:  { value: null },
+      waterTex: { value: null },
     }
-    earthUniformsRef.current = earthUniforms
-    earthUniforms.lightningOpacity.value = showLightningRef.current ? 1.2 : 0.0
     const earthMat = new THREE.ShaderMaterial({
       vertexShader:   EARTH_VERT,
       fragmentShader: EARTH_FRAG,
@@ -441,12 +430,25 @@ export default function Globe({ overlays = [], showLightning = false }) {
     scene.add(new THREE.Mesh(atmoGeo, atmoMat))
 
     // ── Load Textures ──
-    load(TEX_DAY,       t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthUniforms.dayTex.value      = t })
-    load(TEX_NIGHT,     t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthUniforms.nightTex.value    = t })
-    load(TEX_TOPO,      t => { earthUniforms.topoTex.value     = t })
-    load(TEX_WATER,     t => { earthUniforms.waterTex.value    = t })
-    load(TEX_CLOUDS,    t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); cloudUniforms.cloudTex.value    = t })
-    earthUniforms.lightningTex.value = buildLightningTexture()
+    load(TEX_DAY,    t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthUniforms.dayTex.value   = t })
+    load(TEX_NIGHT,  t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); earthUniforms.nightTex.value = t })
+    load(TEX_TOPO,   t => { earthUniforms.topoTex.value  = t })
+    load(TEX_WATER,  t => { earthUniforms.waterTex.value = t })
+    load(TEX_CLOUDS, t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); cloudUniforms.cloudTex.value = t })
+
+    // ── Lightning Points ──
+    const lightningGeo = buildLightningPoints()
+    const lightningMat = new THREE.ShaderMaterial({
+      vertexShader:   LIGHTNING_VERT,
+      fragmentShader: LIGHTNING_FRAG,
+      transparent:    true,
+      depthWrite:     false,
+      blending:       THREE.AdditiveBlending,
+    })
+    const lightningMesh = new THREE.Points(lightningGeo, lightningMat)
+    lightningMesh.visible = showLightningRef.current
+    lightningMeshRef.current = lightningMesh
+    scene.add(lightningMesh)
 
     // ── Resize ──
     const ro = new ResizeObserver(() => {
