@@ -10,14 +10,70 @@ const TEX_TOPO     = `${TEXTURE_BASE}/earth-topology.png`
 const TEX_WATER    = `${TEXTURE_BASE}/earth-water.png`
 const TEX_CLOUDS   = `${TEXTURE_BASE}/clouds.png`
 
-// NASA GIBS WMS — LIS/OTD lightning flash rate climatology (equirectangular, transparent PNG)
-const TEX_LIGHTNING = [
-  'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
-  '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0',
-  '&LAYERS=LIS_OTD_Lightning_Flash_Climatology',
-  '&CRS=CRS:84&BBOX=-180,-90,180,90',
-  '&WIDTH=2048&HEIGHT=1024&FORMAT=image/png&TRANSPARENT=true',
-].join('')
+// ─── Lightning Climatology Texture (built client-side from LIS/OTD hotspot data) ──
+// Major hotspots: [lat, lon, peak_flash_rate, sigma_degrees]
+// Source: NASA LIS/OTD annual mean flash rate climatology
+const LIGHTNING_SPOTS = [
+  [  4,  24,  90, 14],  // Congo basin (global max)
+  [  6,  14,  62, 11],  // Cameroon highlands
+  [ 10,   5,  55, 10],  // W Africa / Sahel
+  [ -1,  33,  78,  8],  // Lake Victoria
+  [  0,  36,  50,  9],  // East Africa rift
+  [ 15,  38,  36,  9],  // Ethiopian highlands
+  [ 10, -72, 115,  6],  // Lake Maracaibo (world record)
+  [ -5, -60,  40, 14],  // Amazon basin
+  [-23, -54,  58, 11],  // S Brazil / Paraguay
+  [ 15, -90,  50,  9],  // Central America
+  [ 28, -83,  30,  7],  // Florida peninsula
+  [ 35, -95,  24,  9],  // Central US / tornado alley
+  [ 25,  88,  50, 11],  // Bangladesh / Assam
+  [ 27,  80,  40,  9],  // N India / Ganges plain
+  [ 12, 125,  40, 11],  // Philippines
+  [ -1, 103,  50,  7],  // Sumatra
+  [  4, 113,  44,  9],  // Borneo
+  [ -6, 107,  34,  7],  // Java
+  [-16, 131,  24,  7],  // N Australia / Darwin
+]
+
+function buildLightningTexture() {
+  const W = 360, H = 180
+  const rates = new Float32Array(W * H)
+
+  for (const [lat0, lon0, peak, sigma] of LIGHTNING_SPOTS) {
+    const sig2 = sigma * sigma * 2
+    const span = sigma * 3.5
+    const yMin = Math.max(0,   Math.floor((90 - lat0 - span) * H / 180))
+    const yMax = Math.min(H-1, Math.ceil ((90 - lat0 + span) * H / 180))
+    for (let y = yMin; y <= yMax; y++) {
+      const lat  = 90 - (y + 0.5) * 180 / H
+      const dLat = lat - lat0
+      for (let x = 0; x < W; x++) {
+        let dLon = ((x + 0.5) * 360 / W - 180) - lon0
+        if (dLon >  180) dLon -= 360
+        if (dLon < -180) dLon += 360
+        rates[y * W + x] += peak * Math.exp(-(dLat*dLat + dLon*dLon) / sig2)
+      }
+    }
+  }
+
+  const data = new Uint8Array(W * H * 4)
+  for (let i = 0; i < W * H; i++) {
+    const t = Math.min(1, rates[i] / 80)
+    if (t > 0.015) {
+      data[i*4+0] = 255
+      data[i*4+1] = Math.round(180 * t)
+      data[i*4+2] = Math.round(60  * t * t)
+      data[i*4+3] = Math.round(240 * t)
+    }
+  }
+
+  const tex = new THREE.DataTexture(data, W, H, THREE.RGBAFormat)
+  tex.magFilter  = THREE.LinearFilter
+  tex.minFilter  = THREE.LinearFilter
+  tex.flipY      = true
+  tex.needsUpdate = true
+  return tex
+}
 
 // ─── Earth Shaders ─────────────────────────────────────────────────────────────
 const EARTH_VERT = /* glsl */`
@@ -386,7 +442,7 @@ export default function Globe({ overlays = [], showLightning = false }) {
     load(TEX_TOPO,      t => { earthUniforms.topoTex.value     = t })
     load(TEX_WATER,     t => { earthUniforms.waterTex.value    = t })
     load(TEX_CLOUDS,    t => { t.anisotropy = renderer.capabilities.getMaxAnisotropy(); cloudUniforms.cloudTex.value    = t })
-    load(TEX_LIGHTNING, t => { earthUniforms.lightningTex.value = t })
+    earthUniforms.lightningTex.value = buildLightningTexture()
 
     // ── Resize ──
     const ro = new ResizeObserver(() => {
