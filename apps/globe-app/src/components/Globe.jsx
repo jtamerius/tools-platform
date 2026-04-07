@@ -4,11 +4,20 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 // ─── Texture URLs ──────────────────────────────────────────────────────────────
 const TEXTURE_BASE = 'https://unpkg.com/three-globe@2.31.1/example/img'
-const TEX_DAY     = `${TEXTURE_BASE}/earth-blue-marble.jpg`
-const TEX_NIGHT   = `${TEXTURE_BASE}/earth-night.jpg`
-const TEX_TOPO    = `${TEXTURE_BASE}/earth-topology.png`
-const TEX_WATER   = `${TEXTURE_BASE}/earth-water.png`
-const TEX_CLOUDS  = `${TEXTURE_BASE}/clouds.png`
+const TEX_DAY      = `${TEXTURE_BASE}/earth-blue-marble.jpg`
+const TEX_NIGHT    = `${TEXTURE_BASE}/earth-night.jpg`
+const TEX_TOPO     = `${TEXTURE_BASE}/earth-topology.png`
+const TEX_WATER    = `${TEXTURE_BASE}/earth-water.png`
+const TEX_CLOUDS   = `${TEXTURE_BASE}/clouds.png`
+
+// NASA GIBS WMS — LIS/OTD lightning flash rate climatology (equirectangular, transparent PNG)
+const TEX_LIGHTNING = [
+  'https://gibs.earthdata.nasa.gov/wms/epsg4326/best/wms.cgi',
+  '?SERVICE=WMS&REQUEST=GetMap&VERSION=1.3.0',
+  '&LAYERS=LIS_OTD_Lightning_Flash_Climatology',
+  '&CRS=CRS:84&BBOX=-180,-90,180,90',
+  '&WIDTH=2048&HEIGHT=1024&FORMAT=image/png&TRANSPARENT=true',
+].join('')
 
 // ─── Earth Shaders ─────────────────────────────────────────────────────────────
 const EARTH_VERT = /* glsl */`
