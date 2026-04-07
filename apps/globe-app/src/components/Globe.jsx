@@ -51,7 +51,7 @@ const LIGHTNING_VERT = /* glsl */`
     }
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position  = projectionMatrix * mv;
-    gl_PointSize = clamp(aIntensity * 28.0 + 6.0, 8.0, 36.0) * (600.0 / -mv.z);
+    gl_PointSize = clamp(aIntensity * 28.0 * (300.0 / -mv.z), 6.0, 40.0);
   }
 `
 
