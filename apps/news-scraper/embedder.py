@@ -148,20 +148,17 @@ async def embed_and_cluster(
     Returns:
         (enriched_scraped_results, clusters)
     """
-    # Collect the representative title for each country's top story cluster.
-    # We prefer cluster_title (Google's own label) and fall back to the first article title.
+    # Use the top headline title for each country as the text to embed.
     items = []
     for ci, country in enumerate(scraped_results):
-        top_story = country.get("top_story")
-        if not top_story:
+        headlines = country.get("headlines", [])
+        if not headlines:
             continue
-        title = (
-            top_story.get("cluster_title", "").strip()
-            or (top_story["articles"][0]["title"] if top_story.get("articles") else "")
-        )
+        title = headlines[0].get("title", "").strip()
         if title:
             items.append({
                 "ci": ci,
+                "hi": 0,
                 "country_code": country["country_code"],
                 "country_name": country["country_name"],
                 "title": title,
@@ -193,7 +190,7 @@ async def embed_and_cluster(
         item["embedding"] = emb
         embeddable.append(item)
         if store_embeddings:
-            scraped_results[item["ci"]]["top_story"]["embedding"] = emb
+            scraped_results[item["ci"]]["headlines"][item["hi"]]["embedding"] = emb
 
     if not embeddable:
         logger.warning("No embeddings were returned; skipping clustering.")

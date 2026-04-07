@@ -42,6 +42,12 @@ logger = logging.getLogger("main")
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="News Scraper & Categorization Engine")
     parser.add_argument(
+        "--top-n",
+        type=int,
+        default=config.TOP_N_HEADLINES,
+        help=f"Headlines to fetch per country (default: {config.TOP_N_HEADLINES})",
+    )
+    parser.add_argument(
         "--no-categorize",
         action="store_true",
         help="Skip LLM categorization (scrape only)",
@@ -77,29 +83,21 @@ async def run(args: argparse.Namespace) -> None:
     run_start = datetime.now(timezone.utc).isoformat()
 
     logger.info("=" * 60)
-    logger.info("News Scraper starting")
+    logger.info("News Scraper starting  [top_n=%d]", args.top_n)
     logger.info("=" * 60)
 
-    # ── Validate SerpAPI key ───────────────────────────────────────────
-    serpapi_key = config.SERPAPI_API_KEY
-    if not serpapi_key:
-        logger.error(
-            "SERPAPI_API_KEY is not set. Copy .env.example to .env and add your key."
-        )
-        sys.exit(1)
-
     # ── 1. Scrape ──────────────────────────────────────────────────────
-    logger.info("Step 1/3 — Scraping Google News via SerpAPI...")
-    scraped = await scrape_all(api_key=serpapi_key)
+    logger.info("Step 1/3 — Scraping Google News RSS...")
+    scraped = await scrape_all(top_n=args.top_n)
 
     if args.countries:
         codes = {c.upper() for c in args.countries}
         scraped = [r for r in scraped if r["country_code"] in codes]
         logger.info("Filtered to %d countries: %s", len(scraped), sorted(codes))
 
-    successful = [r for r in scraped if r.get("top_story")]
+    successful = [r for r in scraped if r.get("headlines")]
     logger.info(
-        "Scraping complete: %d/%d countries returned a top story",
+        "Scraping complete: %d/%d countries returned headlines",
         len(successful), len(scraped),
     )
 
@@ -153,6 +151,7 @@ async def run(args: argparse.Namespace) -> None:
     elapsed = time.monotonic() - start_time
     run_metadata = {
         "run_started_at": run_start,
+        "top_n_headlines": args.top_n,
         "categorization_enabled": not args.no_categorize,
         "embeddings_enabled": not args.no_embed and config.ENABLE_EMBEDDINGS,
         "similarity_threshold": args.threshold,

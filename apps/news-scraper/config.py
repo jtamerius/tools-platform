@@ -34,12 +34,11 @@ def _float(key: str, default: float) -> float:
 
 
 # ---------------------------------------------------------------------------
-# Scraping — SerpAPI
+# Scraping — Google News RSS (free, no API key required)
 # ---------------------------------------------------------------------------
 
-# SerpAPI key — https://serpapi.com/manage-api-key
-# NOTE: Free tier = 100 searches/month. Full run (~100 countries × 2 calls) ≈ 200 searches.
-SERPAPI_API_KEY: str = os.environ.get("SERPAPI_API_KEY", "")
+# Number of top headlines to fetch per country (minimum 1)
+TOP_N_HEADLINES: int = max(1, _int("TOP_N_HEADLINES", 1))
 
 # ---------------------------------------------------------------------------
 # LLM providers
