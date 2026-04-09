@@ -22,7 +22,7 @@
 #   aws cloudformation deploy \
 #     --stack-name tools-shared-iam-<env> \
 #     --template-file infra/shared/iam/template.yaml \
-#     --parameter-overrides Environment=<env> CreateOIDCProvider=false \
+#     --parameter-overrides Environment=<env> CreateOIDCProvider=true \
 #     --capabilities CAPABILITY_NAMED_IAM \
 #     --region us-east-1 --profile jtam
 #
