@@ -100,3 +100,8 @@ EMBEDDING_BATCH_SIZE: int = _int("EMBEDDING_BATCH_SIZE", 64)
 
 # Directory for JSON output files (relative to this file)
 OUTPUT_DIR: str = os.environ.get("OUTPUT_DIR", "output")
+
+# S3 upload (optional — set S3_BUCKET to enable)
+S3_BUCKET: str = os.environ.get("S3_BUCKET", "jtamerius-news-data")
+S3_KEY: str = os.environ.get("S3_KEY", "latest.json")
+S3_ENABLED: bool = _bool("S3_ENABLED", True)

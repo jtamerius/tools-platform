@@ -6,6 +6,7 @@ import SignInModal from './components/SignInModal'
 import Home from './pages/Home'
 import About from './pages/About'
 import Apps from './pages/Apps'
+import News from './pages/News'
 
 const AUTH_CONFIG = {
   userPoolId: import.meta.env.VITE_COGNITO_USER_POOL_ID ?? '',
@@ -28,6 +29,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
+          <Route path="/news" element={<News />} />
           <Route
             path="/apps"
             element={

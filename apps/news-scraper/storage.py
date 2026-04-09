@@ -14,6 +14,24 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+
+def upload_to_s3(filepath: Path, bucket: str, key: str) -> bool:
+    """Upload a file to S3. Returns True on success, False on failure."""
+    try:
+        import boto3
+        s3 = boto3.client("s3")
+        s3.upload_file(
+            str(filepath),
+            bucket,
+            key,
+            ExtraArgs={"ContentType": "application/json"},
+        )
+        logger.info("Uploaded to s3://%s/%s", bucket, key)
+        return True
+    except Exception as e:
+        logger.warning("S3 upload failed: %s", e)
+        return False
+
 OUTPUT_DIR = Path(__file__).parent / "output"
 
 
@@ -67,6 +85,11 @@ def save_results(
     latest_path = output_dir / "latest.json"
     shutil.copy2(filepath, latest_path)
     logger.info("Updated %s", latest_path)
+
+    # Upload to S3 if configured
+    import config as _config
+    if _config.S3_ENABLED and _config.S3_BUCKET:
+        upload_to_s3(latest_path, _config.S3_BUCKET, _config.S3_KEY)
 
     return filepath
 
