@@ -132,6 +132,15 @@ const EARTH_FRAG = /* glsl */`
     float diffuse = max(0.0, sunDot + bump);
     earth.rgb  *= 0.15 + 0.85 * diffuse;
 
+    // — Specular glint on ocean (waterTex red channel)
+    vec4  water  = texture2D(waterTex, vUv);
+    if (water.r > 0.1 && sunDot > 0.0) {
+      vec3  V       = normalize(camPos - vWorldPos);
+      vec3  H       = normalize(normalize(sunDir) + V);
+      float spec    = pow(max(dot(N, H), 0.0), 64.0) * water.r * sunDot;
+      earth.rgb    += spec * vec3(0.55, 0.70, 1.00);
+    }
+
     // — Subtle ambient so dark side isn't pure black
     earth.rgb = max(earth.rgb, nightColor.rgb * 0.06);
 
@@ -286,14 +295,14 @@ function buildStarField(count = 8000) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 export default function Globe({ overlays = [], showLightning = false }) {
-  const mountRef       = useRef(null)
-  const rendererRef    = useRef(null)
-  const sceneRef       = useRef(null)
-  const cameraRef      = useRef(null)
-  const controlsRef    = useRef(null)
-  const uniformsRef    = useRef(null)
-  const rafRef         = useRef(null)
-  const cloudMeshRef   = useRef(null)
+  const mountRef          = useRef(null)
+  const rendererRef       = useRef(null)
+  const sceneRef          = useRef(null)
+  const cameraRef         = useRef(null)
+  const controlsRef       = useRef(null)
+  const uniformsRef       = useRef(null)
+  const rafRef            = useRef(null)
+  const cloudMeshRef      = useRef(null)
   const lightningMeshRef  = useRef(null)
   const showLightningRef  = useRef(showLightning)
 
@@ -479,14 +488,21 @@ export default function Globe({ overlays = [], showLightning = false }) {
 
       controls.update()
 
-      sharedUniforms.sunDir.value.copy(calcSunDirection())
+      // Update sun direction every ~2 seconds (60fps → every 120 frames)
+      if (frame % 120 === 0) {
+        sharedUniforms.sunDir.value.copy(calcSunDirection())
+      }
 
       // Slowly drift clouds (≈2× Earth rotation speed)
       if (cloudMesh) {
         cloudMesh.rotation.y += 0.00008
       }
 
-
+      // Gentle auto-rotation when user is idle
+      if (!controls.isDragging) {
+        earthMesh.rotation.y += 0.0003
+        cloudMesh.rotation.y += 0.0003
+      }
 
       projectOverlays()
       renderer.render(scene, camera)

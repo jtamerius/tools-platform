@@ -14,6 +14,7 @@
 #   4. tools-shared-amplify-<env>  — Amplify app + branch (landing-page, hosting-only)
 #   4b. tools-shared-amplify-weather-<env>  — Weather app (hosting-only)
 #   4c. tools-shared-amplify-finance-<env>  — Finance app (hosting-only)
+#   4d. tools-shared-amplify-globe-<env>    — Globe app (hosting-only)
 #
 # All Amplify apps use GHA-built artifacts (no GitHub source connection needed).
 #
