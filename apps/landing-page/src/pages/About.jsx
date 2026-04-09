@@ -14,14 +14,27 @@ export default function About() {
           <section style={styles.section}>
             <h2 style={styles.sectionHeading}>Background</h2>
             <p style={styles.body}>
-              I'm J. Tamerius — a builder focused on data engineering, geospatial analysis, and
-              internal tooling. I enjoy turning raw, messy data into something useful and building
-              the systems that make that repeatable.
+              I’m James Tamerius. I build data products and decision-support tools at the
+              intersection of geospatial analysis, forecasting, and clean energy. My work focuses
+              on turning messy operational, program, and environmental data into systems that
+              support real decisions, especially in electrification and infrastructure planning.
             </p>
             <p style={styles.body}>
-              My work spans cloud infrastructure, backend pipelines, and the front-end interfaces
-              that make data accessible to the people who need it. I care about making things that
-              actually get used, not just things that technically work.
+              I currently serve as Director of Data Science at the Center for Sustainable Energy,
+              where I’ve led the development of analytics platforms used by states, utilities, and
+              agencies. My work spans EV infrastructure siting, charging performance and
+              utilization analytics, incentive program design and measurement, and forecasting
+              under policy and market scenarios. I tend to work end-to-end: defining the problem,
+              building models and data pipelines, and shipping tools that get used in real
+              planning and operational contexts.
+            </p>
+            <p style={styles.body}>
+              Before that, my background was in environmental health and spatial epidemiology,
+              where I focused on spatiotemporal modeling of weather, environmental, and
+              population-level systems, along with the visualization and communication of complex
+              dynamics, and published extensively in peer-reviewed journals. That foundation still
+              shapes how I approach problems: grounded in real-world variability, attentive to
+              uncertainty, and focused on making complex systems understandable and usable.
             </p>
           </section>
 
@@ -30,13 +43,21 @@ export default function About() {
           <section style={styles.section}>
             <h2 style={styles.sectionHeading}>What I'm working on</h2>
             <p style={styles.body}>
-              This platform is a personal internal tools hub — a place to host small apps,
-              experiments, and utilities that I build for myself and collaborators. Everything here
-              is serverless, runs on AWS, and deploys automatically from a monorepo.
+              This platform is a personal tools hub: a place to host small apps, experiments, and
+              utilities I build for myself and collaborators. It’s where I explore ideas and build
+              practical software around data, maps, and decision-making. It’s built entirely on
+              AWS, designed as a serverless architecture, with a CI/CD pipeline via GitHub, and
+              developed in my free time.
             </p>
             <p style={styles.body}>
-              Current interests include geospatial data pipelines, weather and climate datasets,
-              and making AWS infrastructure boring in the best way possible.
+              Most of what I build here follows a simple pattern: take an unclear question or
+              messy dataset, impose structure, and turn it into something usable. That might be a
+              geospatial workflow, a forecasting tool, a small API, or a lightweight internal app.
+            </p>
+            <p style={styles.body}>
+              Current interests include geospatial data products, forecasting and scenario
+              analysis, electrification and infrastructure planning, weather and climate datasets,
+              and building cloud systems that are simple, reliable, and easy to maintain.
             </p>
           </section>
 
@@ -69,17 +90,6 @@ export default function About() {
                 onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
               >
                 james.tamerius@gmail.com
-              </a>
-              {' '}or find me on{' '}
-              <a
-                href="https://github.com/jtamerius"
-                target="_blank"
-                rel="noopener noreferrer"
-                style={styles.link}
-                onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--text)' }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-muted)' }}
-              >
-                GitHub
               </a>.
             </p>
           </section>
@@ -91,9 +101,9 @@ export default function About() {
 
 const FACTS = [
   { label: 'Location', value: 'Colorado, USA' },
-  { label: 'Primary stack', value: 'Python · AWS · React' },
-  { label: 'Interests', value: 'Spatiotemporal analysis · Energy · Visualization · Management · Leadership' },
-  { label: 'Infrastructure', value: 'Serverless · CloudFormation · Amplify' },
+  { label: 'Primary stack', value: 'Python · AWS · SQL · Geospatial tooling' },
+  { label: 'Interests', value: 'Spatiotemporal analysis · Clean energy · Forecasting · Infrastructure planning · Visualization · Product development' },
+  { label: 'Infrastructure', value: 'Serverless · AWS · APIs · Data pipelines' },
 ]
 
 const styles = {
