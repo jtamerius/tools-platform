@@ -112,16 +112,24 @@ async def _call_gemini(
         "generationConfig": {"maxOutputTokens": 200, "temperature": 0.2},
     }
     headers = {"Content-Type": "application/json"}
-    async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=25)) as resp:
-        if resp.status != 200:
-            logger.warning("Gemini error %s for %s", resp.status, country_name)
-            return None
-        data = await resp.json()
-        try:
-            raw = data["candidates"][0]["content"]["parts"][0]["text"]
-            return _parse_label_summary(raw)
-        except (KeyError, IndexError):
-            return None
+    for attempt in range(5):
+        async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=25)) as resp:
+            if resp.status == 429:
+                wait = 2 ** attempt * 5  # 5s, 10s, 20s, 40s, 80s
+                logger.debug("Gemini 429 for %s, retrying in %ds", country_name, wait)
+                await asyncio.sleep(wait)
+                continue
+            if resp.status != 200:
+                logger.warning("Gemini error %s for %s", resp.status, country_name)
+                return None
+            data = await resp.json()
+            try:
+                raw = data["candidates"][0]["content"]["parts"][0]["text"]
+                return _parse_label_summary(raw)
+            except (KeyError, IndexError):
+                return None
+    logger.warning("Gemini gave up after retries for %s", country_name)
+    return None
 
 
 async def _call_huggingface(

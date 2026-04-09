@@ -6,9 +6,9 @@ const FLAG_BASE = 'https://flagcdn.com/20x15'
 
 const PROVIDERS = ['groq', 'gemini', 'huggingface', 'openrouter']
 
-// Pick the first available LLM label from the categories dict
+// Pick the first available LLM label from the headline's categorization dict
 function getLabel(country) {
-  const cats = country.categories
+  const cats = country.headlines?.[0]?.categorization
   if (!cats) return null
   for (const provider of PROVIDERS) {
     if (cats[provider]?.label) return cats[provider].label
@@ -18,7 +18,7 @@ function getLabel(country) {
 
 // Pick the first available English translation
 function getTitleEn(country) {
-  const cats = country.categories
+  const cats = country.headlines?.[0]?.categorization
   if (!cats) return null
   for (const provider of PROVIDERS) {
     if (cats[provider]?.title_en) return cats[provider].title_en
