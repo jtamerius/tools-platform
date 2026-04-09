@@ -282,11 +282,7 @@ Resources:
                   - iam:ListAttachedRolePolicies
                   - iam:TagRole
                   - iam:UntagRole
-                Resource:
-                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/jtamerius-*'
-                  # Allow the role to update itself so CloudFormation can redeploy
-                  # this stack without requiring manual admin intervention
-                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/tools-github-actions-${Environment}'
+                Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/jtamerius-*'
 
   # ---------------------------------------------------------------------------
   # Amplify Service Role — assumed by AWS Amplify to access other AWS services

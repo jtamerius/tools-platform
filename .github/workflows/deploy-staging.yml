@@ -46,6 +46,7 @@ jobs:
               - 'apps/globe-app/**'
             infra-shared:
               - 'infra/shared/**'
+              - '!infra/shared/iam/**'
             infra-landing-page:
               - 'infra/apps/landing-page/**'
 

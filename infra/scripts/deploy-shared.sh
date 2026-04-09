@@ -8,13 +8,23 @@
 #   environment  staging | production
 #
 # Stacks deployed (in order):
-#   1. tools-shared-iam-<env>      — OIDC role + Amplify service role
-#   2. tools-shared-cognito-<env>  — Cognito User Pool + groups
-#   3. tools-shared-dns-<env>      — ACM certificates (must deploy to us-east-1)
-#   4. tools-shared-amplify-<env>  — Amplify app + branch (landing-page, hosting-only)
-#   4b. tools-shared-amplify-weather-<env>  — Weather app (hosting-only)
-#   4c. tools-shared-amplify-finance-<env>  — Finance app (hosting-only)
-#   4d. tools-shared-amplify-globe-<env>    — Globe app (hosting-only)
+#   1. tools-shared-cognito-<env>  — Cognito User Pool + groups
+#   2. tools-shared-dns-<env>      — ACM certificates (must deploy to us-east-1)
+#   3. tools-shared-amplify-<env>  — Amplify app + branch (landing-page, hosting-only)
+#   3b. tools-shared-amplify-weather-<env>  — Weather app (hosting-only)
+#   3c. tools-shared-amplify-finance-<env>  — Finance app (hosting-only)
+#   3d. tools-shared-amplify-globe-<env>    — Globe app (hosting-only)
+#
+# NOTE: tools-shared-iam-<env> is NOT deployed here. The IAM stack must be
+# deployed manually with admin credentials to avoid a privilege-escalation
+# risk (the GitHub Actions role cannot safely modify its own inline policies).
+# To update the IAM stack run:
+#   aws cloudformation deploy \
+#     --stack-name tools-shared-iam-<env> \
+#     --template-file infra/shared/iam/template.yaml \
+#     --parameter-overrides Environment=<env> CreateOIDCProvider=false \
+#     --capabilities CAPABILITY_NAMED_IAM \
+#     --region us-east-1 --profile jtam
 #
 # All Amplify apps use GHA-built artifacts (no GitHub source connection needed).
 #
@@ -54,7 +64,6 @@ REGION="${AWS_REGION:-us-east-1}"
 ALERT_EMAIL="${3:-}"
 
 # ─── Stack names ─────────────────────────────────────────────────────────────
-STACK_IAM="tools-shared-iam-$ENV"
 STACK_COGNITO="tools-shared-cognito-$ENV"
 STACK_DNS="tools-shared-dns-$ENV"
 STACK_AMPLIFY="tools-shared-amplify-$ENV"
@@ -151,26 +160,7 @@ fi
 info "=== Deploying shared infrastructure for environment: $ENV ==="
 info "Hosted Zone ID: $HOSTED_ZONE_ID"
 
-# ─── 1. IAM stack ────────────────────────────────────────────────────────────
-# OIDC provider and IAM roles must exist before other stacks reference their exports.
-# The GitHub OIDC provider is account-level (one per account). Skip creating it
-# for the second environment (production) since staging already created it.
-CREATE_OIDC="true"
-if [[ "$ENV" == "production" ]]; then
-  # Check if the OIDC provider already exists (created by the staging stack)
-  if AWS_PROFILE=jtam aws iam get-open-id-connect-provider \
-    --open-id-connect-provider-arn "arn:aws:iam::$(aws sts get-caller-identity --query Account --output text):oidc-provider/token.actions.githubusercontent.com" \
-    --region "$REGION" >/dev/null 2>&1; then
-    info "GitHub OIDC provider already exists — skipping creation for production."
-    CREATE_OIDC="false"
-  fi
-fi
-deploy_stack "$STACK_IAM" \
-  "$INFRA_DIR/shared/iam/template.yaml" \
-  "Environment=$ENV" \
-  "CreateOIDCProvider=$CREATE_OIDC"
-
-# ─── 2. Cognito stack ────────────────────────────────────────────────────────
+# ─── 1. Cognito stack ────────────────────────────────────────────────────────
 deploy_stack "$STACK_COGNITO" \
   "$INFRA_DIR/shared/cognito/template.yaml" \
   "Environment=$ENV"
