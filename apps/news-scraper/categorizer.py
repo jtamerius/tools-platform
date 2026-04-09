@@ -35,7 +35,7 @@ def _build_user_prompt(headline: str, country_name: str) -> str:
 \"{headline}\"
 
 Based on this headline, respond ONLY with this JSON (no markdown fences, no extra keys):
-{{"label": "<2-5 word Title Case topic category>", "summary": "<2-3 sentences explaining what this story is likely about and why it matters>"}}"""
+{{"title_en": "<the headline translated to English, or the original if already English>", "label": "<2-5 word Title Case topic category>", "summary": "<2-3 sentences explaining what this story is likely about and why it matters>"}}"""
 
 
 # ---------------------------------------------------------------------------
@@ -52,15 +52,22 @@ def _parse_label_summary(raw: str) -> Optional[dict]:
     try:
         data = json.loads(clean)
         if "label" in data and "summary" in data:
-            return {"label": str(data["label"]).strip(), "summary": str(data["summary"]).strip()}
+            result = {"label": str(data["label"]).strip(), "summary": str(data["summary"]).strip()}
+            if "title_en" in data:
+                result["title_en"] = str(data["title_en"]).strip()
+            return result
     except json.JSONDecodeError:
         pass
 
     # Fallback: regex extract
     label_match = re.search(r'"label"\s*:\s*"([^"]+)"', clean)
     summary_match = re.search(r'"summary"\s*:\s*"([^"]+)"', clean)
+    title_en_match = re.search(r'"title_en"\s*:\s*"([^"]+)"', clean)
     if label_match and summary_match:
-        return {"label": label_match.group(1).strip(), "summary": summary_match.group(1).strip()}
+        result = {"label": label_match.group(1).strip(), "summary": summary_match.group(1).strip()}
+        if title_en_match:
+            result["title_en"] = title_en_match.group(1).strip()
+        return result
 
     logger.debug("Could not parse LLM response: %s", raw[:200])
     return None

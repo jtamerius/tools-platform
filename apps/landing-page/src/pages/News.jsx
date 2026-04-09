@@ -4,12 +4,24 @@ const S3_URL = 'https://jtamerius-news-data.s3.amazonaws.com/latest.json'
 
 const FLAG_BASE = 'https://flagcdn.com/20x15'
 
+const PROVIDERS = ['groq', 'gemini', 'huggingface', 'openrouter']
+
 // Pick the first available LLM label from the categories dict
 function getLabel(country) {
   const cats = country.categories
   if (!cats) return null
-  for (const provider of ['groq', 'gemini', 'huggingface', 'openrouter']) {
+  for (const provider of PROVIDERS) {
     if (cats[provider]?.label) return cats[provider].label
+  }
+  return null
+}
+
+// Pick the first available English translation
+function getTitleEn(country) {
+  const cats = country.categories
+  if (!cats) return null
+  for (const provider of PROVIDERS) {
+    if (cats[provider]?.title_en) return cats[provider].title_en
   }
   return null
 }
@@ -81,8 +93,8 @@ export default function News() {
                     </td>
                     <td style={styles.td}>
                       {headline.link
-                        ? <a href={headline.link} target="_blank" rel="noopener noreferrer" style={styles.link}>{headline.title}</a>
-                        : headline.title}
+                        ? <a href={headline.link} target="_blank" rel="noopener noreferrer" style={styles.link}>{getTitleEn(country) || headline.title}</a>
+                        : (getTitleEn(country) || headline.title)}
                     </td>
                     <td style={styles.td}>
                       {label ? <span style={styles.badge}>{label}</span> : '—'}

@@ -51,4 +51,13 @@ export const APPS = [
     isPublic: true,
     requiredGroup: null,
   },
+  {
+    id: 'news',
+    name: 'Global News',
+    description: 'Top headlines from 96 countries, categorized by AI',
+    url: isProd ? 'https://tools.jtamerius.com/#/news' : 'https://staging.d223wq48sddq6t.amplifyapp.com/#/news',
+    subdomain: 'tools',
+    isPublic: true,
+    requiredGroup: null,
+  },
 ]
