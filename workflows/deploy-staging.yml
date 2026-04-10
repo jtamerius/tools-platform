@@ -20,6 +20,7 @@ jobs:
       landing-page: ${{ steps.filter.outputs.landing-page }}
       infra-shared: ${{ steps.filter.outputs.infra-shared }}
       infra-landing-page: ${{ steps.filter.outputs.infra-landing-page }}
+      infra-maritime-trajectory: ${{ steps.filter.outputs.infra-maritime-trajectory }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -36,6 +37,8 @@ jobs:
               - 'infra/shared/**'
             infra-landing-page:
               - 'infra/apps/landing-page/**'
+            infra-maritime-trajectory:
+              - 'infra/apps/maritime-trajectory/**'
 
   # -----------------------------------------------------------------------
   # Job 2: Deploy shared infrastructure to staging
@@ -113,7 +116,57 @@ jobs:
         run: bash infra/scripts/deploy-app.sh landing-page staging
 
   # -----------------------------------------------------------------------
-  # Job 4: Deploy landing-page frontend via Amplify (staging branch)
+  # Job 4: Deploy maritime-trajectory infrastructure to staging
+  #
+  # This stack is backend-only (S3, IAM, Step Functions, EventBridge) — no
+  # Amplify trigger. The deploy-app.sh script is intentionally not used here
+  # because it requires a Cognito stack and triggers an Amplify build, neither
+  # of which apply to this backend-only stack.
+  # -----------------------------------------------------------------------
+  deploy-maritime-trajectory-infra-staging:
+    name: Deploy maritime-trajectory Infra — Staging
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-shared-infra-staging
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.infra-maritime-trajectory == 'true' &&
+      (needs.deploy-shared-infra-staging.result == 'success' ||
+       needs.deploy-shared-infra-staging.result == 'skipped')
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Deploy maritime-trajectory infrastructure
+        run: |
+          aws cloudformation deploy \
+            --stack-name "tools-app-maritime-trajectory-staging" \
+            --template-file "infra/apps/maritime-trajectory/template.yaml" \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region us-east-1 \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides "Environment=staging"
+
+      - name: Print stack status
+        if: always()
+        run: |
+          aws cloudformation describe-stacks \
+            --stack-name "tools-app-maritime-trajectory-staging" \
+            --query "Stacks[0].{Status:StackStatus,Reason:StackStatusReason}" \
+            --output table \
+            --no-cli-pager || true
+
+  # -----------------------------------------------------------------------
+  # Job 5: Deploy landing-page frontend via Amplify (staging branch)
   # -----------------------------------------------------------------------
   deploy-landing-page-frontend-staging:
     name: Deploy landing-page Frontend — Staging
