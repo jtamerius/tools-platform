@@ -24,6 +24,7 @@ jobs:
       globe-app: ${{ steps.filter.outputs.globe-app }}
       infra-shared: ${{ steps.filter.outputs.infra-shared }}
       infra-landing-page: ${{ steps.filter.outputs.infra-landing-page }}
+      news-scraper: ${{ steps.filter.outputs.news-scraper }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,6 +50,9 @@ jobs:
               - '!infra/shared/iam/**'
             infra-landing-page:
               - 'infra/apps/landing-page/**'
+            news-scraper:
+              - 'apps/news-scraper/**'
+              - 'infra/apps/news-scraper/**'
 
   # -----------------------------------------------------------------------
   # Job 2: Deploy shared infrastructure to staging
@@ -487,6 +491,61 @@ jobs:
 
           echo "Timed out waiting for Amplify deployment."
           exit 1
+
+  # -----------------------------------------------------------------------
+  # Job 8: Package and deploy news-scraper Lambda + EventBridge (staging)
+  # -----------------------------------------------------------------------
+  deploy-news-scraper-staging:
+    name: Deploy news-scraper Lambda — Staging
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+    if: needs.detect-changes.outputs.news-scraper == 'true'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Package Lambda
+        run: bash apps/news-scraper/package_lambda.sh
+
+      - name: Upload zip to S3
+        run: |
+          aws s3 cp apps/news-scraper/lambda_package.zip \
+            s3://jtamerius-website-deploy/news-scraper/lambda_package.zip \
+            --no-cli-pager
+
+      - name: Deploy CloudFormation stack
+        run: |
+          aws cloudformation deploy \
+            --stack-name tools-app-news-scraper-staging \
+            --template-file infra/apps/news-scraper/template.yaml \
+            --capabilities CAPABILITY_NAMED_IAM \
+            --region us-east-1 \
+            --no-fail-on-empty-changeset \
+            --parameter-overrides \
+              Environment=staging \
+              LambdaCodeBucket=jtamerius-website-deploy
+
+      - name: Force Lambda code update
+        run: |
+          aws lambda update-function-code \
+            --function-name jtamerius-news-scraper-staging \
+            --s3-bucket jtamerius-website-deploy \
+            --s3-key news-scraper/lambda_package.zip \
+            --no-cli-pager \
+            --query '[LastModified,CodeSize]' --output text
 
   # -----------------------------------------------------------------------
   # Job 7: Build and deploy globe-app to Amplify (staging branch)
