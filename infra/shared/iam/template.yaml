@@ -292,6 +292,62 @@ Resources:
                 Resource: !Sub 'arn:aws:iam::${AWS::AccountId}:role/jtamerius-*'
 
   # ---------------------------------------------------------------------------
+  # News Scraper IAM User — used by the scheduled Claude Code remote agent
+  # to fetch LLM API keys from SSM and upload results to S3.
+  # The access key is stored as a SecureString in SSM after stack creation.
+  # ---------------------------------------------------------------------------
+  NewsScraperUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: jtamerius-news-scraper
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+      Policies:
+        - PolicyName: NewsScraperPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: S3Upload
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                Resource: arn:aws:s3:::jtamerius-news-data/*
+              - Sid: SSMReadLLMKeys
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tools/news-scraper/groq-api-key'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tools/news-scraper/gemini-api-key'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tools/news-scraper/hf-api-key'
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tools/news-scraper/openrouter-api-key'
+
+  NewsScraperAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref NewsScraperUser
+
+  NewsScraperAccessKeyIdParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /tools/news-scraper/aws-access-key-id
+      Type: String
+      Value: !Ref NewsScraperAccessKey
+      Description: Access key ID for jtamerius-news-scraper IAM user
+
+  NewsScraperSecretAccessKeyParam:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /tools/news-scraper/aws-secret-access-key
+      Type: String
+      Value: !GetAtt NewsScraperAccessKey.SecretAccessKey
+      Description: Secret access key for jtamerius-news-scraper IAM user
+
+  # ---------------------------------------------------------------------------
   # Amplify Service Role — assumed by AWS Amplify to access other AWS services
   # ---------------------------------------------------------------------------
   AmplifyServiceRole:
