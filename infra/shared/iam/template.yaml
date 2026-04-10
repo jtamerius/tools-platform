@@ -207,6 +207,9 @@ Resources:
                   - lambda:GetFunctionUrlConfig
                   - lambda:DeleteFunctionUrlConfig
                   - lambda:InvokeFunction
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - lambda:ListTags
                 Resource: !Sub 'arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:jtamerius-*'
 
         - PolicyName: LambdaS3Policy
