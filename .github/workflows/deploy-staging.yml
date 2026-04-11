@@ -118,7 +118,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-shared-cognito-staging -c env=staging --require-approval never --no-cli-pager
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-cognito-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 2b: Deploy DNS / ACM stack
@@ -141,7 +143,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-shared-dns-staging -c env=staging --require-approval never --no-cli-pager
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-dns-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 2c–f: Deploy Amplify stacks (one per app)
@@ -164,7 +168,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-staging -c env=staging --require-approval never --no-cli-pager
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-amplify-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   deploy-amplify-weather-staging:
     name: Deploy Amplify (weather-app) — Staging
@@ -184,7 +190,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-weather-staging -c env=staging --require-approval never --no-cli-pager
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-amplify-weather-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   deploy-amplify-finance-staging:
     name: Deploy Amplify (finance-app) — Staging
@@ -204,7 +212,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-finance-staging -c env=staging --require-approval never --no-cli-pager
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-amplify-finance-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   deploy-amplify-globe-staging:
     name: Deploy Amplify (globe-app) — Staging
@@ -224,7 +234,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-globe-staging -c env=staging --require-approval never --no-cli-pager
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-amplify-globe-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 2g: Deploy Monitoring stack
@@ -247,7 +259,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-shared-monitoring-staging -c env=staging --require-approval never --no-cli-pager
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-monitoring-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 3: Deploy landing-page app infrastructure (SSM params)
@@ -277,7 +291,9 @@ jobs:
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-app-landing-page-staging -c env=staging --require-approval never --no-cli-pager
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-app-landing-page-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 4: Deploy landing-page frontend via Amplify (staging branch)
@@ -658,7 +674,7 @@ jobs:
       - name: Deploy CDK stack
         run: |
           cd infra/cdk && npm ci
-          npx cdk deploy tools-app-news-scraper-staging -c env=staging --require-approval never --no-cli-pager
+          out=$(npx cdk deploy tools-app-news-scraper-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
       - name: Force Lambda code refresh
         run: |
