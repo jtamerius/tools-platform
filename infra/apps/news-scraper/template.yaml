@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  News scraper Lambda + EventBridge schedule.
+  News scraper Lambda + EventBridge schedule. Runs daily at 23:00 UTC.
   Runs daily at 23:00 UTC, uploads latest.json to S3.
 
 Parameters:
