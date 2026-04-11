@@ -55,7 +55,7 @@ def handler(event, context):
     os.environ.setdefault("GEMINI_ENABLED", "false")
     os.environ.setdefault("HF_ENABLED", "false")
     os.environ.setdefault("OPENROUTER_ENABLED", "false")
-    os.environ.setdefault("MAX_CONCURRENT_LLM", "2")
+    os.environ.setdefault("MAX_CONCURRENT_LLM", "1")
     os.environ.setdefault("ENABLE_EMBEDDINGS", "false")
     os.environ["S3_ENABLED"] = "true"
     os.environ["S3_BUCKET"] = S3_BUCKET

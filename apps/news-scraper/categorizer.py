@@ -17,11 +17,29 @@ import json
 import logging
 import os
 import re
+import time
 from typing import Optional
 
 import aiohttp
 
 logger = logging.getLogger(__name__)
+
+# ---------------------------------------------------------------------------
+# Groq rate limiter — free tier is 30 RPM; enforce 2.5s gap (~24 RPM)
+# ---------------------------------------------------------------------------
+_groq_lock = asyncio.Lock()
+_groq_last_call: float = 0.0
+_GROQ_MIN_INTERVAL = 2.5  # seconds between requests
+
+
+async def _groq_rate_limit() -> None:
+    global _groq_last_call
+    async with _groq_lock:
+        now = asyncio.get_event_loop().time()
+        wait = _GROQ_MIN_INTERVAL - (now - _groq_last_call)
+        if wait > 0:
+            await asyncio.sleep(wait)
+        _groq_last_call = asyncio.get_event_loop().time()
 
 SYSTEM_PROMPT = (
     "You are a concise news analyst. When given a news headline, "
@@ -95,17 +113,21 @@ async def _call_groq(
         "Content-Type": "application/json",
         "Accept-Encoding": "gzip, deflate",
     }
-    for attempt in range(3):
+    for attempt in range(2):  # 1 retry max
+        await _groq_rate_limit()
         async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=25)) as resp:
             if resp.status == 429:
-                await asyncio.sleep(5)
-                continue
+                if attempt == 0:
+                    logger.debug("Groq 429 for %s, retrying in 30s", country_name)
+                    await asyncio.sleep(30)
+                    continue
+                logger.warning("Groq rate-limited for %s, skipping", country_name)
+                return None
             if resp.status != 200:
                 logger.warning("Groq error %s for %s", resp.status, country_name)
                 return None
             data = await resp.json()
             return _parse_label_summary(data["choices"][0]["message"]["content"])
-    logger.warning("Groq gave up after retries for %s", country_name)
     return None
 
 
