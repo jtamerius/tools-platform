@@ -22,8 +22,14 @@ jobs:
       weather-app: ${{ steps.filter.outputs.weather-app }}
       finance-app: ${{ steps.filter.outputs.finance-app }}
       globe-app: ${{ steps.filter.outputs.globe-app }}
-      infra-shared: ${{ steps.filter.outputs.infra-shared }}
-      infra-landing-page: ${{ steps.filter.outputs.infra-landing-page }}
+      infra-cognito: ${{ steps.filter.outputs.infra-cognito }}
+      infra-dns: ${{ steps.filter.outputs.infra-dns }}
+      infra-amplify-landing: ${{ steps.filter.outputs.infra-amplify-landing }}
+      infra-amplify-weather: ${{ steps.filter.outputs.infra-amplify-weather }}
+      infra-amplify-finance: ${{ steps.filter.outputs.infra-amplify-finance }}
+      infra-amplify-globe: ${{ steps.filter.outputs.infra-amplify-globe }}
+      infra-monitoring: ${{ steps.filter.outputs.infra-monitoring }}
+      infra-landing-page-app: ${{ steps.filter.outputs.infra-landing-page-app }}
       news-scraper: ${{ steps.filter.outputs.news-scraper }}
     steps:
       - name: Checkout code
@@ -45,89 +51,233 @@ jobs:
               - 'shared/**'
             globe-app:
               - 'apps/globe-app/**'
-            infra-shared:
-              - 'infra/shared/**'
-              - '!infra/shared/iam/**'
-            infra-landing-page:
-              - 'infra/apps/landing-page/**'
+            infra-cognito:
+              - 'infra/cdk/lib/stacks/cognito-stack.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-dns:
+              - 'infra/cdk/lib/stacks/dns-stack.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-amplify-landing:
+              - 'infra/cdk/lib/stacks/amplify-stack.ts'
+              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-amplify-weather:
+              - 'infra/cdk/lib/stacks/amplify-stack.ts'
+              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-amplify-finance:
+              - 'infra/cdk/lib/stacks/amplify-stack.ts'
+              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-amplify-globe:
+              - 'infra/cdk/lib/stacks/amplify-stack.ts'
+              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-monitoring:
+              - 'infra/cdk/lib/stacks/monitoring-stack.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-landing-page-app:
+              - 'infra/cdk/lib/stacks/landing-page-stack.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
             news-scraper:
               - 'apps/news-scraper/**'
-              - 'infra/apps/news-scraper/**'
+              - 'infra/cdk/lib/stacks/news-scraper-stack.ts'
+              - 'infra/cdk/lib/config.ts'
 
   # -----------------------------------------------------------------------
-  # Job 2: Deploy shared infrastructure to staging
+  # CDK helper — reusable setup steps (referenced via needs/run)
+  # Each infra job sets up Node + CDK identically.
   # -----------------------------------------------------------------------
-  deploy-shared-infra-staging:
-    name: Deploy Shared Infra — Staging
+
+  # -----------------------------------------------------------------------
+  # Job 2a: Deploy Cognito stack
+  # -----------------------------------------------------------------------
+  deploy-cognito-staging:
+    name: Deploy Cognito — Staging
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.infra-shared == 'true'
+    if: needs.detect-changes.outputs.infra-cognito == 'true'
     environment: staging
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
-
-      - name: Deploy shared stacks
-        run: bash infra/scripts/deploy-shared.sh staging
-
-      - name: Wait for shared stacks to stabilize
-        run: |
-          echo "Waiting for all shared stacks to reach a stable state..."
-          # Collect stack names deployed by the script; adjust the prefix to match your naming convention.
-          STACKS=$(aws cloudformation list-stacks \
-            --stack-status-filter CREATE_IN_PROGRESS UPDATE_IN_PROGRESS UPDATE_COMPLETE_CLEANUP_IN_PROGRESS \
-            --query "StackSummaries[?starts_with(StackName, 'tools-shared-') && ends_with(StackName, '-staging')].StackName" \
-            --output text \
-            --no-cli-pager)
-
-          for STACK in $STACKS; do
-            echo "  Waiting on stack: $STACK"
-            aws cloudformation wait stack-update-complete \
-              --stack-name "$STACK" \
-              --no-cli-pager || \
-            aws cloudformation wait stack-create-complete \
-              --stack-name "$STACK" \
-              --no-cli-pager
-          done
-
-          echo "All shared stacks are stable."
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-shared-cognito-staging -c env=staging --require-approval never --no-cli-pager
 
   # -----------------------------------------------------------------------
-  # Job 3: Deploy landing-page infrastructure to staging
+  # Job 2b: Deploy DNS / ACM stack
   # -----------------------------------------------------------------------
-  deploy-landing-page-infra-staging:
-    name: Deploy landing-page Infra — Staging
+  deploy-dns-staging:
+    name: Deploy DNS — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-dns == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-shared-dns-staging -c env=staging --require-approval never --no-cli-pager
+
+  # -----------------------------------------------------------------------
+  # Job 2c–f: Deploy Amplify stacks (one per app)
+  # -----------------------------------------------------------------------
+  deploy-amplify-landing-staging:
+    name: Deploy Amplify (landing-page) — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-amplify-landing == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-staging -c env=staging --require-approval never --no-cli-pager
+
+  deploy-amplify-weather-staging:
+    name: Deploy Amplify (weather-app) — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-amplify-weather == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-weather-staging -c env=staging --require-approval never --no-cli-pager
+
+  deploy-amplify-finance-staging:
+    name: Deploy Amplify (finance-app) — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-amplify-finance == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-finance-staging -c env=staging --require-approval never --no-cli-pager
+
+  deploy-amplify-globe-staging:
+    name: Deploy Amplify (globe-app) — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-amplify-globe == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-globe-staging -c env=staging --require-approval never --no-cli-pager
+
+  # -----------------------------------------------------------------------
+  # Job 2g: Deploy Monitoring stack
+  # -----------------------------------------------------------------------
+  deploy-monitoring-staging:
+    name: Deploy Monitoring — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-monitoring == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-shared-monitoring-staging -c env=staging --require-approval never --no-cli-pager
+
+  # -----------------------------------------------------------------------
+  # Job 3: Deploy landing-page app infrastructure (SSM params)
+  # -----------------------------------------------------------------------
+  deploy-landing-page-app-staging:
+    name: Deploy landing-page App Infra — Staging
     runs-on: ubuntu-latest
     needs:
       - detect-changes
-      - deploy-shared-infra-staging
-    # Run when infra changed OR when the shared-infra job was skipped (no infra changes)
-    # but we still need to gate on infra-landing-page having changed.
+      - deploy-cognito-staging
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
-      needs.detect-changes.outputs.infra-landing-page == 'true' &&
-      (needs.deploy-shared-infra-staging.result == 'success' ||
-       needs.deploy-shared-infra-staging.result == 'skipped')
+      needs.detect-changes.outputs.infra-landing-page-app == 'true' &&
+      (needs.deploy-cognito-staging.result == 'success' ||
+       needs.deploy-cognito-staging.result == 'skipped')
     environment: staging
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
-
-      - name: Deploy landing-page app infrastructure
-        run: bash infra/scripts/deploy-app.sh landing-page staging
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-app-landing-page-staging -c env=staging --require-approval never --no-cli-pager
 
   # -----------------------------------------------------------------------
   # Job 4: Deploy landing-page frontend via Amplify (staging branch)
@@ -137,26 +287,21 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - detect-changes
-      - deploy-landing-page-infra-staging
+      - deploy-landing-page-app-staging
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.landing-page == 'true' &&
-      (needs.deploy-landing-page-infra-staging.result == 'success' ||
-       needs.deploy-landing-page-infra-staging.result == 'skipped')
+      (needs.deploy-landing-page-app-staging.result == 'success' ||
+       needs.deploy-landing-page-app-staging.result == 'skipped')
     environment: staging
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
@@ -185,7 +330,7 @@ jobs:
           cd ..
 
           RESULT=$(aws amplify create-deployment \
-            --app-id d223wq48sddq6t \
+            --app-id ${{ secrets.AMPLIFY_APP_ID_LANDING_PAGE }} \
             --branch-name staging \
             --output json \
             --no-cli-pager)
@@ -193,91 +338,61 @@ jobs:
           JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
           ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
 
-          echo "Uploading dist.zip to Amplify presigned URL..."
           curl --fail -T dist.zip "$ZIP_URL"
 
           aws amplify start-deployment \
-            --app-id d223wq48sddq6t \
+            --app-id ${{ secrets.AMPLIFY_APP_ID_LANDING_PAGE }} \
             --branch-name staging \
             --job-id "$JOB_ID" \
             --no-cli-pager
 
-          echo "Amplify deployment started: $JOB_ID"
           echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
 
       - name: Wait for deployment to complete
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
-          APP_ID="d223wq48sddq6t"
+          APP_ID="${{ secrets.AMPLIFY_APP_ID_LANDING_PAGE }}"
           BRANCH="staging"
-          MAX_ATTEMPTS=60   # 60 × 30s = 30 minutes max
+          MAX_ATTEMPTS=60
           ATTEMPT=0
-
-          echo "Polling Amplify job $JOB_ID on branch $BRANCH..."
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             STATUS=$(aws amplify get-job \
-              --app-id "$APP_ID" \
-              --branch-name "$BRANCH" \
-              --job-id "$JOB_ID" \
-              --query 'job.summary.status' \
-              --output text \
-              --no-cli-pager)
-
+              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text --no-cli-pager)
             echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
-
             case "$STATUS" in
-              SUCCEED)
-                echo "Amplify deployment succeeded."
-                exit 0
-                ;;
-              FAILED|CANCELLED)
-                echo "Amplify deployment ended with status: $STATUS"
-                exit 1
-                ;;
-              RUNNING|PENDING|PROVISIONING)
-                ATTEMPT=$((ATTEMPT + 1))
-                sleep 30
-                ;;
-              *)
-                echo "Unexpected status: $STATUS — treating as failure."
-                exit 1
-                ;;
+              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
             esac
           done
-
-          echo "Timed out waiting for Amplify deployment."
-          exit 1
+          echo "Timed out."; exit 1
 
   # -----------------------------------------------------------------------
-  # Job 5: Build and deploy weather-app to Amplify (staging branch)
-  # GHA builds the artifacts; Amplify receives them via manual deployment.
+  # Job 5: Deploy weather-app frontend
   # -----------------------------------------------------------------------
   deploy-weather-app-frontend-staging:
     name: Deploy weather-app Frontend — Staging
     runs-on: ubuntu-latest
     needs:
       - detect-changes
-      - deploy-shared-infra-staging
+      - deploy-amplify-weather-staging
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.weather-app == 'true' &&
-      (needs.deploy-shared-infra-staging.result == 'success' ||
-       needs.deploy-shared-infra-staging.result == 'skipped')
+      (needs.deploy-amplify-weather-staging.result == 'success' ||
+       needs.deploy-amplify-weather-staging.result == 'skipped')
     environment: staging
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
@@ -306,100 +421,65 @@ jobs:
           cd ..
 
           RESULT=$(aws amplify create-deployment \
-            --app-id d26oqifvpt9ysq \
-            --branch-name staging \
-            --output json \
-            --no-cli-pager)
+            --app-id ${{ secrets.AMPLIFY_APP_ID_WEATHER_APP }} \
+            --branch-name staging --output json --no-cli-pager)
 
           JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
           ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
 
-          echo "Uploading dist.zip to Amplify presigned URL..."
           curl --fail -T dist.zip "$ZIP_URL"
 
           aws amplify start-deployment \
-            --app-id d26oqifvpt9ysq \
-            --branch-name staging \
-            --job-id "$JOB_ID" \
-            --no-cli-pager
+            --app-id ${{ secrets.AMPLIFY_APP_ID_WEATHER_APP }} \
+            --branch-name staging --job-id "$JOB_ID" --no-cli-pager
 
-          echo "Amplify deployment started: $JOB_ID"
           echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
 
       - name: Wait for deployment to complete
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
-          APP_ID="d26oqifvpt9ysq"
+          APP_ID="${{ secrets.AMPLIFY_APP_ID_WEATHER_APP }}"
           BRANCH="staging"
-          MAX_ATTEMPTS=60   # 60 × 30s = 30 minutes max
+          MAX_ATTEMPTS=60
           ATTEMPT=0
-
-          echo "Polling Amplify job $JOB_ID on branch $BRANCH..."
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             STATUS=$(aws amplify get-job \
-              --app-id "$APP_ID" \
-              --branch-name "$BRANCH" \
-              --job-id "$JOB_ID" \
-              --query 'job.summary.status' \
-              --output text \
-              --no-cli-pager)
-
+              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text --no-cli-pager)
             echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
-
             case "$STATUS" in
-              SUCCEED)
-                echo "Amplify deployment succeeded."
-                exit 0
-                ;;
-              FAILED|CANCELLED)
-                echo "Amplify deployment ended with status: $STATUS"
-                exit 1
-                ;;
-              RUNNING|PENDING|PROVISIONING)
-                ATTEMPT=$((ATTEMPT + 1))
-                sleep 30
-                ;;
-              *)
-                echo "Unexpected status: $STATUS — treating as failure."
-                exit 1
-                ;;
+              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
             esac
           done
-
-          echo "Timed out waiting for Amplify deployment."
-          exit 1
+          echo "Timed out."; exit 1
 
   # -----------------------------------------------------------------------
-  # Job 6: Build and deploy finance-app to Amplify (staging branch)
-  # GHA builds the artifacts (with Cognito env vars from SSM);
-  # Amplify receives them via manual deployment.
+  # Job 6: Deploy finance-app frontend
   # -----------------------------------------------------------------------
   deploy-finance-app-frontend-staging:
     name: Deploy finance-app Frontend — Staging
     runs-on: ubuntu-latest
     needs:
       - detect-changes
-      - deploy-shared-infra-staging
+      - deploy-amplify-finance-staging
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.finance-app == 'true' &&
-      (needs.deploy-shared-infra-staging.result == 'success' ||
-       needs.deploy-shared-infra-staging.result == 'skipped')
+      (needs.deploy-amplify-finance-staging.result == 'success' ||
+       needs.deploy-amplify-finance-staging.result == 'skipped')
     environment: staging
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
@@ -428,155 +508,66 @@ jobs:
           cd ..
 
           RESULT=$(aws amplify create-deployment \
-            --app-id d1k4zfq8stlbd \
-            --branch-name staging \
-            --output json \
-            --no-cli-pager)
+            --app-id ${{ secrets.AMPLIFY_APP_ID_FINANCE_APP }} \
+            --branch-name staging --output json --no-cli-pager)
 
           JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
           ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
 
-          echo "Uploading dist.zip to Amplify presigned URL..."
           curl --fail -T dist.zip "$ZIP_URL"
 
           aws amplify start-deployment \
-            --app-id d1k4zfq8stlbd \
-            --branch-name staging \
-            --job-id "$JOB_ID" \
-            --no-cli-pager
+            --app-id ${{ secrets.AMPLIFY_APP_ID_FINANCE_APP }} \
+            --branch-name staging --job-id "$JOB_ID" --no-cli-pager
 
-          echo "Amplify deployment started: $JOB_ID"
           echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
 
       - name: Wait for deployment to complete
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
-          APP_ID="d1k4zfq8stlbd"
+          APP_ID="${{ secrets.AMPLIFY_APP_ID_FINANCE_APP }}"
           BRANCH="staging"
           MAX_ATTEMPTS=60
           ATTEMPT=0
 
-          echo "Polling Amplify job $JOB_ID on branch $BRANCH..."
-
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             STATUS=$(aws amplify get-job \
-              --app-id "$APP_ID" \
-              --branch-name "$BRANCH" \
-              --job-id "$JOB_ID" \
-              --query 'job.summary.status' \
-              --output text \
-              --no-cli-pager)
-
+              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text --no-cli-pager)
             echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
-
             case "$STATUS" in
-              SUCCEED)
-                echo "Amplify deployment succeeded."
-                exit 0
-                ;;
-              FAILED|CANCELLED)
-                echo "Amplify deployment ended with status: $STATUS"
-                exit 1
-                ;;
-              RUNNING|PENDING|PROVISIONING)
-                ATTEMPT=$((ATTEMPT + 1))
-                sleep 30
-                ;;
-              *)
-                echo "Unexpected status: $STATUS — treating as failure."
-                exit 1
-                ;;
+              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
             esac
           done
-
-          echo "Timed out waiting for Amplify deployment."
-          exit 1
+          echo "Timed out."; exit 1
 
   # -----------------------------------------------------------------------
-  # Job 8: Package and deploy news-scraper Lambda + EventBridge (staging)
-  # -----------------------------------------------------------------------
-  deploy-news-scraper-staging:
-    name: Deploy news-scraper Lambda — Staging
-    runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-    if: needs.detect-changes.outputs.news-scraper == 'true'
-    environment: staging
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python 3.12
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Package Lambda
-        run: bash apps/news-scraper/package_lambda.sh
-
-      - name: Upload zip to S3
-        run: |
-          aws s3 cp apps/news-scraper/lambda_package.zip \
-            s3://jtamerius-website-deploy/news-scraper/lambda_package.zip \
-            --no-cli-pager
-
-      - name: Deploy CloudFormation stack
-        run: |
-          aws cloudformation deploy \
-            --stack-name tools-app-news-scraper-staging \
-            --template-file infra/apps/news-scraper/template.yaml \
-            --capabilities CAPABILITY_NAMED_IAM \
-            --region us-east-1 \
-            --no-fail-on-empty-changeset \
-            --parameter-overrides \
-              Environment=staging \
-              LambdaCodeBucket=jtamerius-website-deploy
-
-      - name: Force Lambda code update
-        run: |
-          aws lambda update-function-code \
-            --function-name jtamerius-news-scraper-staging \
-            --s3-bucket jtamerius-website-deploy \
-            --s3-key news-scraper/lambda_package.zip \
-            --no-cli-pager \
-            --query '[LastModified,CodeSize]' --output text
-
-  # -----------------------------------------------------------------------
-  # Job 7: Build and deploy globe-app to Amplify (staging branch)
-  # Public app — no Cognito env vars needed.
+  # Job 7: Deploy globe-app frontend
   # -----------------------------------------------------------------------
   deploy-globe-app-frontend-staging:
     name: Deploy globe-app Frontend — Staging
     runs-on: ubuntu-latest
     needs:
       - detect-changes
-      - deploy-shared-infra-staging
+      - deploy-amplify-globe-staging
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.globe-app == 'true' &&
-      (needs.deploy-shared-infra-staging.result == 'success' ||
-       needs.deploy-shared-infra-staging.result == 'skipped')
+      (needs.deploy-amplify-globe-staging.result == 'success' ||
+       needs.deploy-amplify-globe-staging.result == 'skipped')
     environment: staging
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node 20
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: apps/globe-app/package.json
-
-      - name: Configure AWS credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
@@ -595,66 +586,85 @@ jobs:
           cd ..
 
           RESULT=$(aws amplify create-deployment \
-            --app-id d31dppeu1ai6hv \
-            --branch-name staging \
-            --output json \
-            --no-cli-pager)
+            --app-id ${{ secrets.AMPLIFY_APP_ID_GLOBE_APP }} \
+            --branch-name staging --output json --no-cli-pager)
 
           JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
           ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
 
-          echo "Uploading dist.zip to Amplify presigned URL..."
           curl --fail -T dist.zip "$ZIP_URL"
 
           aws amplify start-deployment \
-            --app-id d31dppeu1ai6hv \
-            --branch-name staging \
-            --job-id "$JOB_ID" \
-            --no-cli-pager
+            --app-id ${{ secrets.AMPLIFY_APP_ID_GLOBE_APP }} \
+            --branch-name staging --job-id "$JOB_ID" --no-cli-pager
 
-          echo "Amplify deployment started: $JOB_ID"
           echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
 
       - name: Wait for deployment to complete
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
-          APP_ID="d31dppeu1ai6hv"
+          APP_ID="${{ secrets.AMPLIFY_APP_ID_GLOBE_APP }}"
           BRANCH="staging"
           MAX_ATTEMPTS=60
           ATTEMPT=0
 
-          echo "Polling Amplify job $JOB_ID on branch $BRANCH..."
-
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             STATUS=$(aws amplify get-job \
-              --app-id "$APP_ID" \
-              --branch-name "$BRANCH" \
-              --job-id "$JOB_ID" \
-              --query 'job.summary.status' \
-              --output text \
-              --no-cli-pager)
-
+              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text --no-cli-pager)
             echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
-
             case "$STATUS" in
-              SUCCEED)
-                echo "Amplify deployment succeeded."
-                exit 0
-                ;;
-              FAILED|CANCELLED)
-                echo "Amplify deployment ended with status: $STATUS"
-                exit 1
-                ;;
-              RUNNING|PENDING|PROVISIONING)
-                ATTEMPT=$((ATTEMPT + 1))
-                sleep 30
-                ;;
-              *)
-                echo "Unexpected status: $STATUS — treating as failure."
-                exit 1
-                ;;
+              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
             esac
           done
+          echo "Timed out."; exit 1
 
-          echo "Timed out waiting for Amplify deployment."
-          exit 1
+  # -----------------------------------------------------------------------
+  # Job 8: Deploy news-scraper Lambda + EventBridge (via CDK)
+  # -----------------------------------------------------------------------
+  deploy-news-scraper-staging:
+    name: Deploy news-scraper — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.news-scraper == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+
+      - name: Package Lambda
+        run: bash apps/news-scraper/package_lambda.sh
+
+      - name: Upload zip to S3
+        run: |
+          aws s3 cp apps/news-scraper/lambda_package.zip \
+            s3://jtamerius-website-deploy/news-scraper/lambda_package.zip \
+            --no-cli-pager
+
+      - name: Deploy CDK stack
+        run: |
+          cd infra/cdk && npm ci
+          npx cdk deploy tools-app-news-scraper-staging -c env=staging --require-approval never --no-cli-pager
+
+      - name: Force Lambda code refresh
+        run: |
+          aws lambda update-function-code \
+            --function-name jtamerius-news-scraper-staging \
+            --s3-bucket jtamerius-website-deploy \
+            --s3-key news-scraper/lambda_package.zip \
+            --no-cli-pager \
+            --query '[LastModified,CodeSize]' --output text

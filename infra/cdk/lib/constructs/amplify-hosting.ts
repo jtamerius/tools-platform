@@ -1,0 +1,84 @@
+import * as cdk from 'aws-cdk-lib';
+import * as amplify from 'aws-cdk-lib/aws-amplify';
+import { Construct } from 'constructs';
+import { ToolsEnvConfig } from '../config';
+
+export interface AmplifyHostingProps {
+  cfg: ToolsEnvConfig;
+  /** e.g. 'landing-page', 'weather-app' */
+  appName: string;
+  /** subdomain prefix, e.g. 'tools', 'weather' */
+  subdomain: string;
+  amplifyServiceRoleArn: string;
+}
+
+export class AmplifyHosting extends Construct {
+  public readonly appId: string;
+  public readonly defaultDomain: string;
+  public readonly branchName: string;
+  public readonly appArn: string;
+
+  constructor(scope: Construct, id: string, props: AmplifyHostingProps) {
+    super(scope, id);
+    const { cfg, appName, subdomain, amplifyServiceRoleArn } = props;
+    const e = cfg.env;
+    const branchName = e === 'production' ? 'main' : 'staging';
+
+    const app = new amplify.CfnApp(this, 'App', {
+      name: `tools-${appName}-${e}`,
+      iamServiceRole: amplifyServiceRoleArn,
+      customRules: [
+        // Redirect bare /index.html to /
+        {
+          source: '/index.html',
+          target: '/',
+          status: '301',
+        },
+        // SPA fallback — serve index.html for non-asset paths
+        {
+          source: '</^[^.]+$|\\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>',
+          target: '/index.html',
+          status: '200',
+        },
+      ],
+      enableBranchAutoDeletion: true,
+      tags: [
+        { key: 'Environment', value: e },
+        { key: 'Project', value: 'tools-platform' },
+      ],
+    });
+
+    const branch = new amplify.CfnBranch(this, 'Branch', {
+      appId: app.attrAppId,
+      branchName,
+      description: `Deployment target for the ${e} environment`,
+      enableAutoBuild: false,
+      enablePullRequestPreview: false,
+      framework: 'Vite',
+      stage: e === 'production' ? 'PRODUCTION' : 'DEVELOPMENT',
+      tags: [
+        { key: 'Environment', value: e },
+        { key: 'Project', value: 'tools-platform' },
+      ],
+    });
+
+    // Custom domain only in production
+    if (e === 'production') {
+      new amplify.CfnDomain(this, 'Domain', {
+        appId: app.attrAppId,
+        domainName: cfg.domainRoot,
+        subDomainSettings: [
+          {
+            prefix: subdomain,
+            branchName: branch.branchName,
+          },
+        ],
+      });
+    }
+
+    this.appId = app.attrAppId;
+    this.appArn = app.attrArn;
+    this.defaultDomain = app.attrDefaultDomain;
+    this.branchName = branchName;
+  }
+}
