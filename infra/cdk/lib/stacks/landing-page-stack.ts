@@ -15,17 +15,19 @@ export class LandingPageStack extends cdk.Stack {
     const { cfg, cognitoStack } = props;
     const e = cfg.env;
 
-    new ssm.StringParameter(this, 'LandingPageSSMUserPoolId', {
+    const ssmUserPoolId = new ssm.StringParameter(this, 'LandingPageSSMUserPoolId', {
       parameterName: `/tools/${e}/cognito/user-pool-id`,
       stringValue: cognitoStack.userPool.userPoolId,
       description: `Cognito User Pool ID for the tools platform (${e})`,
     });
+    (ssmUserPoolId.node.defaultChild as ssm.CfnParameter).overrideLogicalId('LandingPageSSMUserPoolId');
 
-    new ssm.StringParameter(this, 'LandingPageSSMClientId', {
+    const ssmClientId = new ssm.StringParameter(this, 'LandingPageSSMClientId', {
       parameterName: `/tools/${e}/cognito/client-id`,
       stringValue: cognitoStack.userPoolClient.userPoolClientId,
       description: `Cognito User Pool Client ID for the tools platform (${e})`,
     });
+    (ssmClientId.node.defaultChild as ssm.CfnParameter).overrideLogicalId('LandingPageSSMClientId');
 
     new cdk.CfnOutput(this, 'SSMUserPoolIdPath', {
       value: `/tools/${e}/cognito/user-pool-id`,

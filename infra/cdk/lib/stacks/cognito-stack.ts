@@ -62,7 +62,7 @@ export class CognitoStack extends cdk.Stack {
       preventUserExistenceErrors: true,
       enableTokenRevocation: true,
       supportedIdentityProviders: [cognito.UserPoolClientIdentityProvider.COGNITO],
-      oAuth: { flows: { authorizationCodeGrant: false, implicitCodeGrant: false } },
+      disableOAuth: true,
     });
 
     new cognito.CfnUserPoolGroup(this, 'CognitoAdminGroup', {

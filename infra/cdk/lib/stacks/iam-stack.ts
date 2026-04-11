@@ -18,26 +18,35 @@ export class IamStack extends cdk.Stack {
     const e = cfg.env;
 
     // ── OIDC Provider (account-level singleton) ──────────────────────────────
-    // Create on staging; import by ARN on production (already exists).
-    let oidcProvider: iam.IOpenIdConnectProvider;
+    // Staging: keep the native AWS::IAM::OIDCProvider resource in the stack
+    // (preserving the existing CFn logical ID) so CDK doesn't delete it.
+    // DeletionPolicy=RETAIN so it survives any future stack tear-down.
+    // Production: just import by ARN — it was never created in the prod stack.
+    const oidcArn = `arn:aws:iam::${cfg.account}:oidc-provider/token.actions.githubusercontent.com`;
     if (e === 'staging') {
-      oidcProvider = new iam.OpenIdConnectProvider(this, 'GitHubOIDCProvider', {
-        url: 'https://token.actions.githubusercontent.com',
-        clientIds: ['sts.amazonaws.com'],
-        thumbprints: [
-          '6938fd4d98bab03faadb97b34396831e3780aea1',
-          '1c58a3a8518e8759bf075b76b750d4f2df264fcd',
-        ],
+      const oidcResource = new cdk.CfnResource(this, 'GitHubOIDCProvider', {
+        type: 'AWS::IAM::OIDCProvider',
+        properties: {
+          Url: 'https://token.actions.githubusercontent.com',
+          ClientIdList: ['sts.amazonaws.com'],
+          ThumbprintList: [
+            '6938fd4d98bab03faadb97b34396831e3780aea1',
+            '1c58a3a8518e8759bf075b76b750d4f2df264fcd',
+          ],
+        },
       });
-    } else {
-      oidcProvider = iam.OpenIdConnectProvider.fromOpenIdConnectProviderArn(
-        this,
-        'GitHubOIDCProvider',
-        `arn:aws:iam::${cfg.account}:oidc-provider/token.actions.githubusercontent.com`,
-      );
+      oidcResource.cfnOptions.deletionPolicy = cdk.CfnDeletionPolicy.RETAIN;
     }
+    // Both envs use a reference by ARN for the trust policy (no cross-stack dep).
+    const oidcProvider = iam.OpenIdConnectProvider.fromOpenIdConnectProviderArn(
+      this,
+      'GitHubOIDCProviderRef',
+      oidcArn,
+    );
 
     // ── GitHub Actions Role ──────────────────────────────────────────────────
+    // overrideLogicalId preserves the existing CFn logical ID so CDK does an
+    // UPDATE instead of CREATE+DELETE (which would fail on duplicate role names).
     this.gitHubActionsRole = new iam.Role(this, 'GitHubActionsRole', {
       roleName: `tools-github-actions-${e}`,
       description: `Assumed by GitHub Actions via OIDC to deploy tools-platform stacks for ${e}`,
@@ -51,6 +60,7 @@ export class IamStack extends cdk.Stack {
       }),
       maxSessionDuration: cdk.Duration.hours(1),
     });
+    (this.gitHubActionsRole.node.defaultChild as iam.CfnRole).overrideLogicalId('GitHubActionsRole');
 
     this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
       sid: 'CloudFormationFullAccess',
@@ -207,6 +217,7 @@ export class IamStack extends cdk.Stack {
     const newsScraperUser = new iam.User(this, 'NewsScraperUser', {
       userName: 'jtamerius-news-scraper',
     });
+    (newsScraperUser.node.defaultChild as iam.CfnUser).overrideLogicalId('NewsScraperUser');
 
     newsScraperUser.addToPolicy(new iam.PolicyStatement({
       sid: 'S3Upload',
@@ -228,20 +239,23 @@ export class IamStack extends cdk.Stack {
     const accessKey = new iam.CfnAccessKey(this, 'NewsScraperAccessKey', {
       userName: newsScraperUser.userName,
     });
+    accessKey.overrideLogicalId('NewsScraperAccessKey');
 
-    new ssm.CfnParameter(this, 'NewsScraperAccessKeyIdParam', {
+    const accessKeyIdParam = new ssm.CfnParameter(this, 'NewsScraperAccessKeyIdParam', {
       name: '/tools/news-scraper/aws-access-key-id',
       type: 'String',
       value: accessKey.ref,
       description: 'Access key ID for jtamerius-news-scraper IAM user',
     });
+    accessKeyIdParam.overrideLogicalId('NewsScraperAccessKeyIdParam');
 
-    new ssm.CfnParameter(this, 'NewsScraperSecretAccessKeyParam', {
+    const secretAccessKeyParam = new ssm.CfnParameter(this, 'NewsScraperSecretAccessKeyParam', {
       name: '/tools/news-scraper/aws-secret-access-key',
       type: 'String',
       value: accessKey.attrSecretAccessKey,
       description: 'Secret access key for jtamerius-news-scraper IAM user',
     });
+    secretAccessKeyParam.overrideLogicalId('NewsScraperSecretAccessKeyParam');
 
     // ── Amplify Service Role ─────────────────────────────────────────────────
     this.amplifyServiceRole = new iam.Role(this, 'AmplifyServiceRole', {
@@ -252,6 +266,7 @@ export class IamStack extends cdk.Stack {
         iam.ManagedPolicy.fromAwsManagedPolicyName('AdministratorAccess-Amplify'),
       ],
     });
+    (this.amplifyServiceRole.node.defaultChild as iam.CfnRole).overrideLogicalId('AmplifyServiceRole');
 
     // ── Outputs ──────────────────────────────────────────────────────────────
     new cdk.CfnOutput(this, 'GitHubActionsRoleArn', {

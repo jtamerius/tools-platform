@@ -20,11 +20,14 @@ export class NewsScraperStack extends cdk.Stack {
 
     const executionRole = new iam.Role(this, 'NewsScraperLambdaRole', {
       roleName: `jtamerius-news-scraper-lambda-${e}`,
+      // overrideLogicalId matches the existing pre-CDK stack so CFn UPDATEs
+      // instead of DELETE+CREATE (which would fail on duplicate resource names).
       assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole'),
       ],
     });
+    (executionRole.node.defaultChild as iam.CfnRole).overrideLogicalId('NewsScraperLambdaRole');
 
     executionRole.addToPolicy(new iam.PolicyStatement({
       sid: 'SSMReadLLMKeys',
@@ -50,6 +53,7 @@ export class NewsScraperStack extends cdk.Stack {
       retention: logs.RetentionDays.ONE_MONTH,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
+    (logGroup.node.defaultChild as logs.CfnLogGroup).overrideLogicalId('NewsScraperLogGroup');
 
     const fn = new lambda.Function(this, 'NewsScraperFunction', {
       functionName: `jtamerius-news-scraper-${e}`,
@@ -66,6 +70,7 @@ export class NewsScraperStack extends cdk.Stack {
       },
       logGroup,
     });
+    (fn.node.defaultChild as lambda.CfnFunction).overrideLogicalId('NewsScraperFunction');
 
     const schedule = new events.Rule(this, 'NewsScraperSchedule', {
       ruleName: `jtamerius-news-scraper-daily-${e}`,
@@ -73,6 +78,7 @@ export class NewsScraperStack extends cdk.Stack {
       schedule: events.Schedule.cron({ minute: '0', hour: '23' }),
       enabled: true,
     });
+    (schedule.node.defaultChild as events.CfnRule).overrideLogicalId('NewsScraperSchedule');
 
     schedule.addTarget(new eventsTargets.LambdaFunction(fn));
 

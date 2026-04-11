@@ -10,6 +10,13 @@ export interface AmplifyHostingProps {
   /** subdomain prefix, e.g. 'tools', 'weather' */
   subdomain: string;
   amplifyServiceRoleArn: string;
+  /**
+   * Override CFn logical IDs to match an existing stack created outside CDK.
+   * Without these, CDK would create new resources (DELETE old + CREATE new)
+   * which fails if the account is at the Amplify app limit.
+   */
+  legacyAppLogicalId?: string;
+  legacyBranchLogicalId?: string;
 }
 
 export class AmplifyHosting extends Construct {
@@ -20,7 +27,7 @@ export class AmplifyHosting extends Construct {
 
   constructor(scope: Construct, id: string, props: AmplifyHostingProps) {
     super(scope, id);
-    const { cfg, appName, subdomain, amplifyServiceRoleArn } = props;
+    const { cfg, appName, subdomain, amplifyServiceRoleArn, legacyAppLogicalId, legacyBranchLogicalId } = props;
     const e = cfg.env;
     const branchName = e === 'production' ? 'main' : 'staging';
 
@@ -48,6 +55,8 @@ export class AmplifyHosting extends Construct {
       ],
     });
 
+    if (legacyAppLogicalId) app.overrideLogicalId(legacyAppLogicalId);
+
     const branch = new amplify.CfnBranch(this, 'Branch', {
       appId: app.attrAppId,
       branchName,
@@ -61,6 +70,8 @@ export class AmplifyHosting extends Construct {
         { key: 'Project', value: 'tools-platform' },
       ],
     });
+
+    if (legacyBranchLogicalId) branch.overrideLogicalId(legacyBranchLogicalId);
 
     // Custom domain only in production
     if (e === 'production') {

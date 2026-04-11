@@ -62,6 +62,10 @@ const globeAmplify = new AmplifyStack(app, `tools-shared-amplify-globe-${envName
   subdomain: 'globe',
   amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
   exportPrefix: 'tools-shared-amplify-globe',
+  // Preserve existing CFn logical IDs to UPDATE (not delete+create) the Amplify app.
+  // The account is at the Amplify app limit (7), so a CREATE before DELETE would fail.
+  legacyAppLogicalId: 'GlobeAppAmplifyApp',
+  legacyBranchLogicalId: 'GlobeAppAmplifyBranch',
   env: awsEnv,
 });
 
