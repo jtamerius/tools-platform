@@ -662,6 +662,9 @@ jobs:
 
       - name: Force Lambda code refresh
         run: |
+          aws lambda wait function-updated \
+            --function-name jtamerius-news-scraper-staging \
+            --no-cli-pager
           aws lambda update-function-code \
             --function-name jtamerius-news-scraper-staging \
             --s3-bucket jtamerius-website-deploy \
