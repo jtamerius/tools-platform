@@ -73,6 +73,7 @@ Resources:
       Role: !GetAtt NewsScraperLambdaRole.Arn
       MemorySize: !Ref LambdaMemory
       Timeout: !Ref LambdaTimeout
+      ReservedConcurrentExecutions: 1
       Code:
         S3Bucket: !Ref LambdaCodeBucket
         S3Key: news-scraper/lambda_package.zip

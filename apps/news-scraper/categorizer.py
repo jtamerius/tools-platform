@@ -95,10 +95,10 @@ async def _call_groq(
         "Content-Type": "application/json",
         "Accept-Encoding": "gzip, deflate",
     }
-    for attempt in range(4):
+    for attempt in range(3):
         async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=25)) as resp:
             if resp.status == 429:
-                await asyncio.sleep(10 * (attempt + 1))  # 10s, 20s, 30s, 40s
+                await asyncio.sleep(5)
                 continue
             if resp.status != 200:
                 logger.warning("Groq error %s for %s", resp.status, country_name)
