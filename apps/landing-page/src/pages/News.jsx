@@ -43,7 +43,7 @@ export default function News() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch(S3_URL)
+    fetch(`${S3_URL}?t=${Date.now()}`, { cache: 'no-store' })
       .then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json() })
       .then(json => { setData(json); setLoading(false) })
       .catch(e => { setError(e.message); setLoading(false) })
