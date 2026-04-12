@@ -47,13 +47,20 @@ SYSTEM_PROMPT = (
 )
 
 
+_TAXONOMY = (
+    "Politics, Elections, War & Conflict, Diplomacy, Economy, Energy, Environment, "
+    "Crime & Justice, Health, Natural Disasters, Technology, Social Issues, "
+    "Business, Sports, Science"
+)
+
+
 def _build_user_prompt(headline: str, country_name: str) -> str:
     return f"""This is the top news headline in {country_name} right now:
 
 \"{headline}\"
 
 Based on this headline, respond ONLY with this JSON (no markdown fences, no extra keys):
-{{"title_en": "<the headline translated to English, or the original if already English>", "label": "<2-5 word Title Case topic category>", "summary": "<2-3 sentences explaining what this story is likely about and why it matters>"}}"""
+{{"title_en": "<the headline translated to English, or the original if already English>", "label": "<pick exactly one: {_TAXONOMY}>", "topic": "<2-5 word specific subject of this headline, Title Case, e.g. Iran US Ceasefire>", "summary": "<2-3 sentences explaining what this story is likely about and why it matters>"}}"""
 
 
 # ---------------------------------------------------------------------------
@@ -73,6 +80,8 @@ def _parse_label_summary(raw: str) -> Optional[dict]:
             result = {"label": str(data["label"]).strip(), "summary": str(data["summary"]).strip()}
             if "title_en" in data:
                 result["title_en"] = str(data["title_en"]).strip()
+            if "topic" in data:
+                result["topic"] = str(data["topic"]).strip()
             return result
     except json.JSONDecodeError:
         pass
@@ -81,10 +90,13 @@ def _parse_label_summary(raw: str) -> Optional[dict]:
     label_match = re.search(r'"label"\s*:\s*"([^"]+)"', clean)
     summary_match = re.search(r'"summary"\s*:\s*"([^"]+)"', clean)
     title_en_match = re.search(r'"title_en"\s*:\s*"([^"]+)"', clean)
+    topic_match = re.search(r'"topic"\s*:\s*"([^"]+)"', clean)
     if label_match and summary_match:
         result = {"label": label_match.group(1).strip(), "summary": summary_match.group(1).strip()}
         if title_en_match:
             result["title_en"] = title_en_match.group(1).strip()
+        if topic_match:
+            result["topic"] = topic_match.group(1).strip()
         return result
 
     logger.debug("Could not parse LLM response: %s", raw[:200])
