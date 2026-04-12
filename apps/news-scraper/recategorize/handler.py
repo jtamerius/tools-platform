@@ -9,7 +9,6 @@ POST /recategorize
 
 import json
 import os
-import urllib.request
 
 import boto3
 
@@ -27,8 +26,10 @@ do with it; you already know: scan the headlines, identify matches, and return \
 the right label.
 
 Guidelines:
-- Infer a concise 2–4 word Title Case category label from the user's instruction \
-(e.g. "Iran US Tensions", "Economic Crisis", "European Elections")
+- Infer a concise 2–4 word Title Case category label from the user's instruction. \
+Do NOT copy the user's words literally — distill them into a clean label \
+(e.g. user says "iran war or talks between iran and the US" → label is "Iran US War"; \
+user says "economic crises" → label is "Economic Crisis")
 - The label must be identical for every matching entry in this response
 - Match semantically — a headline doesn't need to contain the user's exact words \
 to be relevant; use judgment about meaning and context
@@ -41,19 +42,19 @@ Return ONLY a valid JSON object — no markdown, no explanation, nothing else:
 Every country code in the input must appear in the output.\
 """
 
-_groq_key_cache: str | None = None
+MODEL_ID = 'amazon.nova-lite-v1:0'
+
+_bedrock: boto3.client = None
 
 
-def _groq_key() -> str:
-    global _groq_key_cache
-    if _groq_key_cache:
-        return _groq_key_cache
-    ssm = boto3.client('ssm', region_name=os.environ.get('AWS_REGION', 'us-east-1'))
-    _groq_key_cache = ssm.get_parameter(
-        Name='/tools/news-scraper/groq-api-key',
-        WithDecryption=True,
-    )['Parameter']['Value']
-    return _groq_key_cache
+def _get_bedrock():
+    global _bedrock
+    if _bedrock is None:
+        _bedrock = boto3.client(
+            'bedrock-runtime',
+            region_name=os.environ.get('AWS_REGION', 'us-east-1'),
+        )
+    return _bedrock
 
 
 def _extract_title(country: dict) -> str:
@@ -66,30 +67,27 @@ def _extract_title(country: dict) -> str:
     return h.get('title') or ''
 
 
-def _call_groq(user_message: str) -> dict:
-    payload = json.dumps({
-        'model': 'llama-3.3-70b-versatile',
+def _call_nova(user_message: str) -> dict:
+    body = json.dumps({
         'messages': [
-            {'role': 'system', 'content': SYSTEM_PROMPT},
-            {'role': 'user',   'content': user_message},
+            {'role': 'user', 'content': [{'text': user_message}]},
         ],
-        'max_tokens': 1200,
-        'temperature': 0.1,
-    }).encode()
-
-    req = urllib.request.Request(
-        'https://api.groq.com/openai/v1/chat/completions',
-        data=payload,
-        headers={
-            'Authorization': f'Bearer {_groq_key()}',
-            'Content-Type': 'application/json',
+        'system': [{'text': SYSTEM_PROMPT}],
+        'inferenceConfig': {
+            'temperature': 0.1,
+            'maxTokens': 1200,
         },
-        method='POST',
-    )
-    with urllib.request.urlopen(req, timeout=28) as resp:
-        data = json.loads(resp.read())
+    })
 
-    raw = data['choices'][0]['message']['content'].strip()
+    resp = _get_bedrock().invoke_model(
+        modelId=MODEL_ID,
+        contentType='application/json',
+        accept='application/json',
+        body=body,
+    )
+    data = json.loads(resp['body'].read())
+    raw = data['output']['message']['content'][0]['text'].strip()
+
     # Strip markdown fences if the model wraps output anyway
     if raw.startswith('```'):
         raw = raw.split('```', 2)[1]
@@ -145,9 +143,7 @@ def handler(event: dict, _context) -> dict:
     )
 
     try:
-        result = _call_groq(user_message)
-    except urllib.error.HTTPError as exc:
-        return _cors(502, {'error': f'Groq API error {exc.code}'})
+        result = _call_nova(user_message)
     except Exception as exc:
         return _cors(502, {'error': str(exc)})
 

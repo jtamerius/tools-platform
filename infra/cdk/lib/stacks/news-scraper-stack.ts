@@ -94,10 +94,10 @@ export class NewsScraperStack extends cdk.Stack {
       ],
     });
     recatRole.addToPolicy(new iam.PolicyStatement({
-      sid: 'SSMReadGroqKey',
-      actions: ['ssm:GetParameter'],
+      sid: 'BedrockInvokeNova',
+      actions: ['bedrock:InvokeModel'],
       resources: [
-        `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/tools/news-scraper/groq-api-key`,
+        `arn:aws:bedrock:${cfg.region}::foundation-model/amazon.nova-lite-v1:0`,
       ],
     }));
 
