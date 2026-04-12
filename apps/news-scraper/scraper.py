@@ -35,6 +35,25 @@ HEADERS = {
 
 MAX_CONCURRENT = 10
 
+# Sources excluded from all country feeds.
+# Matched against the domain in the RSS <source url="..."> attribute.
+EXCLUDED_DOMAINS = frozenset({
+    "univision.com",
+    "telemundo.com",
+    "cnn.com",
+})
+
+
+def _is_excluded(source_url: str) -> bool:
+    """Return True if the source URL's domain is in EXCLUDED_DOMAINS."""
+    try:
+        # Strip scheme and www., keep only hostname
+        host = source_url.split("//")[-1].split("/")[0].lower()
+        host = host.removeprefix("www.")
+        return any(host == d or host.endswith("." + d) for d in EXCLUDED_DOMAINS)
+    except Exception:
+        return False
+
 
 async def fetch_feed(
     session: aiohttp.ClientSession,
@@ -92,13 +111,22 @@ def _parse_rss(content: bytes, top_n: int) -> list[dict]:
         return []
 
     headlines = []
-    for item in channel.findall("item")[:top_n]:
+    # Scan up to 5× top_n items so exclusions don't leave us short
+    for item in channel.findall("item")[:top_n * 5]:
+        if len(headlines) >= top_n:
+            break
+
         title = (item.findtext("title") or "").strip()
         if not title:
             continue
 
         # Google News wraps source name in <source url="...">Name</source>
         source_el = item.find("source")
+        source_url = source_el.get("url", "") if source_el is not None else ""
+        if source_url and _is_excluded(source_url):
+            logger.debug("Skipping excluded source: %s", source_url)
+            continue
+
         source = source_el.text.strip() if source_el is not None and source_el.text else None
 
         headlines.append({
