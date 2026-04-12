@@ -47,7 +47,7 @@ export const APPS = [
     id: 'maritime-trajectory',
     name: 'Maritime Trajectory',
     description: 'Visualize AIS vessel paths and explore predicted trajectories on a live Deck.gl map.',
-    url: isProd ? 'https://maritime.jtamerius.com' : 'https://staging.maritime.amplifyapp.com',
+    url: isProd ? 'https://maritime.jtamerius.com' : 'https://staging.d1o8kdw7efkpuj.amplifyapp.com',
     subdomain: 'maritime',
     isPublic: false,
     requiredGroup: 'member',
