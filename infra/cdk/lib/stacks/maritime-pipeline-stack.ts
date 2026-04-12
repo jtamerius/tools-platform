@@ -118,6 +118,18 @@ export class MaritimePipelineStack extends cdk.Stack {
       ],
       resources: ['*'],
     }));
+    // Required for .sync integration: SFN creates an EventBridge managed rule
+    // to receive completion events from SageMaker Processing Jobs.
+    sfnRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'EventBridgeManagedRules',
+      actions: [
+        'events:PutRule', 'events:PutTargets',
+        'events:DescribeRule', 'events:DeleteRule', 'events:RemoveTargets',
+      ],
+      resources: [
+        `arn:aws:events:${cfg.region}:${cfg.account}:rule/StepFunctionsGetEventsForSageMakerProcessingJobsRule`,
+      ],
+    }));
 
     // ── IAM: EventBridge scheduler role ─────────────────────────────────────
     const eventBridgeRole = new iam.Role(this, 'EventBridgeSchedulerRole', {
@@ -155,7 +167,7 @@ export class MaritimePipelineStack extends cdk.Stack {
       States: {
         StartAISProcessingJob: {
           Type: 'Task',
-          Resource: 'arn:aws:states:::sagemaker:createProcessingJob.sync:2',
+          Resource: 'arn:aws:states:::sagemaker:createProcessingJob.sync',
           Parameters: {
             'ProcessingJobName.$': "States.Format('ais-merge-{}', $$.Execution.Name)",
             RoleArn: sageMakerRole.roleArn,
