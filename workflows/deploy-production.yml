@@ -27,6 +27,7 @@ jobs:
       infra-shared: ${{ steps.filter.outputs.infra-shared }}
       infra-landing-page: ${{ steps.filter.outputs.infra-landing-page }}
       infra-maritime-trajectory: ${{ steps.filter.outputs.infra-maritime-trajectory }}
+      maritime-trajectory: ${{ steps.filter.outputs.maritime-trajectory }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -45,6 +46,9 @@ jobs:
               - 'infra/apps/landing-page/**'
             infra-maritime-trajectory:
               - 'infra/apps/maritime-trajectory/**'
+            maritime-trajectory:
+              - 'apps/maritime-trajectory/**'
+              - 'shared/**'
 
   # -----------------------------------------------------------------------
   # Job 2: Deploy shared infrastructure to production
@@ -165,7 +169,8 @@ jobs:
             --parameter-overrides \
               "Environment=production" \
               "UserPoolId=$USER_POOL_ID" \
-              "UserPoolClientId=$USER_POOL_CLIENT_ID"
+              "UserPoolClientId=$USER_POOL_CLIENT_ID" \
+              "GitHubOAuthToken=${{ secrets.GITHUB_OAUTH_TOKEN }}"
 
       - name: Print stack status
         if: always()
@@ -177,7 +182,80 @@ jobs:
             --no-cli-pager || true
 
   # -----------------------------------------------------------------------
-  # Job 5: Deploy landing-page frontend via Amplify (main branch)
+  # Job 5: Deploy maritime-trajectory frontend via Amplify (main branch)
+  # -----------------------------------------------------------------------
+  deploy-maritime-trajectory-frontend-production:
+    name: Deploy maritime-trajectory Frontend — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-maritime-trajectory-infra-production
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.maritime-trajectory == 'true' &&
+      (needs.deploy-maritime-trajectory-infra-production.result == 'success' ||
+       needs.deploy-maritime-trajectory-infra-production.result == 'skipped')
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Resolve Amplify App ID from SSM
+        id: resolve-app-id
+        run: |
+          APP_ID=$(aws ssm get-parameter \
+            --name "/tools/production/maritime/amplify-app-id" \
+            --region us-east-1 \
+            --query "Parameter.Value" \
+            --output text)
+          echo "app_id=$APP_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Trigger Amplify deployment (main branch)
+        id: start-job
+        run: |
+          JOB_ID=$(aws amplify start-job \
+            --app-id ${{ steps.resolve-app-id.outputs.app_id }} \
+            --branch-name main \
+            --job-type RELEASE \
+            --query 'jobSummary.jobId' \
+            --output text \
+            --no-cli-pager)
+          echo "Amplify job started: $JOB_ID"
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for Amplify deployment to complete
+        run: |
+          JOB_ID="${{ steps.start-job.outputs.job_id }}"
+          APP_ID="${{ steps.resolve-app-id.outputs.app_id }}"
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(aws amplify get-job \
+              --app-id "$APP_ID" \
+              --branch-name main \
+              --job-id "$JOB_ID" \
+              --query 'job.summary.status' \
+              --output text \
+              --no-cli-pager)
+            echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "Amplify deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Amplify deployment $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
+            esac
+          done
+          echo "Timed out."; exit 1
+
+  # -----------------------------------------------------------------------
+  # Job 6: Deploy landing-page frontend via Amplify (main branch)
   # -----------------------------------------------------------------------
   deploy-landing-page-frontend-production:
     name: Deploy landing-page Frontend — Production

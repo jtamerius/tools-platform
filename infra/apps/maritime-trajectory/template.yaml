@@ -1,14 +1,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: >
-  Backend infrastructure for the Maritime Trajectory Prediction pipeline.
-  Phase 1 — AIS Data Synthesis: two S3 buckets (raw AIS input and processed
-  output), scoped IAM execution roles for SageMaker and Step Functions, and a
-  Step Functions Standard state machine that orchestrates a SageMaker Processing
-  Job to merge dynamic AIS pings with static AVIS vessel metadata and segment
-  trajectories into trip records (the "Maritime Master Record").
-
-  Phase 2 / 3 resources (Deck.gl frontend, Bi-LSTM training job, Batch Transform
-  state machine) will be added to this stack in subsequent iterations.
+  Full-stack infrastructure for the Maritime Trajectory Prediction app.
+  Phase 1: two S3 buckets, SageMaker + Step Functions for AIS data synthesis.
+  Phase 2: Lambda dataset API, HTTP API Gateway, and Amplify Hosting for the
+  React frontend that lets users browse Maritime Master Record partitions.
 
 Parameters:
   Environment:
@@ -33,6 +28,26 @@ Parameters:
       Shared Cognito User Pool Client ID. Passed from the shared cognito stack output.
     AllowedPattern: '[a-z0-9]+'
     ConstraintDescription: Must be a valid Cognito User Pool Client ID (lowercase alphanumeric).
+
+  GitHubOAuthToken:
+    Type: String
+    NoEcho: true
+    Description: >
+      GitHub Personal Access Token (classic) with repo scope. Used by Amplify
+      to pull source code. Pass from AWS Secrets Manager at deploy time — never
+      commit the raw value. Same token used by the shared amplify stack.
+
+  AWSSDKPandasLayerVersion:
+    Type: Number
+    Default: 21
+    Description: >
+      Version number of the AWS-managed AWSSDKPandas-Python311 Lambda layer
+      (account 336392948345). Check the latest version at:
+      https://aws-sdk-pandas.readthedocs.io/en/stable/install.html#aws-lambda-managed-layers
+
+Conditions:
+  IsProduction: !Equals [!Ref Environment, production]
+  IsStaging:    !Equals [!Ref Environment, staging]
 
 Resources:
 
@@ -546,6 +561,290 @@ Resources:
         Project: tools-platform
         App: maritime-trajectory
 
+  # ---------------------------------------------------------------------------
+  # IAM — Lambda execution role
+  # ---------------------------------------------------------------------------
+  LambdaExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub 'tools-maritime-lambda-${Environment}'
+      Description: >
+        Assumed by the dataset API Lambda. Grants read access to the processed
+        output bucket and CloudWatch Logs write access.
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: ReadProcessedOutputPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ReadProcessedOutput
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt ProcessedOutputBucket.Arn
+                  - !Sub '${ProcessedOutputBucket.Arn}/*'
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+        - Key: App
+          Value: maritime-trajectory
+
+  # ---------------------------------------------------------------------------
+  # Lambda — Dataset API function
+  #
+  # Two routes (handled by routeKey):
+  #   GET /datasets         → list available vessel-group partition names
+  #   GET /datasets/{group} → read up to ?limit rows from the partition as JSON
+  #
+  # Requires the AWSSDKPandas-Python311 managed layer for awswrangler + pyarrow.
+  # ---------------------------------------------------------------------------
+  DatasetApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub 'tools-maritime-dataset-api-${Environment}'
+      Description: Reads Maritime Master Record Parquet partitions and returns JSON.
+      Runtime: python3.11
+      Handler: index.handler
+      Role: !GetAtt LambdaExecutionRole.Arn
+      Timeout: 60
+      MemorySize: 512
+      Layers:
+        - !Sub 'arn:aws:lambda:${AWS::Region}:336392948345:layer:AWSSDKPandas-Python311:${AWSSDKPandasLayerVersion}'
+      Environment:
+        Variables:
+          BUCKET: !Ref ProcessedOutputBucket
+      Code:
+        ZipFile: |
+          import json, os, boto3
+
+          BUCKET = os.environ['BUCKET']
+
+          def handler(event, context):
+              route = event.get('routeKey', '')
+              params = event.get('pathParameters') or {}
+              qs = event.get('queryStringParameters') or {}
+              if route == 'GET /datasets':
+                  return list_groups()
+              if route == 'GET /datasets/{group}':
+                  return get_group(params.get('group', ''), int(qs.get('limit', 100)))
+              return resp(404, {'error': 'Route not found'})
+
+          def list_groups():
+              r = boto3.client('s3').list_objects_v2(
+                  Bucket=BUCKET, Prefix='master-record/', Delimiter='/')
+              groups = sorted(
+                  cp['Prefix'].rstrip('/').split('vessel_group=')[-1]
+                  for cp in r.get('CommonPrefixes', []))
+              return resp(200, {'groups': groups})
+
+          def get_group(group, limit):
+              import awswrangler as wr
+              try:
+                  df = wr.s3.read_parquet(
+                      f"s3://{BUCKET}/master-record/vessel_group={group}/").head(limit)
+                  for c in df.select_dtypes(
+                          include=['datetime64[ns]', 'datetimetz']).columns:
+                      df[c] = df[c].astype(str)
+                  return resp(200, {'group': group,
+                                    'columns': list(df.columns),
+                                    'rows': df.to_dict('records'),
+                                    'count': len(df)})
+              except Exception as exc:
+                  return resp(404, {'error': str(exc)})
+
+          def resp(code, body):
+              return {'statusCode': code,
+                      'headers': {'Content-Type': 'application/json',
+                                  'Access-Control-Allow-Origin': '*'},
+                      'body': json.dumps(body, default=str)}
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+        - Key: App
+          Value: maritime-trajectory
+
+  # ---------------------------------------------------------------------------
+  # API Gateway — HTTP API (v2) with CORS
+  # ---------------------------------------------------------------------------
+  DatasetHttpApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: !Sub 'tools-maritime-api-${Environment}'
+      Description: Maritime dataset API — lists and reads Master Record partitions.
+      ProtocolType: HTTP
+      CorsConfiguration:
+        AllowOrigins:
+          - !If
+            - IsProduction
+            - 'https://maritime.jtamerius.com'
+            - 'https://maritime.staging.jtamerius.com'
+        AllowMethods: [GET, OPTIONS]
+        AllowHeaders: [Content-Type, Authorization]
+        MaxAge: 300
+      Tags:
+        Environment: !Ref Environment
+        Project: tools-platform
+        App: maritime-trajectory
+
+  DatasetApiIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref DatasetHttpApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !GetAtt DatasetApiFunction.Arn
+      PayloadFormatVersion: '2.0'
+
+  DatasetListRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref DatasetHttpApi
+      RouteKey: 'GET /datasets'
+      Target: !Sub 'integrations/${DatasetApiIntegration}'
+
+  DatasetGroupRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref DatasetHttpApi
+      RouteKey: 'GET /datasets/{group}'
+      Target: !Sub 'integrations/${DatasetApiIntegration}'
+
+  DatasetApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref DatasetHttpApi
+      StageName: '$default'
+      AutoDeploy: true
+
+  DatasetApiLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt DatasetApiFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${DatasetHttpApi}/*/*'
+
+  # ---------------------------------------------------------------------------
+  # SSM — API Gateway endpoint URL
+  # (read by the Amplify build to inject VITE_MARITIME_API_URL)
+  # ---------------------------------------------------------------------------
+  SSMApiUrl:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/tools/${Environment}/maritime/api-url'
+      Type: String
+      Value: !Sub 'https://${DatasetHttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+      Description: !Sub 'Maritime dataset API Gateway URL (${Environment})'
+      Tags:
+        Environment: !Ref Environment
+        Project: tools-platform
+        App: maritime-trajectory
+
+  # ---------------------------------------------------------------------------
+  # Amplify — Maritime Trajectory frontend app
+  #
+  # Follows the same pattern as infra/shared/amplify/template.yaml for the
+  # landing page. The build injects three VITE_ env vars from SSM so no
+  # values are hard-coded in the template or the GitHub repository.
+  # ---------------------------------------------------------------------------
+  MaritimeAmplifyApp:
+    Type: AWS::Amplify::App
+    Properties:
+      Name: !Sub 'tools-maritime-trajectory-${Environment}'
+      Repository: https://github.com/jtamerius/website_hub
+      OauthToken: !Ref GitHubOAuthToken
+      IAMServiceRole: !ImportValue
+        'Fn::Sub': 'tools-shared-iam-${Environment}-AmplifyServiceRoleArn'
+      BuildSpec: |
+        version: 1
+        applications:
+          - appRoot: apps/maritime-trajectory
+            frontend:
+              phases:
+                preBuild:
+                  commands:
+                    - npm install
+                build:
+                  commands:
+                    - npm run build
+              artifacts:
+                baseDirectory: dist
+                files:
+                  - '**/*'
+              cache:
+                paths:
+                  - node_modules/**/*
+      EnvironmentVariables:
+        - Name: AMPLIFY_MONOREPO_APP_ROOT
+          Value: apps/maritime-trajectory
+        - Name: VITE_ENV
+          Value: !Ref Environment
+        - Name: VITE_COGNITO_USER_POOL_ID
+          Value: !Sub '{{resolve:ssm:/tools/${Environment}/maritime/cognito/user-pool-id}}'
+        - Name: VITE_COGNITO_CLIENT_ID
+          Value: !Sub '{{resolve:ssm:/tools/${Environment}/maritime/cognito/client-id}}'
+        - Name: VITE_MARITIME_API_URL
+          Value: !Sub 'https://${DatasetHttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+      CustomRules:
+        - Source: /index.html
+          Target: /
+          Status: '301'
+        - Source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>'
+          Target: /index.html
+          Status: '200'
+      EnableBranchAutoDeletion: true
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+
+  MaritimeAmplifyBranch:
+    Type: AWS::Amplify::Branch
+    Properties:
+      AppId: !GetAtt MaritimeAmplifyApp.AppId
+      BranchName: !If [IsProduction, main, staging]
+      Description: !Sub 'Auto-tracked branch for the ${Environment} environment'
+      EnableAutoBuild: true
+      EnablePullRequestPreview: !If [IsStaging, true, false]
+      Framework: Vite
+      Stage: !If [IsProduction, PRODUCTION, DEVELOPMENT]
+      EnvironmentVariables:
+        - Name: VITE_ENV
+          Value: !Ref Environment
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: Project
+          Value: tools-platform
+
+  # SSM — Amplify App ID so the deploy workflow can trigger builds without
+  # hard-coding it as a GitHub secret (mirrors how deploy-app.sh resolves IDs).
+  SSMAmplifyAppId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/tools/${Environment}/maritime/amplify-app-id'
+      Type: String
+      Value: !GetAtt MaritimeAmplifyApp.AppId
+      Description: !Sub 'Amplify App ID for the maritime trajectory frontend (${Environment})'
+      Tags:
+        Environment: !Ref Environment
+        Project: tools-platform
+        App: maritime-trajectory
+
 Outputs:
 
   AisInputBucketName:
@@ -589,3 +888,15 @@ Outputs:
     Value: !Ref MaritimeSSMClientId
     Export:
       Name: !Sub 'tools-app-maritime-trajectory-${Environment}-SSMClientIdPath'
+
+  DatasetApiUrl:
+    Description: HTTP API Gateway endpoint for the maritime dataset API
+    Value: !Sub 'https://${DatasetHttpApi}.execute-api.${AWS::Region}.amazonaws.com'
+    Export:
+      Name: !Sub 'tools-app-maritime-trajectory-${Environment}-DatasetApiUrl'
+
+  AmplifyAppId:
+    Description: Amplify App ID for the maritime trajectory frontend
+    Value: !GetAtt MaritimeAmplifyApp.AppId
+    Export:
+      Name: !Sub 'tools-app-maritime-trajectory-${Environment}-AmplifyAppId'
