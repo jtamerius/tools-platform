@@ -23,6 +23,7 @@ jobs:
       finance-app: ${{ steps.filter.outputs.finance-app }}
       maritime-trajectory: ${{ steps.filter.outputs.maritime-trajectory }}
       infra-amplify-maritime: ${{ steps.filter.outputs.infra-amplify-maritime }}
+      infra-maritime-pipeline: ${{ steps.filter.outputs.infra-maritime-pipeline }}
       infra-cognito: ${{ steps.filter.outputs.infra-cognito }}
       infra-dns: ${{ steps.filter.outputs.infra-dns }}
       infra-amplify-landing: ${{ steps.filter.outputs.infra-amplify-landing }}
@@ -52,6 +53,7 @@ jobs:
             maritime-trajectory:
               - 'apps/maritime-trajectory/**'
               - 'shared/**'
+              - 'infra/cdk/lib/stacks/maritime-pipeline-stack.ts'
             infra-amplify-maritime:
               - 'infra/cdk/lib/stacks/amplify-stack.ts'
               - 'infra/cdk/lib/constructs/amplify-hosting.ts'
@@ -86,6 +88,10 @@ jobs:
               - 'infra/cdk/bin/app.ts'
             infra-landing-page-app:
               - 'infra/cdk/lib/stacks/landing-page-stack.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-maritime-pipeline:
+              - 'infra/cdk/lib/stacks/maritime-pipeline-stack.ts'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
             news-scraper:
@@ -570,12 +576,15 @@ jobs:
     needs:
       - detect-changes
       - deploy-amplify-maritime-staging
+      - deploy-maritime-pipeline-staging
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.maritime-trajectory == 'true' &&
       (needs.deploy-amplify-maritime-staging.result == 'success' ||
-       needs.deploy-amplify-maritime-staging.result == 'skipped')
+       needs.deploy-amplify-maritime-staging.result == 'skipped') &&
+      (needs.deploy-maritime-pipeline-staging.result == 'success' ||
+       needs.deploy-maritime-pipeline-staging.result == 'skipped')
     environment: staging
     steps:
       - uses: actions/checkout@v4
@@ -597,6 +606,9 @@ jobs:
           echo "VITE_COGNITO_CLIENT_ID=$(aws ssm get-parameter \
             --name /tools/staging/cognito/client-id \
             --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_MARITIME_API_URL=$(aws ssm get-parameter \
+            --name /tools/staging/maritime/api-url \
+            --query Parameter.Value --output text --no-cli-pager 2>/dev/null || echo '')" >> "$GITHUB_ENV"
           echo "VITE_ENV=staging" >> "$GITHUB_ENV"
 
       - name: Install and build
@@ -653,7 +665,32 @@ jobs:
           echo "Timed out."; exit 1
 
   # -----------------------------------------------------------------------
-  # Job 9: Deploy news-scraper Lambda + EventBridge (via CDK)
+  # Job 9: Deploy maritime-pipeline CDK stack (S3, SageMaker, SFN, Lambda API)
+  # -----------------------------------------------------------------------
+  deploy-maritime-pipeline-staging:
+    name: Deploy maritime-pipeline — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-maritime-pipeline == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - name: Deploy CDK stack
+        run: |
+          cd infra/cdk && npm ci
+          out=$(npx cdk deploy tools-app-maritime-pipeline-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+
+  # -----------------------------------------------------------------------
+  # Job 10: Deploy news-scraper Lambda + EventBridge (via CDK)
   # -----------------------------------------------------------------------
   deploy-news-scraper-staging:
     name: Deploy news-scraper — Staging

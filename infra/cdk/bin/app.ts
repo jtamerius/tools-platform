@@ -88,3 +88,6 @@ new LandingPageStack(app, `tools-app-landing-page-${envName}`, {
 
 // ── App: news-scraper Lambda + EventBridge ───────────────────────────────────
 new NewsScraperStack(app, `tools-app-news-scraper-${envName}`, { cfg, env: awsEnv });
+
+// ── App: maritime-trajectory pipeline (S3, SageMaker, SFN, Lambda API, APIGW) ─
+new MaritimePipelineStack(app, `tools-app-maritime-pipeline-${envName}`, { cfg, env: awsEnv });
