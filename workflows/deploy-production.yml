@@ -144,13 +144,28 @@ jobs:
 
       - name: Deploy maritime-trajectory infrastructure
         run: |
+          USER_POOL_ID=$(aws cloudformation describe-stacks \
+            --stack-name "tools-shared-cognito-production" \
+            --region us-east-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolId'].OutputValue" \
+            --output text)
+
+          USER_POOL_CLIENT_ID=$(aws cloudformation describe-stacks \
+            --stack-name "tools-shared-cognito-production" \
+            --region us-east-1 \
+            --query "Stacks[0].Outputs[?OutputKey=='UserPoolClientId'].OutputValue" \
+            --output text)
+
           aws cloudformation deploy \
             --stack-name "tools-app-maritime-trajectory-production" \
             --template-file "infra/apps/maritime-trajectory/template.yaml" \
             --capabilities CAPABILITY_NAMED_IAM \
             --region us-east-1 \
             --no-fail-on-empty-changeset \
-            --parameter-overrides "Environment=production"
+            --parameter-overrides \
+              "Environment=production" \
+              "UserPoolId=$USER_POOL_ID" \
+              "UserPoolClientId=$USER_POOL_CLIENT_ID"
 
       - name: Print stack status
         if: always()

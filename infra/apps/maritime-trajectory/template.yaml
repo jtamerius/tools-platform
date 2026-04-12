@@ -18,6 +18,22 @@ Parameters:
       - production
     Description: Deployment environment
 
+  UserPoolId:
+    Type: String
+    Description: >
+      Shared Cognito User Pool ID. Passed from the shared cognito stack output,
+      e.g. via --parameter-overrides in deploy-app.sh. Required when the Phase 2
+      Amplify frontend is deployed so the build environment can resolve the pool ID.
+    AllowedPattern: '[a-z]{2}-[a-z]+-[0-9]_[A-Za-z0-9]+'
+    ConstraintDescription: Must be a valid Cognito User Pool ID (e.g. us-east-1_AbCdEfGhI).
+
+  UserPoolClientId:
+    Type: String
+    Description: >
+      Shared Cognito User Pool Client ID. Passed from the shared cognito stack output.
+    AllowedPattern: '[a-z0-9]+'
+    ConstraintDescription: Must be a valid Cognito User Pool Client ID (lowercase alphanumeric).
+
 Resources:
 
   # ---------------------------------------------------------------------------
@@ -461,6 +477,37 @@ Resources:
               OutputBucket: !Ref ProcessedOutputBucket
 
   # ---------------------------------------------------------------------------
+  # SSM — Cognito IDs for the Phase 2 Amplify frontend
+  #
+  # Mirrors the pattern from infra/apps/landing-page/template.yaml so the
+  # maritime Amplify app can resolve Cognito credentials at build time via
+  # {{resolve:ssm:...}} dynamic references, exactly as the landing page does.
+  # ---------------------------------------------------------------------------
+  MaritimeSSMUserPoolId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/tools/${Environment}/maritime/cognito/user-pool-id'
+      Type: String
+      Value: !Ref UserPoolId
+      Description: !Sub 'Cognito User Pool ID for the maritime trajectory app (${Environment})'
+      Tags:
+        Environment: !Ref Environment
+        Project: tools-platform
+        App: maritime-trajectory
+
+  MaritimeSSMClientId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: !Sub '/tools/${Environment}/maritime/cognito/client-id'
+      Type: String
+      Value: !Ref UserPoolClientId
+      Description: !Sub 'Cognito User Pool Client ID for the maritime trajectory app (${Environment})'
+      Tags:
+        Environment: !Ref Environment
+        Project: tools-platform
+        App: maritime-trajectory
+
+  # ---------------------------------------------------------------------------
   # SSM — Expose key resource identifiers for other stacks and the frontend
   # ---------------------------------------------------------------------------
   SSMInputBucketName:
@@ -530,3 +577,15 @@ Outputs:
     Value: !Ref AisPipelineStateMachine
     Export:
       Name: !Sub 'tools-app-maritime-trajectory-${Environment}-StateMachineArn'
+
+  SSMUserPoolIdPath:
+    Description: SSM path for the Cognito User Pool ID (for Amplify build resolution)
+    Value: !Ref MaritimeSSMUserPoolId
+    Export:
+      Name: !Sub 'tools-app-maritime-trajectory-${Environment}-SSMUserPoolIdPath'
+
+  SSMClientIdPath:
+    Description: SSM path for the Cognito Client ID (for Amplify build resolution)
+    Value: !Ref MaritimeSSMClientId
+    Export:
+      Name: !Sub 'tools-app-maritime-trajectory-${Environment}-SSMClientIdPath'

@@ -8,14 +8,13 @@ export const APPS = [
     isPublic: true,
     requiredGroup: null,
   },
-  // Placeholder for future apps - add more here
-  // {
-  //   id: 'app-one',
-  //   name: 'App One',
-  //   description: 'Description of app one',
-  //   url: 'https://app-one.jtamerius.com',
-  //   subdomain: 'app-one',
-  //   isPublic: false,
-  //   requiredGroup: 'member',
-  // },
+  {
+    id: 'maritime-trajectory',
+    name: 'Maritime Trajectory',
+    description: 'Visualize AIS vessel paths and explore predicted trajectories on a live Deck.gl map.',
+    url: 'https://maritime.jtamerius.com',
+    subdomain: 'maritime',
+    isPublic: false,
+    requiredGroup: 'member',
+  },
 ]
