@@ -57,6 +57,15 @@ const financeAmplify = new AmplifyStack(app, `tools-shared-amplify-finance-${env
 });
 
 
+const maritimeAmplify = new AmplifyStack(app, `tools-shared-amplify-maritime-${envName}`, {
+  cfg,
+  appName: 'maritime-trajectory',
+  subdomain: 'maritime',
+  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
+  exportPrefix: 'tools-shared-amplify-maritime',
+  env: awsEnv,
+});
+
 // ── Shared: Monitoring ───────────────────────────────────────────────────────
 new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
   cfg,
@@ -73,15 +82,6 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
 new LandingPageStack(app, `tools-app-landing-page-${envName}`, {
   cfg,
   cognitoStack: cognito,
-  env: awsEnv,
-});
-
-const maritimeAmplify = new AmplifyStack(app, `tools-shared-amplify-maritime-${envName}`, {
-  cfg,
-  appName: 'maritime-trajectory',
-  subdomain: 'maritime',
-  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
-  exportPrefix: 'tools-shared-amplify-maritime',
   env: awsEnv,
 });
 
