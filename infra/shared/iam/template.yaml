@@ -353,6 +353,150 @@ Resources:
       Value: !GetAtt NewsScraperAccessKey.SecretAccessKey
       Description: Secret access key for jtamerius-news-scraper IAM user
 
+        # -----------------------------------------------------------------------
+        # The policies below are required to deploy app-specific stacks that
+        # create backend resources (IAM service roles, S3, Step Functions, etc.).
+        #
+        # BOOTSTRAP NOTE: This IAM stack itself must be (re-)deployed with
+        # elevated credentials the first time these policies are added, because
+        # the existing GitHubActionsRole does not yet have iam:PutRolePolicy.
+        # After this update is applied, subsequent stack deployments — including
+        # those that create IAM roles — can be performed via GitHub Actions.
+        # -----------------------------------------------------------------------
+
+        # Allow CloudFormation to create and manage IAM roles for backend app
+        # stacks (e.g. tools-maritime-sagemaker-*, tools-maritime-sfn-*).
+        # Scoped to the tools-maritime-* naming convention to prevent privilege
+        # escalation beyond the platform's own roles.
+        - PolicyName: IAMServiceRoleManagementPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageScopedServiceRoles
+                Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:UpdateRole
+                  - iam:UpdateRoleDescription
+                  - iam:ListRolePolicies
+                  - iam:ListAttachedRolePolicies
+                Resource:
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/tools-maritime-*'
+              - Sid: PassRoleToBackendServices
+                Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - !Sub 'arn:aws:iam::${AWS::AccountId}:role/tools-maritime-*'
+                Condition:
+                  StringEquals:
+                    'iam:PassedToService':
+                      - sagemaker.amazonaws.com
+                      - states.amazonaws.com
+                      - events.amazonaws.com
+
+        # S3 bucket management for maritime data buckets (tools-maritime-*).
+        # The existing S3DeployArtifactsPolicy only covers the CFN artifacts bucket.
+        - PolicyName: S3MaritimeBucketPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageMaritimeBuckets
+                Effect: Allow
+                Action:
+                  - s3:CreateBucket
+                  - s3:DeleteBucket
+                  - s3:GetBucketLocation
+                  - s3:GetBucketVersioning
+                  - s3:PutBucketVersioning
+                  - s3:GetBucketEncryption
+                  - s3:PutBucketEncryption
+                  - s3:GetBucketPublicAccessBlock
+                  - s3:PutBucketPublicAccessBlock
+                  - s3:GetLifecycleConfiguration
+                  - s3:PutLifecycleConfiguration
+                  - s3:GetBucketTagging
+                  - s3:PutBucketTagging
+                Resource:
+                  - !Sub 'arn:aws:s3:::tools-maritime-*'
+
+        # Step Functions state machine management for maritime pipelines.
+        - PolicyName: StepFunctionsMaritimePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageMaritimeStateMachines
+                Effect: Allow
+                Action:
+                  - states:CreateStateMachine
+                  - states:DeleteStateMachine
+                  - states:UpdateStateMachine
+                  - states:DescribeStateMachine
+                  - states:TagResource
+                  - states:UntagResource
+                  - states:ListTagsForResource
+                Resource:
+                  - !Sub 'arn:aws:states:*:${AWS::AccountId}:stateMachine:tools-maritime-*'
+
+        # EventBridge rule management for maritime scheduled triggers.
+        - PolicyName: EventBridgeMaritimePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageMaritimeEventRules
+                Effect: Allow
+                Action:
+                  - events:PutRule
+                  - events:DeleteRule
+                  - events:DescribeRule
+                  - events:PutTargets
+                  - events:RemoveTargets
+                  - events:ListTargetsByRule
+                  - events:TagResource
+                  - events:UntagResource
+                Resource:
+                  - !Sub 'arn:aws:events:*:${AWS::AccountId}:rule/tools-maritime-*'
+
+        # CloudWatch Logs group management for Step Functions execution logs.
+        - PolicyName: CloudWatchLogsMaritimePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageMaritimeLogGroups
+                Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:DescribeLogGroups
+                  - logs:PutRetentionPolicy
+                  - logs:TagLogGroup
+                  - logs:TagResource
+                Resource:
+                  - !Sub 'arn:aws:logs:*:${AWS::AccountId}:log-group:/tools/maritime/*'
+
+        # SSM Parameter writes for app stacks that publish resource identifiers.
+        # The existing SSMReadPolicy only covers Get operations.
+        - PolicyName: SSMWritePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: WriteToolsParameters
+                Effect: Allow
+                Action:
+                  - ssm:PutParameter
+                  - ssm:DeleteParameter
+                  - ssm:AddTagsToResource
+                Resource:
+                  - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tools/${Environment}/*'
+
   # ---------------------------------------------------------------------------
   # Amplify Service Role — assumed by AWS Amplify to access other AWS services
   # ---------------------------------------------------------------------------
