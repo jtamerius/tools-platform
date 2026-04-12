@@ -617,8 +617,9 @@ jobs:
       - name: Package and deploy to Amplify
         id: deploy
         run: |
-          cd apps/maritime-trajectory
-          zip -r dist.zip dist/
+          cd apps/maritime-trajectory/dist
+          zip -r ../dist.zip .
+          cd ..
           RESULT=$(aws amplify create-deployment \
             --app-id ${{ steps.appid.outputs.app_id }} \
             --branch-name staging --output json --no-cli-pager)
