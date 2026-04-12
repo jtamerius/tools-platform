@@ -42,15 +42,7 @@ export const APPS = [
     isPublic: false,
     requiredGroup: 'admin',
   },
-  {
-    id: 'globe-app',
-    name: 'Interactive Globe',
-    description: 'Real-time 3D Earth with day/night cycle, atmosphere, and interactive overlays',
-    url: isProd ? 'https://globe.jtamerius.com' : 'https://staging.d31dppeu1ai6hv.amplifyapp.com',
-    subdomain: 'globe',
-    isPublic: true,
-    requiredGroup: null,
-  },
+
   {
     id: 'maritime-trajectory',
     name: 'Maritime Trajectory',

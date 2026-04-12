@@ -56,18 +56,6 @@ const financeAmplify = new AmplifyStack(app, `tools-shared-amplify-finance-${env
   env: awsEnv,
 });
 
-const globeAmplify = new AmplifyStack(app, `tools-shared-amplify-globe-${envName}`, {
-  cfg,
-  appName: 'globe-app',
-  subdomain: 'globe',
-  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
-  exportPrefix: 'tools-shared-amplify-globe',
-  // Preserve existing CFn logical IDs to UPDATE (not delete+create) the Amplify app.
-  // The account is at the Amplify app limit (7), so a CREATE before DELETE would fail.
-  legacyAppLogicalId: 'GlobeAppAmplifyApp',
-  legacyBranchLogicalId: 'GlobeAppAmplifyBranch',
-  env: awsEnv,
-});
 
 // ── Shared: Monitoring ───────────────────────────────────────────────────────
 new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
@@ -76,7 +64,7 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
     landingAmplify.appId,
     weatherAmplify.appId,
     financeAmplify.appId,
-    globeAmplify.appId,
+    maritimeAmplify.appId,
   ],
   env: awsEnv,
 });
@@ -85,6 +73,15 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
 new LandingPageStack(app, `tools-app-landing-page-${envName}`, {
   cfg,
   cognitoStack: cognito,
+  env: awsEnv,
+});
+
+const maritimeAmplify = new AmplifyStack(app, `tools-shared-amplify-maritime-${envName}`, {
+  cfg,
+  appName: 'maritime-trajectory',
+  subdomain: 'maritime',
+  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
+  exportPrefix: 'tools-shared-amplify-maritime',
   env: awsEnv,
 });
 
