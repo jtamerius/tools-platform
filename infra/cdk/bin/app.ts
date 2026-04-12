@@ -8,6 +8,7 @@ import { MonitoringStack } from '../lib/stacks/monitoring-stack';
 import { AmplifyStack } from '../lib/stacks/amplify-stack';
 import { LandingPageStack } from '../lib/stacks/landing-page-stack';
 import { NewsScraperStack } from '../lib/stacks/news-scraper-stack';
+import { MaritimePipelineStack } from '../lib/stacks/maritime-pipeline-stack';
 
 const app = new cdk.App();
 
