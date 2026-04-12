@@ -1,0 +1,70 @@
+{
+  "run_metadata": {
+    "run_started_at": "2026-04-09T02:39:58.807619+00:00",
+    "top_n_headlines": 1,
+    "categorization_enabled": true,
+    "embeddings_enabled": false,
+    "similarity_threshold": 0.65,
+    "elapsed_seconds": 5.25,
+    "providers_used": [],
+    "saved_at": "2026-04-09T02:40:04.053045+00:00",
+    "total_countries": 3,
+    "countries_with_headlines": 3,
+    "countries_with_errors": 0,
+    "total_clusters": 0
+  },
+  "countries": [
+    {
+      "country_code": "US",
+      "country_name": "United States",
+      "language": "en",
+      "locale": "en-US",
+      "feed_url": "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en",
+      "scraped_at": "2026-04-09T02:39:59.043833+00:00",
+      "headlines": [
+        {
+          "title": "Iran War Live Updates: Cease-Fire Tested by Confusion Over Strait and Strikes on Lebanon - The New York Times",
+          "link": "https://news.google.com/rss/articles/CBMic0FVX3lxTE1USHZLemwzUjhuSW9BWnNLSmNVdnBzYzJxSjA4TGpoRHR0WUJ0YnNpaXBELWJCVGdyNFpBcG1NWTAyWFlfMEIzYy1Ga1daVVRjcEVKR1FVSUhuXzB3bTRTMmFfcW1nQXdsQzNBRkxReWFxNTg?oc=5",
+          "published": "Thu, 09 Apr 2026 00:21:00 GMT",
+          "source": "The New York Times"
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "GB",
+      "country_name": "United Kingdom",
+      "language": "en",
+      "locale": "en-GB",
+      "feed_url": "https://news.google.com/rss?hl=en-GB&gl=GB&ceid=GB:en",
+      "scraped_at": "2026-04-09T02:40:00.120220+00:00",
+      "headlines": [
+        {
+          "title": "Middle East crisis live: Red Cross ‘outraged’ as Israeli strikes kill at least 254 people in Lebanon; strait of Hormuz impasse continues - The Guardian",
+          "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxOUDNTcXdjSjlDNnowZUJfUzVhZzh2Q2VLbUVaYlBmcHJ5QTczbzFKOFBrbDYyM3QySHdSMlJWd184bVZmeHhSRFdYclJhWWt4TjM2bVhTeFZjQVNyT1JZVkgtUVRYZGQ3dmZNQk9pQS1mbHQ2Yk9JdWY4V2tlLTMyYmJFdXdaLW5EeUpETFV4V3VscU1rLVQ3c0dteWJuNFIzLUFKNzdtWk9zUDNxVlZyd0x0TC1EZURheXQ2SE5KM2NTc3BPTWZz?oc=5",
+          "published": "Thu, 09 Apr 2026 02:18:00 GMT",
+          "source": "The Guardian"
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "DE",
+      "country_name": "Germany",
+      "language": "de",
+      "locale": "de-DE",
+      "feed_url": "https://news.google.com/rss?hl=de-DE&gl=DE&ceid=DE:de",
+      "scraped_at": "2026-04-09T02:40:00.517648+00:00",
+      "headlines": [
+        {
+          "title": "Iran-Krieg aktuell: Trump-Sprecherin erklärt Straße von Hormus geöffnet - Frankfurter Rundschau",
+          "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxQQ1lGZTJXbm9GUWtoV3FDWmkyeW1LZmVTaXRmLUk5OWFIWUJ6alFTY2N0Ymxxa1g4aTJ5QUszV185X0xLcThxd2dnUlRoR0FKTzVCU3Z6SlVtVm5MTm1RWmpBWGR5SXo0R2NJc3I1WGlhXzc2Skc3SmRaTUVoZ2dSX3VtT1poQ2Y0ZkI0ZVJleDgzakZZOHpTZ3JFMGhIZTJHR1M0MGlYOWF1ZmxsNjdnazNhdXg4QUZSS2ZrUWlR?oc=5",
+          "published": "Wed, 08 Apr 2026 20:30:00 GMT",
+          "source": "Frankfurter Rundschau"
+        }
+      ],
+      "error": null
+    }
+  ],
+  "clusters": []
+}

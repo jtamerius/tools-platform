@@ -1,0 +1,2061 @@
+{
+  "run_metadata": {
+    "run_started_at": "2026-04-09T03:50:21.511476+00:00",
+    "top_n_headlines": 1,
+    "categorization_enabled": true,
+    "embeddings_enabled": false,
+    "similarity_threshold": 0.65,
+    "elapsed_seconds": 12.0,
+    "providers_used": [
+      "groq"
+    ],
+    "saved_at": "2026-04-09T03:50:33.508888+00:00",
+    "total_countries": 96,
+    "countries_with_headlines": 96,
+    "countries_with_errors": 0,
+    "total_clusters": 0
+  },
+  "countries": [
+    {
+      "country_code": "US",
+      "country_name": "United States",
+      "language": "en",
+      "locale": "en-US",
+      "feed_url": "https://news.google.com/rss?hl=en-US&gl=US&ceid=US:en",
+      "scraped_at": "2026-04-09T03:50:21.827903+00:00",
+      "headlines": [
+        {
+          "title": "President Trump’s ceasefire with Iran draws praise from world leaders - Fox News",
+          "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPNzlkeW5RWXFGNmgzMkZFbDhJbkJSdHA5RXA3X1ZlSGJFeTVzTzVJZUJLMHBpRG9pVFR3YTdVUzJhcTdib0FScl9xZnhnM1daQlRZZG5NRkRDYjZranlDNS1GV0dWSFNyZ2l4U2RmQzYycE84VlJybDRnYl9iSDFELUs0blNjS1VSNlJtT0RaREtUZmxSZGZOUC12ZWZQWXdHUm1rYmRXWHZOQdIBrwFBVV95cUxNWG9xNk5USVZ0eE9aU3h4ZDBBRmxRYmlSU0EtSjBVMm93ZjRzVGJ0bmtJd0xTLUFLS0xpSElWd25LU0pValM5aDB3b04yV2FUN0hHc0MyZ2pENE1vVGEwemthRmxvTnlXLXRxSGw1MVltb1dMS3ZhYzBaQmJ1QWhJRnktbHZOWXhRR0s4QjdsMkh2SFpzRzdNaDBYT3JnWm94T0t2QnVDV1k0TEdkalcw?oc=5",
+          "published": "Wed, 08 Apr 2026 22:28:09 GMT",
+          "source": "Fox News",
+          "categorization": {
+            "groq": {
+              "label": "International Politics",
+              "summary": "The US and Iran have reached a ceasefire, easing tensions between the two nations. This development is significant as it may prevent further conflict in the region. World leaders are praising the move, indicating its potential for promoting global stability.",
+              "title_en": "President Trump’s ceasefire with Iran draws praise from world leaders - Fox News"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CA",
+      "country_name": "Canada",
+      "language": "en",
+      "locale": "en-CA",
+      "feed_url": "https://news.google.com/rss?hl=en-CA&gl=CA&ceid=CA:en",
+      "scraped_at": "2026-04-09T03:50:22.310317+00:00",
+      "headlines": [
+        {
+          "title": "Plenty of ‘unhappy people’ in Conservative caucus: floor-crossing MP d’Entremont - CTV News",
+          "link": "https://news.google.com/rss/articles/CBMi0wFBVV95cUxPaE1vMGlYUkFLMUltOXZITVl5b0thSE5KdEJINlNVd2ZwTGk3VFE5bUNpaVlfcVlDSndIQ2w5c1pZdlJvRk5lNU1Bc1VnVm9uWjBZeXI3RngxUDRyc3F1LTRUY3FUcGg1ZHVrbFJLT1RWYS0yQmlSTHk2dUVjUlhlQ1BrV1didmhYUkoyWnVfNC02SDB2YVYxeVdRbGZlSDZEVDlfcXV1UjMydnZVMHNTMGpnY2NKbHFvb0tLMW1KMW40bXU5XzhfTEpieWJ0U1dhcnJn?oc=5",
+          "published": "Wed, 08 Apr 2026 22:40:01 GMT",
+          "source": "CTV News",
+          "categorization": {
+            "groq": {
+              "label": "Canadian Politics",
+              "summary": "A Conservative MP has expressed dissatisfaction within the party. This could indicate internal conflict and potential further defections. The situation may impact the party's stability and future elections.",
+              "title_en": "Plenty of ‘unhappy people’ in Conservative caucus: floor-crossing MP d’Entremont - CTV News"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "MX",
+      "country_name": "Mexico",
+      "language": "es",
+      "locale": "es-MX",
+      "feed_url": "https://news.google.com/rss?hl=es-MX&gl=MX&ceid=MX:es",
+      "scraped_at": "2026-04-09T03:50:21.906576+00:00",
+      "headlines": [
+        {
+          "title": "Godoy sostiene que descarrilamiento del Tren Interoceánico no fue por problema en la obra - El Universal",
+          "link": "https://news.google.com/rss/articles/CBMi9gFBVV95cUxPRFlDNllBUG5DTkk5MHp5MHhMUzdFZDI0SU5ObFR3RngzTkhaaHFHdFFKcHhmYTVwVTJ3V1hrbktKTEVWX0tKSDRjM19JamNLUk54M0g2ZE13SUhDSEVzWXM1TnhfUm9IUllKajRnajh6UEk0alpCSHpOXzQ3djN6RF9KN2V0SU5aSmd3Y2ZpWGJBdC1jWm0taFc0b0h2T3UxNEh3dXF0Q1o4TDlOelFiVVlOQTl0WmxXci1XRW5nZmwza0UzRVkzeWRDeHlxLXVUemk0OHBIUDJrbTVyZVpvQ2VCaTZDVXdPajBVNGJJWFRqeUlCYlE?oc=5",
+          "published": "Wed, 08 Apr 2026 21:20:00 GMT",
+          "source": "El Universal",
+          "categorization": {
+            "groq": {
+              "label": "Railway Accident",
+              "summary": "The derailment of the Interoceanic Train in Mexico is under investigation. Godoy's statement suggests that the cause may not be related to the construction of the railway. This incident is significant as it may impact the safety and reliability of the train service.",
+              "title_en": "Godoy claims derailment of Interoceanic Train was not due to construction issues"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CU",
+      "country_name": "Cuba",
+      "language": "es",
+      "locale": "es-CU",
+      "feed_url": "https://news.google.com/rss?hl=es-CU&gl=CU&ceid=CU:es",
+      "scraped_at": "2026-04-09T03:50:22.770147+00:00",
+      "headlines": [
+        {
+          "title": "Miguel Díaz-Canel a Newsweek: Pueblos de EEUU y Cuba merecen paz - Prensa Latina",
+          "link": "https://news.google.com/rss/articles/CBMipwFBVV95cUxOcUkyRHlZZmhaQl82QVEwMWRuYkRiRzJOZFdXQ0NvZVUzdlFWd1RKYUVVbVFyX0FvSkJsUEU4SnJfLWxpMlVpZWg1bVF5bGd0X2dFZUowTUtvdFJjSUtuN3djbXhZdDdkelU0cWRfTlFKcmNxU1Z0TUxtNFdhWHBHQ2lXelVYRFFUdW1CV2lBWEVBZ3ZWd3NUOU5vdDR4WFpaY293RXk1Yw?oc=5",
+          "published": "Wed, 08 Apr 2026 20:21:00 GMT",
+          "source": "Prensa Latina",
+          "categorization": {
+            "groq": {
+              "label": "Cuba Us Relations",
+              "summary": "Cuban President Miguel Díaz-Canel expressed his desire for peace between the US and Cuba in an interview with Newsweek. This statement is significant as it highlights the ongoing efforts to improve relations between the two nations. The comments may indicate a shift in diplomatic tone and a willingness to engage in dialogue.",
+              "title_en": "Miguel Díaz-Canel to Newsweek: US and Cuba Peoples Deserve Peace"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "GT",
+      "country_name": "Guatemala",
+      "language": "es",
+      "locale": "es-GT",
+      "feed_url": "https://news.google.com/rss?hl=es-GT&gl=GT&ceid=GT:es",
+      "scraped_at": "2026-04-09T03:50:22.212433+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon. This move is likely to escalate tensions in the region and impact global oil supplies. The conflict has significant implications for international relations and global security.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "HN",
+      "country_name": "Honduras",
+      "language": "es",
+      "locale": "es-HN",
+      "feed_url": "https://news.google.com/rss?hl=es-HN&gl=HN&ceid=HN:es",
+      "scraped_at": "2026-04-09T03:50:22.216909+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon. This move is likely to escalate tensions in the region and impact global oil supplies. The conflict has significant implications for international relations and global security.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "SV",
+      "country_name": "El Salvador",
+      "language": "es",
+      "locale": "es-SV",
+      "feed_url": "https://news.google.com/rss?hl=es-SV&gl=SV&ceid=SV:es",
+      "scraped_at": "2026-04-09T03:50:22.177400+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon, escalating tensions in the region. This move may disrupt global oil supplies and have significant economic implications. The conflict threatens to draw in other countries and destabilize the entire Middle East.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "NI",
+      "country_name": "Nicaragua",
+      "language": "es",
+      "locale": "es-NI",
+      "feed_url": "https://news.google.com/rss?hl=es-NI&gl=NI&ceid=NI:es",
+      "scraped_at": "2026-04-09T03:50:22.213804+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon. This move is likely to escalate tensions in the region and impact global oil supplies. The conflict has significant implications for international relations and global security.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CR",
+      "country_name": "Costa Rica",
+      "language": "es",
+      "locale": "es-CR",
+      "feed_url": "https://news.google.com/rss?hl=es-CR&gl=CR&ceid=CR:es",
+      "scraped_at": "2026-04-09T03:50:22.209657+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon, escalating tensions in the region. This move may disrupt global oil supplies and have significant economic implications. The conflict has the potential to draw in other countries and lead to further instability.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "PA",
+      "country_name": "Panama",
+      "language": "es",
+      "locale": "es-PA",
+      "feed_url": "https://news.google.com/rss?hl=es-PA&gl=PA&ceid=PA:es",
+      "scraped_at": "2026-04-09T03:50:22.211113+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon, escalating tensions in the region. This move may disrupt global oil supplies and have significant economic implications. The conflict threatens to draw in other countries and destabilize the entire Middle East.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "DO",
+      "country_name": "Dominican Republic",
+      "language": "es",
+      "locale": "es-DO",
+      "feed_url": "https://news.google.com/rss?hl=es-DO&gl=DO&ceid=DO:es",
+      "scraped_at": "2026-04-09T03:50:22.508340+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon. This move is likely to escalate tensions in the region and impact global oil supplies. The conflict has significant implications for international relations and global security.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "PR",
+      "country_name": "Puerto Rico",
+      "language": "es",
+      "locale": "es-PR",
+      "feed_url": "https://news.google.com/rss?hl=es-PR&gl=PR&ceid=PR:es",
+      "scraped_at": "2026-04-09T03:50:22.164302+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon, escalating tensions in the region. This move may disrupt global oil supplies and have significant economic implications. The conflict threatens to draw in other countries and destabilize the entire Middle East.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "BR",
+      "country_name": "Brazil",
+      "language": "pt",
+      "locale": "pt-BR",
+      "feed_url": "https://news.google.com/rss?hl=pt-BR&gl=BR&ceid=BR:pt",
+      "scraped_at": "2026-04-09T03:50:22.948943+00:00",
+      "headlines": [
+        {
+          "title": "Fux diverge de Zanin e vota por eleição indireta para governador no RJ - CNN Brasil",
+          "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxOMjZ0QnJkYkNzMk94d2EzN1lmdVBKNk53dDhoR1lHQnpjdUMzd25kQVZ2T1hWRnN1VmtaUlhqUDRCeFk0TUpEaHlXcnpvOVZhN3lNQzFOczNkOVUtVll1MEZxQWpQUzlENzNyRGlQdzJSMFJJaThLbVVqejBkbVJfY2RCWjVQN2hSZW53bGVDck9yWjBxd0NQTjRENmhPTFpFX0dZbFlqamdVR0t1Q21j?oc=5",
+          "published": "Wed, 08 Apr 2026 21:40:24 GMT",
+          "source": "CNN Brasil",
+          "categorization": {
+            "groq": {
+              "label": "Brazil Politics",
+              "summary": "This story is about a significant vote by Fux, differing from Zanin, in favor of an indirect election for the governor of Rio de Janeiro. The decision may impact the state's political landscape and governance. It matters because it could influence the balance of power in the region.",
+              "title_en": "Fux differs from Zanin and votes for indirect election for governor in RJ"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "AR",
+      "country_name": "Argentina",
+      "language": "es",
+      "locale": "es-AR",
+      "feed_url": "https://news.google.com/rss?hl=es-AR&gl=AR&ceid=AR:es",
+      "scraped_at": "2026-04-09T03:50:22.882411+00:00",
+      "headlines": [
+        {
+          "title": "Hay quórum. Con una fuerte división en el “cordobesismo”, se debate la nueva Ley de Glaciares - La Voz del Interior",
+          "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxOdUNZT0JfdHVnb3dlU2tHOFBYMUlNM2c5TGE2TUhyTnUyQlRTQWprWnZyZjNUR21tTXdZM0wxdVRHcy15T1o2UUY4alA3NUNNS3VlX1VjNHpjWXl6UnZmaW9DN1lDdTA0TEJJRU8wVjY0VTN3UExWbjZjeWpZRHB6MkI1MVFQVWhxaWNJcU1LeUxXeUs5bjg0SFhOd1J0UWVWaFNJcWZQUmRQM1ZPbkRxYTBNX1h0Zw?oc=5",
+          "published": "Wed, 08 Apr 2026 18:46:07 GMT",
+          "source": "La Voz del Interior",
+          "categorization": {
+            "groq": {
+              "label": "Environmental Politics",
+              "summary": "A new law regarding glaciers is being debated in Argentina, with a strong division within the Cordobesismo movement. This law is likely to impact environmental conservation efforts in the region. The debate's outcome may have significant implications for Argentina's ecological future.",
+              "title_en": "Quorum Achieved. With Strong Division in Cordobesismo, New Glacier Law is Debated"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CL",
+      "country_name": "Chile",
+      "language": "es",
+      "locale": "es-CL",
+      "feed_url": "https://news.google.com/rss?hl=es-CL&gl=CL&ceid=CL:es",
+      "scraped_at": "2026-04-09T03:50:22.426942+00:00",
+      "headlines": [
+        {
+          "title": "Presidente Kast califica de \"acto de irracionalidad total\" agresión a ministra Lincolao en la UACh - BioBioChile",
+          "link": "https://news.google.com/rss/articles/CBMi9wFBVV95cUxNUTE5LTV4Z3E2UHVGRjFmUWk0Q3JQVk9JZkJlU3l1SWQtckd2dzJVblp1cGJSbjE3VEU4cUZiZmtyMmNPb3ZjVzFfNUJVSXBXcVFUbFJST0JEMUlVSTZGWWxPemNsN2trcjYxLU5pZTVaVW5ZaGQ0S05WS0VubzVqM3BDU1Y3dVdocW55Z2NNd1hLdG9JSE9qZ0w1OXVMZWk0Y1YxcllTRTNTaEFBNmxPb1Nnc3ViaUdvLWlKNG5OcUVuV1R5LS1oVnVoTmFFLV80SGttU3dxR0MxLWE0Z3lYeVdVX0pObnBFM3BZaEVIUDc0WEpWLXRn?oc=5",
+          "published": "Thu, 09 Apr 2026 02:53:37 GMT",
+          "source": "BioBioChile",
+          "categorization": {
+            "groq": {
+              "label": "Chilean Politics",
+              "summary": "Chilean President Kast condemned the aggression against Minister Lincolao at the University of Chile. The incident highlights concerns about violence and security in the country. This event may impact the government's reputation and stability.",
+              "title_en": "President Kast calls attack on Minister Lincolao at UACh an 'act of total irrationality'"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CO",
+      "country_name": "Colombia",
+      "language": "es",
+      "locale": "es-CO",
+      "feed_url": "https://news.google.com/rss?hl=es-CO&gl=CO&ceid=CO:es",
+      "scraped_at": "2026-04-09T03:50:22.776596+00:00",
+      "headlines": [
+        {
+          "title": "Egan Bernal, como un ciudadano más, afectado por el tema de pasaportes en la Cancillería | El Colombiano - El Colombiano",
+          "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxPV1FuTm9tRmZyTUt1cnFtZV9TLUU2M1hIU2dodTRYNXBQdnd6ZWdEdjhBS1ZjVmNsOGdVbW80UzJ4aEtUMmFIeTV5TzNzNXV6QThVV3UtOWdkUU1UNXd3SVJKXzgybl9kTUdaSEdDR0hRM1puelpTVWQxRzdNNjc1cmVqYWhZZmtaam1BSkZvVEZHV2lzcUs3REw0ZkRWaUl0UDREeVhzY2XSAa4BQVVfeXFMTXJZc2I0SHFuYmpkbU1nNG54QzBHR3dTamV3Y1A1TTR3WWw0ekpTTjBheUhzV2p3OFZNZTdERGoxUVlyZHY3ZUtOT21LbXExTDJ5aHNVMU04SDkyQXMtRWRrdnFlbV9Fbk1VSFc3U3A2SjJjN1V1QkVfQy1Vbzh5MWtZbE0wbzlwZ3EtUkJRNmp0MVhCUWh6cm5FUl9XM1ZTZ3dWd0xkRVlPOGlZb1Bn?oc=5",
+          "published": "Wed, 08 Apr 2026 18:02:20 GMT",
+          "source": "El Colombiano",
+          "categorization": {
+            "groq": {
+              "label": "Colombian News",
+              "summary": "This story is likely about the Colombian cyclist Egan Bernal facing difficulties with his passport at the Ministry of Foreign Affairs. It highlights a common issue many citizens face and the challenges of bureaucratic processes. The story matters as it shows that even public figures can be affected by everyday problems.",
+              "title_en": "Egan Bernal, like any other citizen, affected by passport issues at the Ministry of Foreign Affairs"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "PE",
+      "country_name": "Peru",
+      "language": "es",
+      "locale": "es-PE",
+      "feed_url": "https://news.google.com/rss?hl=es-PE&gl=PE&ceid=PE:es",
+      "scraped_at": "2026-04-09T03:50:22.732048+00:00",
+      "headlines": [
+        {
+          "title": "Elecciones 2026: 20 candidatos presidenciales también se postulan al Senado Nacional - La República",
+          "link": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxONUxoNWt1ck5OamxPV0thRlVxbEdkT0tyajRiRkVMWjY5Q1V6ZndkMVFDUzZlX3lFZ0pZRnZYLVdselBFMmZCbVpvXzJ6WWI2LXBhdXZSUmVtZWEwZy1vVVQ4QXU1VVJMQTBpcVd3ZFNRMkpROXU0MUdfSHMtbUVXQmxVQk1id2loTFdjQ3ltZk5QdlZZMF9WNDU1elh0WDlBdU93N2ZRcHhWcnRPTm9hSnp6VXVES21lODVuMnh3UExGcHo1cmRldDAzQ1k2YkxFN3BGUGFn0gHbAUFVX3lxTFBjN3VqMllDbV9OamlzeG1xRndxdUtZTDZCTHhONjlYUUp1NG1hWW9LaTRsQktPWW51aFVRUUdJYnhaa1RCVktLaDd3ZlJQRFRQMGZrM2hqVXJxWGpUbzU4UFBMYnM0c2NIWlBNU0xMM3pwSE83QW00bUt5WjFDZmVlUVZoWTBzRWZQeWtISWF4ZG93OV9wNU5oNC0zUndqZXNlUTJjckdFbjJQcW5xeUtRbFcyX2JMRlowZmRZOHRNMmUtVTFRaGVCdzZib3NBbERLX25jZTZlUmhwOA?oc=5",
+          "published": "Thu, 09 Apr 2026 01:02:43 GMT",
+          "source": "La República",
+          "categorization": {
+            "groq": {
+              "label": "Peru Politics",
+              "summary": "This story is about the upcoming elections in Peru where multiple presidential candidates are also running for the National Senate. It likely highlights the complexities of Peru's electoral system and the ambitions of its politicians. The story may have implications for the country's governance and leadership.",
+              "title_en": "Elections 2026: 20 presidential candidates also running for National Senate"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "VE",
+      "country_name": "Venezuela",
+      "language": "es",
+      "locale": "es-VE",
+      "feed_url": "https://news.google.com/rss?hl=es-VE&gl=VE&ceid=VE:es",
+      "scraped_at": "2026-04-09T03:50:22.642504+00:00",
+      "headlines": [
+        {
+          "title": "Delcy Rodríguez anuncia un aumento “responsable” del salario mínimo para el 1 de mayo en Venezuela - EL PAÍS",
+          "link": "https://news.google.com/rss/articles/CBMi1gFBVV95cUxOWmlLV25MODdlLXNNeWE0ZEw5VzFsaUF0UHZwWkFreUdrd2F0WFcwdWVxZ19iQmhWOFQxamdhTTNxTkgwTHZGcXdZVFV0dUh5RG1neU1SNl8wZjU4XzNaYTkxdTlEN0NsOWhHSWZYVnNySnZRaVRudHZ6amU0VzE5Z181N24yVWtWWE9TNjRUS1JGSngzOTJFaURMMGRPX1FKUVhmZmhzNE9jaTg4cGQwSjZEZ01zY1Q4bEV2cFpSd3owOHZEX0t1ODBSMnZJQ1M4amNWOXJ3?oc=5",
+          "published": "Wed, 08 Apr 2026 23:42:29 GMT",
+          "source": "EL PAÍS",
+          "categorization": {
+            "groq": {
+              "label": "Venezuela Economy",
+              "summary": "Venezuela's government plans to raise the minimum wage on May 1. This move aims to address the country's economic crisis and high inflation. The increase may impact the standard of living for Venezuelan workers and the overall economy.",
+              "title_en": "Delcy Rodríguez announces a 'responsible' minimum wage increase for May 1 in Venezuela"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "EC",
+      "country_name": "Ecuador",
+      "language": "es",
+      "locale": "es-EC",
+      "feed_url": "https://news.google.com/rss?hl=es-EC&gl=EC&ceid=EC:es",
+      "scraped_at": "2026-04-09T03:50:22.371148+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon. This move is likely to escalate tensions in the region and impact global oil supplies. The conflict has significant implications for international relations and global security.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "BO",
+      "country_name": "Bolivia",
+      "language": "es",
+      "locale": "es-BO",
+      "feed_url": "https://news.google.com/rss?hl=es-BO&gl=BO&ceid=BO:es",
+      "scraped_at": "2026-04-09T03:50:22.434628+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon. This move is likely to escalate tensions in the region and impact global oil supplies. The conflict has significant implications for international relations and global security.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "PY",
+      "country_name": "Paraguay",
+      "language": "es",
+      "locale": "es-PY",
+      "feed_url": "https://news.google.com/rss?hl=es-PY&gl=PY&ceid=PY:es",
+      "scraped_at": "2026-04-09T03:50:22.507003+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon, escalating tensions in the region. This move may disrupt global oil supplies and have significant economic implications. The conflict has the potential to draw in other countries and lead to further instability.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "UY",
+      "country_name": "Uruguay",
+      "language": "es",
+      "locale": "es-UY",
+      "feed_url": "https://news.google.com/rss?hl=es-UY&gl=UY&ceid=UY:es",
+      "scraped_at": "2026-04-09T03:50:22.580843+00:00",
+      "headlines": [
+        {
+          "title": "Guerra en Irán hoy: Irán cierra el estrecho de Ormuz en respuesta a los ataques israelíes contra el Líbano - Univision",
+          "link": "https://news.google.com/rss/articles/CBMimAJBVV95cUxQM2dxdHRlaGpjVF84QjZta0VLOWxHRXVJcDh2alZBNzRKM195amJvMzBIX0hwem5wQnZRM1c2ZzB6NGZDQmxpdmo5eTdlWk9teFJkc1YxRkI0VEJrREEyNXFjeGplR2VrS0ZlRFFnajZhRVlHQjRYUFM4c0l1NVlLUzJYRlNhLUxCM1pJM3ZwYXdGRUZhWkRzaDJzOW9fUHNVQmNJNmkxbDFVNWdPZ1lNWk9GSG5mRkJCTGRaZEJIQ3YwY1ZZbEFwV0R0M1dLNTQwS0JpSmVfMlFzLUs4d1JzbzVHN182MGd2RXVTQlh1ZEVXMUctdGlvdW1aZF8yLWY5UDJXN1JDZTZMQzFmV1ptR1A3a0hZOVp6?oc=5",
+          "published": "Wed, 08 Apr 2026 23:26:52 GMT",
+          "source": "Univision",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Iran has closed the Strait of Hormuz in response to Israeli attacks on Lebanon. This move is likely to escalate tensions in the region and impact global oil supplies. The conflict has significant implications for international relations and global security.",
+              "title_en": "War in Iran today: Iran closes the Strait of Hormuz in response to Israeli attacks on Lebanon"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "GB",
+      "country_name": "United Kingdom",
+      "language": "en",
+      "locale": "en-GB",
+      "feed_url": "https://news.google.com/rss?hl=en-GB&gl=GB&ceid=GB:en",
+      "scraped_at": "2026-04-09T03:50:22.548620+00:00",
+      "headlines": [
+        {
+          "title": "‘A step back from the brink’: European leaders welcome US-Iran ceasefire - The Guardian",
+          "link": "https://news.google.com/rss/articles/CBMikgFBVV95cUxOSENwNUVnQ0dpVDUxVGg2a1gzeWdCd3F4NjJMSDRQcWtXOS1CaDhYTGE5VHNBa1ZZSWhWYk5MT3lxdFpFM2M4dV93UWVVTmdOdkJVQUtZYkhHVmVyOGVWa2d4TjBzbWZjdzB3MnZlT2RoQ291WEZ5QWVRd3hsc0J3eFZFbUhYZWE4Vkp0cUM0WHpodw?oc=5",
+          "published": "Thu, 09 Apr 2026 01:30:00 GMT",
+          "source": "The Guardian",
+          "categorization": {
+            "groq": {
+              "label": "International Conflict",
+              "summary": "European leaders have welcomed a ceasefire between the US and Iran. This development is significant as it reduces the risk of further escalation in the region. The ceasefire is seen as a positive step towards de-escalation and diplomacy.",
+              "title_en": "‘A step back from the brink’: European leaders welcome US-Iran ceasefire"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "IE",
+      "country_name": "Ireland",
+      "language": "en",
+      "locale": "en-IE",
+      "feed_url": "https://news.google.com/rss?hl=en-IE&gl=IE&ceid=IE:en",
+      "scraped_at": "2026-04-09T03:50:23.216612+00:00",
+      "headlines": [
+        {
+          "title": "Fuel protests: Taoiseach describes Whitegate oil refinery blockade as 'an act of national sabotage' - BreakingNews.ie",
+          "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxPdVFNZndFNjZhM2U0ZG05TXEzakxoZEJyOHAwU2FxemVtRkJET3lNblVlUHcyY2NRUjdZSnFJNll1MVpaSHV4aVVlNFdma3lTdnNuQ3EtdXRGeVVSZi13NENHamZpenNmemhacW92TGs4RFM4NEFVLXhkdkJsZFUySG54UU9WcnMzaFRDTjFZTHNjWms5eTZCallHRlV4aXVNRFZhbk9Tdm40SHpk?oc=5",
+          "published": "Wed, 08 Apr 2026 21:23:06 GMT",
+          "source": "BreakingNews.ie",
+          "categorization": {
+            "groq": {
+              "label": "Energy Crisis",
+              "summary": "The Taoiseach has condemned a blockade of an oil refinery in Whitegate, calling it an act of national sabotage. This protest is likely related to fuel prices and energy policy in Ireland. The blockade may have significant implications for the country's energy supply and economy.",
+              "title_en": "Fuel protests: Taoiseach describes Whitegate oil refinery blockade as 'an act of national sabotage'"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "FR",
+      "country_name": "France",
+      "language": "fr",
+      "locale": "fr-FR",
+      "feed_url": "https://news.google.com/rss?hl=fr-FR&gl=FR&ceid=FR:fr",
+      "scraped_at": "2026-04-09T03:50:22.726504+00:00",
+      "headlines": [
+        {
+          "title": "Guerre en Iran : un cessez-le-feu en forme de débâcle stratégique pour les Etats-Unis - Le Monde.fr",
+          "link": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxQeGZtN0tSOFhsMXctRnowaUdzX0FDVGMwcGNQNm9GUS1kOXN0RWY5d0dyRkN0QWVRdU1sMzY3QWVPa2xDeTNRYmw5RW1GeXI0T1JNeTdPTzFXNUlHZ2V5MkExN2ljVEhwaGdHZHhSdF9KdENQOGM3Mnd1OGtJRW54Q252R0ZzdnIwLTVETDBScWtPWjlpcjRjMmtpcUhzR2lvcHpUVll0amJ6RE84SktEa096UFFKQmRVbjJPLUg4OWlDdGdTZEkzcXBWRWQ3YV9FYzA1UFNkQU5yb3AwazV5XzUtaHhSNm8xN01EdGNR?oc=5",
+          "published": "Thu, 09 Apr 2026 03:13:14 GMT",
+          "source": "Le Monde.fr",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "The story is likely about a recent development in the conflict in Iran, where a ceasefire has been reached, but it has resulted in a strategic loss for the United States. This matters because it could have significant implications for the region and US foreign policy. The outcome may impact global stability and US influence in the Middle East.",
+              "title_en": "War in Iran: a ceasefire in the form of a strategic debacle for the United States"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "DE",
+      "country_name": "Germany",
+      "language": "de",
+      "locale": "de-DE",
+      "feed_url": "https://news.google.com/rss?hl=de-DE&gl=DE&ceid=DE:de",
+      "scraped_at": "2026-04-09T03:50:23.074225+00:00",
+      "headlines": [
+        {
+          "title": "Iran-Krieg aktuell: Trump-Sprecherin erklärt Straße von Hormus geöffnet - Frankfurter Rundschau",
+          "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxQQ1lGZTJXbm9GUWtoV3FDWmkyeW1LZmVTaXRmLUk5OWFIWUJ6alFTY2N0Ymxxa1g4aTJ5QUszV185X0xLcThxd2dnUlRoR0FKTzVCU3Z6SlVtVm5MTm1RWmpBWGR5SXo0R2NJc3I1WGlhXzc2Skc3SmRaTUVoZ2dSX3VtT1poQ2Y0ZkI0ZVJleDgzakZZOHpTZ3JFMGhIZTJHR1M0MGlYOWF1ZmxsNjdnazNhdXg4QUZSS2ZrUWlR?oc=5",
+          "published": "Wed, 08 Apr 2026 20:30:00 GMT",
+          "source": "Frankfurter Rundschau",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "The US has announced the Strait of Hormuz is open, amid rising tensions with Iran. This development is significant as the strait is a crucial oil shipping route. The situation is being closely watched due to its potential impact on global oil prices and regional stability.",
+              "title_en": "Iran War Update: Trump Spokeswoman Announces Strait of Hormuz Open"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "AT",
+      "country_name": "Austria",
+      "language": "de",
+      "locale": "de-AT",
+      "feed_url": "https://news.google.com/rss?hl=de-AT&gl=AT&ceid=AT:de",
+      "scraped_at": "2026-04-09T03:50:23.390500+00:00",
+      "headlines": [
+        {
+          "title": "Israelische Angriffe: Mehr als 180 Tote im Libanon, Iran schießt Straße von Hormus - DiePresse.com",
+          "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxPMXZhRm16Y2ZnTFVFMVprRnRwWVdudU1LendXczNkM1QwUWswbld3WGRQMEdHMTRhTlhlVjR5SnZEbG54TktmZTUzMXBtT0hzNnQ0SG9vaHJGZERhRm0tS2kxbXdqY2hKbjB6NGlKeXRuYzdWM1ZYSmlqcHR2Zl94R3dUZ181SkZWOWUyU1hORjkzZ2djX1Z2QlFlTFRBcFVNRnNDZQ?oc=5",
+          "published": "Thu, 09 Apr 2026 03:12:50 GMT",
+          "source": "DiePresse.com",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "Israeli attacks have resulted in significant casualties in Lebanon. The situation is escalating with Iran's involvement, posing a threat to regional stability. This conflict has the potential to impact global geopolitics and security.",
+              "title_en": "Israeli Attacks: Over 180 Dead in Lebanon, Iran Fires at Strait of Hormuz"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CH",
+      "country_name": "Switzerland",
+      "language": "de",
+      "locale": "de-CH",
+      "feed_url": "https://news.google.com/rss?hl=de-CH&gl=CH&ceid=CH:de",
+      "scraped_at": "2026-04-09T03:50:23.546524+00:00",
+      "headlines": [
+        {
+          "title": "Iran triumphiert: Trumps Zusage zu Zehn-Punkte-Plan sichert Verhandlungsbasis - NZZ – Neue Zürcher Zeitung",
+          "link": "https://news.google.com/rss/articles/CBMi5AFBVV95cUxOWHBUc1YwSGl5MVc2WFpwNUNIdDFBbFRqQ3QwVTZpQjZhSG5SSGFEU2FtZUFqTlJ1Ui1NajdGeUlhSTc5TnIwRTFQcngzM3FNMTJwX3A4Z0Y4QkYzRGpfMU1NTy1OTU9QTENqaXhKdVdjeWFXSzBPR1lvOXFwWG5WZzkwVDZDcThMRi1maGI2UzRfWC1sZ3JoOW40dFIwSEJoSjFvQVp2LThKOHdWWXdCTnNZaVl6NFNEVTdLQTZIQTVfR1JHaG8wdkJFekh1TGpJbEo3a3hyRFlwbUlJbGFITW1vY1g?oc=5",
+          "published": "Wed, 08 Apr 2026 09:00:14 GMT",
+          "source": "NZZ – Neue Zürcher Zeitung",
+          "categorization": {
+            "groq": {
+              "label": "International Politics",
+              "summary": "The US and Iran have made progress in negotiations with Trump's agreement to a 10-point plan. This development is significant as it provides a foundation for further talks. The outcome of these negotiations may impact global relations and security.",
+              "title_en": "Iran triumphs: Trump's commitment to 10-point plan secures negotiation basis"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "IT",
+      "country_name": "Italy",
+      "language": "it",
+      "locale": "it-IT",
+      "feed_url": "https://news.google.com/rss?hl=it-IT&gl=IT&ceid=IT:it",
+      "scraped_at": "2026-04-09T03:50:23.004421+00:00",
+      "headlines": [
+        {
+          "title": "Da Meloni a Sanchez, il messaggio dopo la tregua: «Ora stop duraturo del conflitto» - Il Sole 24 ORE",
+          "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxQMk0wTThVbkVwT0RrbWpMYlROMEJ6eXhnWHViUVFfS3I2WVVkSE9ZaGxyMG91bVVWOXFtOXlfZU5ESWhzOTV4U2pVLXE4Z0M4YV9USVlRNUVwV2ZLVmdrVkg4OWs1M2xqSEZfamRzZUJUTkpOMHNaTGFucmM1UG14ZTBzTExVem5KSDBONHplOWtPZzZRa1FTdlVvNlhTLTV6VXdOQ3NmQWpjdw?oc=5",
+          "published": "Wed, 08 Apr 2026 15:58:31 GMT",
+          "source": "Il Sole 24 ORE",
+          "categorization": {
+            "groq": {
+              "label": "European Politics",
+              "summary": "This story is likely about a significant development in European politics, possibly related to a conflict or crisis. The involvement of Meloni and Sanchez suggests a high-level diplomatic effort to achieve a lasting resolution. The outcome of this effort may have significant implications for regional stability and international relations.",
+              "title_en": "From Meloni to Sanchez, the message after the truce: 'Now a lasting stop to the conflict'"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "ES",
+      "country_name": "Spain",
+      "language": "es",
+      "locale": "es-ES",
+      "feed_url": "https://news.google.com/rss?hl=es-ES&gl=ES&ceid=ES:es",
+      "scraped_at": "2026-04-09T03:50:23.395389+00:00",
+      "headlines": [
+        {
+          "title": "La tregua se tambalea: medios de Irán aseguran que el estrecho de Ormuz fue cerrado y Teherán acusa a EE.UU e Israel de violar los términos del acuerdo - BBC",
+          "link": "https://news.google.com/rss/articles/CBMiW0FVX3lxTFBMZXlaUk9ZRVcyR25HZENlcm1XTFRQRGlsY2d6LXFXQml3RFpuMHhjMkJxanJpbTF0angxeWZCek5Ea2w1cVpkNDRDXzk2ek5nRU9kc2NfcTZ1ZkXSAWBBVV95cUxNMC1BUExVbVA4SE1oLTJXc3ZjUVQyYko3Y2ZiU0xoeF9YUnYybmhTWlNaUGJ5T3d2WEc1R2JqQjRQRktnYXVDZ1hYS2tIUEtXVlFwNm4zTUxmMnBGSzJNQmc?oc=5",
+          "published": "Wed, 08 Apr 2026 23:54:11 GMT",
+          "source": "BBC",
+          "categorization": {
+            "groq": {
+              "label": "Middle East Conflict",
+              "summary": "This story is likely about a significant escalation in tensions between Iran and the US and Israel, potentially threatening global oil supplies. The closure of the Strait of Hormuz, a critical shipping route, could have severe economic implications. The situation is critical as it may lead to further conflict in the region.",
+              "title_en": "The truce falters: Iranian media claim the Strait of Hormuz was closed and Tehran accuses the US and Israel of violating the agreement terms"
+            }
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "PT",
+      "country_name": "Portugal",
+      "language": "pt",
+      "locale": "pt-PT",
+      "feed_url": "https://news.google.com/rss?hl=pt-PT&gl=PT&ceid=PT:pt",
+      "scraped_at": "2026-04-09T03:50:23.751497+00:00",
+      "headlines": [
+        {
+          "title": "UGT está dividida, mas inclinada para um \"não\" ao pacote laboral, Seguro e TSD pedem (ainda) mais diálogo - Expresso",
+          "link": "https://news.google.com/rss/articles/CBMi8AFBVV95cUxNV20wUVN1N3VZOG5DRHNvdklBaGdVSURvV21DZWFqS01SQmNscUJTWDk5cTVQVlV1N3dOcGhtQ2tDQXpzaWNTQkJmZ0M1WDRTNDlIM1U5SkE1dENuRU1hRmNwckNzcGdBeGxwVVdVVEtEaVl6RHgtM1NJbEhON0ZQb29Hbk80MmZHU3hCX0VKTDZmVkJjeEFqMFV1ZnVJU1NDcktoOXhXUlBqSXVYTmhTZ3dObDdqV1Npd1dsNDYyWC1TRDB5QnBmR1BLSUJWVHVyNjg2cUNuazFrNWkzbkgzN3NCZ1V2MmswZGxJbk9ER3E?oc=5",
+          "published": "Wed, 08 Apr 2026 19:56:45 GMT",
+          "source": "Expresso",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "NL",
+      "country_name": "Netherlands",
+      "language": "nl",
+      "locale": "nl-NL",
+      "feed_url": "https://news.google.com/rss?hl=nl-NL&gl=NL&ceid=NL:nl",
+      "scraped_at": "2026-04-09T03:50:23.219352+00:00",
+      "headlines": [
+        {
+          "title": "Live | Straat van Hormuz lijkt weer gesloten, Trump gaat met Rutte spreken - NU",
+          "link": "https://news.google.com/rss/articles/CBMiwgFBVV95cUxQNGtZeVJ4aS1IbFFURk9ZZ0UwNjh4UlRfVm1peDVXZEotX1FEdTB4SXpFeEFmMVFFNU5wek5TUnpWdnlBekZZXy1adXdPQ244dUd2elU5a3U4QnBRbVhUWHlsaFU4ckZDTWxSYmtxNjctdnA1cklRcE1aMlh2NjE3NjVINlRvMFd3VlVFVnFoWTVXTW8wTUtjcGpDWW13ZlFaQ3lWMFY0Y3d0TDd2aUpCN1NkVGVLTFZIRU1lcFJ4UTVtdw?oc=5",
+          "published": "Wed, 08 Apr 2026 18:30:46 GMT",
+          "source": "NU",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "BE",
+      "country_name": "Belgium",
+      "language": "fr",
+      "locale": "fr-BE",
+      "feed_url": "https://news.google.com/rss?hl=fr-BE&gl=BE&ceid=BE:fr",
+      "scraped_at": "2026-04-09T03:50:24.252289+00:00",
+      "headlines": [
+        {
+          "title": "Satisfait de son cessez-le-feu en Iran, Donald Trump ressort affaibli de 40 jours de guerre - Le Soir",
+          "link": "https://news.google.com/rss/articles/CBMixwFBVV95cUxNdjRYV2dGVS1ncF9fMklMcGU3UzY0VTlkUVJBM1pDUFBqekxDTVZwVkhNdE1GakZIRGVDYmdtcXE3OUY2R1dBQWgxVmNtN0RrSGhCMkVuaGtSeXJZVGY2R1lERnhnVmVsVGtRTnp1cmZqLVJkRjdfZ3ZHNWpKbk81QVR5VUV3OVRVeEtadWMyOHFsal81RTVWdUxGODFWVDhWa2d0LW5vRTEwRm9NZm9OMkVnbjRzT2R6YlNhRU02QzB5bHZkVXYw?oc=5",
+          "published": "Wed, 08 Apr 2026 16:59:05 GMT",
+          "source": "Le Soir",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "LU",
+      "country_name": "Luxembourg",
+      "language": "fr",
+      "locale": "fr-LU",
+      "feed_url": "https://news.google.com/rss?hl=fr-LU&gl=LU&ceid=LU:fr",
+      "scraped_at": "2026-04-09T03:50:23.899873+00:00",
+      "headlines": [
+        {
+          "title": "Guerre en Iran : un cessez-le-feu en forme de débâcle stratégique pour les Etats-Unis - Le Monde.fr",
+          "link": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxQeGZtN0tSOFhsMXctRnowaUdzX0FDVGMwcGNQNm9GUS1kOXN0RWY5d0dyRkN0QWVRdU1sMzY3QWVPa2xDeTNRYmw5RW1GeXI0T1JNeTdPTzFXNUlHZ2V5MkExN2ljVEhwaGdHZHhSdF9KdENQOGM3Mnd1OGtJRW54Q252R0ZzdnIwLTVETDBScWtPWjlpcjRjMmtpcUhzR2lvcHpUVll0amJ6RE84SktEa096UFFKQmRVbjJPLUg4OWlDdGdTZEkzcXBWRWQ3YV9FYzA1UFNkQU5yb3AwazV5XzUtaHhSNm8xN01EdGNR?oc=5",
+          "published": "Thu, 09 Apr 2026 03:13:14 GMT",
+          "source": "Le Monde.fr",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "SE",
+      "country_name": "Sweden",
+      "language": "sv",
+      "locale": "sv-SE",
+      "feed_url": "https://news.google.com/rss?hl=sv-SE&gl=SE&ceid=SE:sv",
+      "scraped_at": "2026-04-09T03:50:23.756156+00:00",
+      "headlines": [
+        {
+          "title": "SVT:s Mellanösternkommentator om stängda Hormuzsundet – Senaste nytt om kriget mellan Iran, USA och Israel - SVT Nyheter",
+          "link": "https://news.google.com/rss/articles/CBMiyAFBVV95cUxQbl90b04xQ1NGeE9EaDlHQmdWT0RHdjBOSm4xWW1RWHdTUGNwaVBmRXVfcFdwRUdJRkhIdHkwdWNQX3I5clJjU2k0eHc0NHNNNUpkbEdSWkxOYnZVU3NObHJQLWdwRVJHS1F1d2ZGNFlDY3pxYmxMVTBSM2M3dHZVOEFzUGdPdGlSTDN6a3FObGp4SHlwUTY4UzJVNXY2WEdEQ01JdGtJLTRYbTFWUVZBLWs4U3U5VXUzQ2ViVExxZ3p2REZ2dGl1dQ?oc=5",
+          "published": "Wed, 08 Apr 2026 19:19:30 GMT",
+          "source": "SVT Nyheter",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "NO",
+      "country_name": "Norway",
+      "language": "no",
+      "locale": "no-NO",
+      "feed_url": "https://news.google.com/rss?hl=no-NO&gl=NO&ceid=NO:no",
+      "scraped_at": "2026-04-09T03:50:24.055019+00:00",
+      "headlines": [
+        {
+          "title": "Det hvite hus: Trump skal diskutere Nato-exit med Rutte – Siste nytt - NRK",
+          "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNX3hib05kT2RObG43bEJRZ0FtbVZ6WDdvMXBPbFkxMHlPZVR1OWZKNzNaQ19DTWFObHFZNldWYW5ZSEtkNVBHS0VVUjA3TjR6eUZEQTBOU21wZW9nQ3Z6YXkwMDdOVlZIWk51cDRLT2NHVDN0TDJLaG9fdGI1U3ZhUmdLYzFOQlFQeG9UUmQzRmxfclBZeTFnYw?oc=5",
+          "published": "Wed, 08 Apr 2026 17:59:45 GMT",
+          "source": "NRK",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "DK",
+      "country_name": "Denmark",
+      "language": "da",
+      "locale": "da-DK",
+      "feed_url": "https://news.google.com/rss?hl=da-DK&gl=DK&ceid=DK:da",
+      "scraped_at": "2026-04-09T03:50:24.056281+00:00",
+      "headlines": [
+        {
+          "title": "Det hvite hus: Trump skal diskutere Nato-exit med Rutte – Siste nytt - NRK",
+          "link": "https://news.google.com/rss/articles/CBMimAFBVV95cUxNX3hib05kT2RObG43bEJRZ0FtbVZ6WDdvMXBPbFkxMHlPZVR1OWZKNzNaQ19DTWFObHFZNldWYW5ZSEtkNVBHS0VVUjA3TjR6eUZEQTBOU21wZW9nQ3Z6YXkwMDdOVlZIWk51cDRLT2NHVDN0TDJLaG9fdGI1U3ZhUmdLYzFOQlFQeG9UUmQzRmxfclBZeTFnYw?oc=5",
+          "published": "Wed, 08 Apr 2026 17:59:45 GMT",
+          "source": "NRK",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "FI",
+      "country_name": "Finland",
+      "language": "fi",
+      "locale": "fi-FI",
+      "feed_url": "https://news.google.com/rss?hl=fi-FI&gl=FI&ceid=FI:fi",
+      "scraped_at": "2026-04-09T03:50:24.745362+00:00",
+      "headlines": [
+        {
+          "title": "Trumpin kärsivällisyys koetuksella – Vancen mukaan tulitauko on ”hauras” - Iltalehti",
+          "link": "https://news.google.com/rss/articles/CBMifEFVX3lxTE5UNjZvSjlLZlpvZ3BhOFc2U0xrYWV3QnptN29rWDVDR2NIR3RMd3RhRmJVQkhmR0JRQ3UtMmJzSzI3blotLWZwVFJ4WGRLZzBBNTkwREFBUWN5b3FtODUtVEZWLUdCN0poNXVkSE5PU1Jfam1SakhnX25BQVU?oc=5",
+          "published": "Wed, 08 Apr 2026 21:12:39 GMT",
+          "source": "Iltalehti",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "PL",
+      "country_name": "Poland",
+      "language": "pl",
+      "locale": "pl-PL",
+      "feed_url": "https://news.google.com/rss?hl=pl-PL&gl=PL&ceid=PL:pl",
+      "scraped_at": "2026-04-09T03:50:24.418801+00:00",
+      "headlines": [
+        {
+          "title": "Rozmowy USA z Iranem. Wiadomo, kto stanie na czele amerykańskiej delegacji - PolsatNews.pl",
+          "link": "https://news.google.com/rss/articles/CBMiqAFBVV95cUxPSURubThsM3Bma2tWTzcyeno3UTRmTzNGUUVLOVJZZW1tUi1zYUJXY2xNUnNpcUdSdGpjN2pFYklDZG9lbGZtMnZVNlFLZGJnWmxhRVNodHozT0E1Wm13bnlOSTJQbDByX1lxbC1wTGxYaXY5MmZxYldPMlpSbHFyRkJDYnk3QTJ3TU5RQkhla1RPTnRUQXlYM016V09KWE9YTlVCZHpfQ1g?oc=5",
+          "published": "Wed, 08 Apr 2026 17:49:00 GMT",
+          "source": "PolsatNews.pl",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CZ",
+      "country_name": "Czech Republic",
+      "language": "cs",
+      "locale": "cs-CZ",
+      "feed_url": "https://news.google.com/rss?hl=cs-CZ&gl=CZ&ceid=CZ:cs",
+      "scraped_at": "2026-04-09T03:50:24.416246+00:00",
+      "headlines": [
+        {
+          "title": "„Naprosto skandální.“ Vance se v Budapešti pustil do Zelenského - Novinky",
+          "link": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxQb1Jvd05NeTVmMlpBeHRaRVlxZVk0NTUwcjJTSFFoOWlqVmxyQlFhNmNEV3VwajFlX2Utd29xNllIQlozV2s3Z2dfWDltZTUyaXA5Umh6QXlHaHZZR21aUDNWOTZUcHVmdkVLTklpYkdwaThSazNPc3pnVGVISGxoME95aXRvcVp1S3hPdGVzc3otWTRucGdPOFpESDE2ejVCTTRYaDYzWGg2VVBiTUZFbmNkODMtZGtn?oc=5",
+          "published": "Wed, 08 Apr 2026 18:18:05 GMT",
+          "source": "Novinky",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "SK",
+      "country_name": "Slovakia",
+      "language": "sk",
+      "locale": "sk-SK",
+      "feed_url": "https://news.google.com/rss?hl=sk-SK&gl=SK&ceid=SK:sk",
+      "scraped_at": "2026-04-09T03:50:24.236522+00:00",
+      "headlines": [
+        {
+          "title": "Prímerie s Iránom vyzerá ako fiasko pre Netanjahua i Trumpa (komentár Zola Mikeša) - Aktuality",
+          "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxOeUhZVk5VMDdpRGhNRlVYc3FneEFrZW5BS1hLZjBPRTdMVFVBVGNwdmxod0RrcFFid0l3R2prU0tlNUFsZFhXNnlVMi0ySEllRGlxY0dJVVE4QmlrSmRkNmxCSkhBYmJ3RUk5RTA3Q3dkc3U0aTNBZE9zU3hSWjZLeWxOS19TSnVTNTlvZk1xVlNYSzRRMDJkY0NFU2dFbl84TmFCa2RPTlFTN3dXdlpQZ2ZobFBWcHQtb0hvWnpB?oc=5",
+          "published": "Wed, 08 Apr 2026 14:30:00 GMT",
+          "source": "Aktuality",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "HU",
+      "country_name": "Hungary",
+      "language": "hu",
+      "locale": "hu-HU",
+      "feed_url": "https://news.google.com/rss?hl=hu-HU&gl=HU&ceid=HU:hu",
+      "scraped_at": "2026-04-09T03:50:24.784511+00:00",
+      "headlines": [
+        {
+          "title": "Nagy a baj: Irán szerint Amerika megszegte a megállapodást, így pedig nincs értelme a tárgyalásoknak - Portfolio.hu",
+          "link": "https://news.google.com/rss/articles/CBMi4gFBVV95cUxQQUZUdzhsMWVjRGxDVGRmVXRKNmQ1bWNvTWc0YTZwT2NrYkI2RmhfMEdESFVWTU4xbEVEWmxVQ2JnaURPSVZmSEZaUjE1c3BWZlJfTmVRdTBrcWdtWUdiTHoyaXlKU3NkM3lKODZJSEd5SUxxejhMRTdMQ2NpelB1UzBSNENxWHdxdk1yUXlmeGRPVE04ZkZwQ3h3QWJFVXpPU2NwcGVVVVZQSk9peTFSQi0tNkRWSnoyZHRVZ3I0ZDlkNnplaWFSU3pyN3BQMEphdTJRS3JyeGF6R1I0el9hZnVn0gHnAUFVX3lxTE1jdU15MDZwZzBSSW9VOTE5REVEUVVkcmdUZ2JzZU4tbzczZnRYckpGaFRwWkJhLUNGYWFpTjRjamlsdjZUSUxfUE95Q3JfenJJcnNNSkpTRHlOSUpuZXNEMzJXMXUzYkpYSm91a0llY0hNdGFncmxTMUhVcjk3WGRWVXNQaU90WUtmbFV3eDctS25FdFhReGVhaUZjdF9PMkN2dWlIa1BCRTNBakk5S01JRWZBbm9PWjZOV2dEaVo1VTFZMnBROVNzbnd0NmxOOTdxWG5vWXVYRE82UDA2bmJrZGFkbFc2QQ?oc=5",
+          "published": "Wed, 08 Apr 2026 18:59:00 GMT",
+          "source": "Portfolio.hu",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "RO",
+      "country_name": "Romania",
+      "language": "ro",
+      "locale": "ro-RO",
+      "feed_url": "https://news.google.com/rss?hl=ro-RO&gl=RO&ceid=RO:ro",
+      "scraped_at": "2026-04-09T03:50:25.768905+00:00",
+      "headlines": [
+        {
+          "title": "Război în Orientul Mijlociu, ziua 40. JD Vance: „Ar fi stupid” ca negocierile cu Iranul să eșueze din... - Digi24",
+          "link": "https://news.google.com/rss/articles/CBMihAJBVV95cUxQNDExcWdPQlBGQUxzbDlSOTlaMUhIMC1xWlJHNm9VMnd6STdfWVJ3WDNPaTl3VWZsMmd5cHVDN1NHUzRlQVZERVpSYXNiYjFnUkVzZ0dEeUU3dzY5TEo4cXpCR0RMenF0YVdvandmRlVOR3hzNUlNeHpOODRwVDF6WFUzM2tabkJ1c09Hd3JUQzNUUHlmbVlWX1c4cWxNbmxDQTh1RnVGN2I0aG1SbU5KazVXWUc4Y0ZMU0ZvX3N2M0xrUlF4bnQtb1Z1TDJIWXJ6bFFRWXMybFNENm41UGlvTXd2S2JrOERYWUhMY1h1aVN4VGpzeXhQVzFtTXhBaTlpZGt6eA?oc=5",
+          "published": "Wed, 08 Apr 2026 19:49:50 GMT",
+          "source": "Digi24",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "BG",
+      "country_name": "Bulgaria",
+      "language": "bg",
+      "locale": "bg-BG",
+      "feed_url": "https://news.google.com/rss?hl=bg-BG&gl=BG&ceid=BG:bg",
+      "scraped_at": "2026-04-09T03:50:24.781986+00:00",
+      "headlines": [
+        {
+          "title": "Мощни израелски удари срещу Ливан, съобщава се за стотици жертви - БНТ Новини",
+          "link": "https://news.google.com/rss/articles/CBMisAFBVV95cUxPS2NjMWQzZ01wdmRWSWFDcjJVclhPX1NHQXk3UHlRLTM2cmxZNXpVMWhJNWpJUllLSkc1QkhoT2VHTW9seWRyMmY3YlRWRmMySndmaDNVUG51U3ZLYk9GSmo5RlNIMlNzOVdRb0hOZHJrMkhRLWg0NG9kWGZqTVNCRDd0WE1XalktcFV5NWViMHlyeVpSSlVZTjBEWjZKaGN0VlBtS19HZzR0Z3dCUTFXWA?oc=5",
+          "published": "Wed, 08 Apr 2026 14:47:02 GMT",
+          "source": "БНТ Новини",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "HR",
+      "country_name": "Croatia",
+      "language": "hr",
+      "locale": "hr-HR",
+      "feed_url": "https://news.google.com/rss?hl=hr-HR&gl=HR&ceid=HR:hr",
+      "scraped_at": "2026-04-09T03:50:24.421463+00:00",
+      "headlines": [
+        {
+          "title": "President Trump’s ceasefire with Iran draws praise from world leaders - Fox News",
+          "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPNzlkeW5RWXFGNmgzMkZFbDhJbkJSdHA5RXA3X1ZlSGJFeTVzTzVJZUJLMHBpRG9pVFR3YTdVUzJhcTdib0FScl9xZnhnM1daQlRZZG5NRkRDYjZranlDNS1GV0dWSFNyZ2l4U2RmQzYycE84VlJybDRnYl9iSDFELUs0blNjS1VSNlJtT0RaREtUZmxSZGZOUC12ZWZQWXdHUm1rYmRXWHZOQdIBrwFBVV95cUxNWG9xNk5USVZ0eE9aU3h4ZDBBRmxRYmlSU0EtSjBVMm93ZjRzVGJ0bmtJd0xTLUFLS0xpSElWd25LU0pValM5aDB3b04yV2FUN0hHc0MyZ2pENE1vVGEwemthRmxvTnlXLXRxSGw1MVltb1dMS3ZhYzBaQmJ1QWhJRnktbHZOWXhRR0s4QjdsMkh2SFpzRzdNaDBYT3JnWm94T0t2QnVDV1k0TEdkalcw?oc=5",
+          "published": "Wed, 08 Apr 2026 22:28:09 GMT",
+          "source": "Fox News",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "SI",
+      "country_name": "Slovenia",
+      "language": "sl",
+      "locale": "sl-SI",
+      "feed_url": "https://news.google.com/rss?hl=sl-SI&gl=SI&ceid=SI:sl",
+      "scraped_at": "2026-04-09T03:50:24.747084+00:00",
+      "headlines": [
+        {
+          "title": "Han po sestanku pri Golobu ni optimističen, Levica ne želi sodelovati v vladi z NSi - N1 Slovenija",
+          "link": "https://news.google.com/rss/articles/CBMivgFBVV95cUxNTFMwelZGc2M5Q0N6ODhoeTlsWkl1ZjBDQWs4Y0lsbHVjWlo5Uk5LQ2k1T2VIdUUzdUg4YzQ3aFlDUHZUSHBSMFNGMktVRUdNekdRTEJBbi02SU9ucmtWS2FBWDR5MzRoZ20zTXdvaTVEWVNjNl83Rm5hUktFaGZDeWwwcE9RX1hlSmVfNFRSTDVfVkwxVmd5QXMxS0Z5VmlBbnFFWmFpRU4tR3ZPMW5vOEhoRmZ6a0owQ3l4aXJB?oc=5",
+          "published": "Wed, 08 Apr 2026 23:04:45 GMT",
+          "source": "N1 Slovenija",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "RS",
+      "country_name": "Serbia",
+      "language": "sr",
+      "locale": "sr-RS",
+      "feed_url": "https://news.google.com/rss?hl=sr-RS&gl=RS&ceid=RS:sr",
+      "scraped_at": "2026-04-09T03:50:24.924456+00:00",
+      "headlines": [
+        {
+          "title": "Dogovoreno dvonedeljno primirje: Otvaranje moreuza Ormuz, SAD se obavezale da ukinu sve sankcije Iranu - Danas",
+          "link": "https://news.google.com/rss/articles/CBMidEFVX3lxTE9lYzRjNG0wUWNDWDBMTkw3RVktcW1zMDhPRXRwTjR2a3JNc05DZDVLdkpoWThzRVBlY01EZkpRRFdlVnFxckc5S3NneTVFWk1XQmo0T204aUstTjd6bU9EVHRnXy1uSTUtLXplMmRERXZ3VVFo?oc=5",
+          "published": "Thu, 09 Apr 2026 01:31:04 GMT",
+          "source": "Danas",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "UA",
+      "country_name": "Ukraine",
+      "language": "uk",
+      "locale": "uk-UA",
+      "feed_url": "https://news.google.com/rss?hl=uk-UA&gl=UA&ceid=UA:uk",
+      "scraped_at": "2026-04-09T03:50:25.110256+00:00",
+      "headlines": [
+        {
+          "title": "У Трампа кажуть, що його \"червоні лінії\" у вимогах до Ірану не змінились - Європейська правда",
+          "link": "https://news.google.com/rss/articles/CBMiakFVX3lxTE1PMmN3cVJkdWNaNS05NndrTDhQQUg4UFdRa21UTEZ6MzB4by1rekJJZUtxeUowT1Bab0RiSkxEdzRiNl8ta2tMQl96dkpzNF9CWGliRXE0SFdkN0lXY1BFQnllVlhrclIyM1E?oc=5",
+          "published": "Wed, 08 Apr 2026 18:33:36 GMT",
+          "source": "Європейська правда",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "BY",
+      "country_name": "Belarus",
+      "language": "be",
+      "locale": "be-BY",
+      "feed_url": "https://news.google.com/rss?hl=be-BY&gl=BY&ceid=BY:be",
+      "scraped_at": "2026-04-09T03:50:25.113446+00:00",
+      "headlines": [
+        {
+          "title": "Уиткофф и Кушнер отправятся в Пакистан на переговоры с Ираном - Интерфакс",
+          "link": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE1mbVQ2bm1vOVBRQ1RfbWtKdzFfRUVYQ2pVUzhaekVIcl9GUjAxT3NTcm5TWDRlcldOWjNlcWhQbXNLUk9zMlRlMGM4MTRlUdIBS0FVX3lxTFBod2pscWlTbEFUTGUwUGkyS0dZMHhrVFFweE9aTnpKMFhRZzNNTGNrNkFfdlR4cVFQNEs2Ry1qNkpXVU1vU3RpOHJIRQ?oc=5",
+          "published": "Wed, 08 Apr 2026 15:15:44 GMT",
+          "source": "Интерфакс",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "LT",
+      "country_name": "Lithuania",
+      "language": "lt",
+      "locale": "lt-LT",
+      "feed_url": "https://news.google.com/rss?hl=lt-LT&gl=LT&ceid=LT:lt",
+      "scraped_at": "2026-04-09T03:50:25.262496+00:00",
+      "headlines": [
+        {
+          "title": "Trumpas per susitikimą su Rutte aptars pasitraukimą iš NATO: „Gana liūdna“ - tv3.lt",
+          "link": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxOMEpnV0tGZ1RodDUwelNVM28wWVFLZ091bi1sVzNybGpMNjI4ODJpX1lzYTc4enJBR0lGNjdtVHYwTDBrZ24xWDJlVG1ZMFhnZFdfRV80MTdYQW04UEZNZXlMTy1xMVpQZGM4S3g1dGYxS29lT0JyTGwtaHhYOGJjb2twY0c4Tk9ZREJyZHhZY2hZa3dIT1h2X0ZoQXY1TE1TT1o0aGh1RXh5Z21lQlFaU0pBMU9FM3Jm?oc=5",
+          "published": "Wed, 08 Apr 2026 18:52:42 GMT",
+          "source": "tv3.lt",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "LV",
+      "country_name": "Latvia",
+      "language": "lv",
+      "locale": "lv-LV",
+      "feed_url": "https://news.google.com/rss?hl=lv-LV&gl=LV&ceid=LV:lv",
+      "scraped_at": "2026-04-09T03:50:25.077465+00:00",
+      "headlines": [
+        {
+          "title": "Politiķi pamanījuši: Degvielas cenu straujās svārstības rada aizdomas par negodīgu konkurenci - nra",
+          "link": "https://news.google.com/rss/articles/CBMirwFBVV95cUxQckRVcjM1YWlabUIySEt6aG1HMElSTE9mejA2VU5WUUE2LWFTaUpIc19nUnRkcnFlWWFqSHd5OFZrRTVVaFN1RWlDME5YWWJ3WElkS1JaSWFRLWJpelFGRTVUUnc4dUhsbW5lbld4aUE4V1NuV2pKaDgycDRveTFSNUFLM2JDVXpucHZVTUhOcEVQX2hHUmxRazhkbkNMNng2OVFLcFQzQUxPcE9xR01N?oc=5",
+          "published": "Wed, 08 Apr 2026 16:29:00 GMT",
+          "source": "nra",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "EE",
+      "country_name": "Estonia",
+      "language": "et",
+      "locale": "et-EE",
+      "feed_url": "https://news.google.com/rss?hl=et-EE&gl=EE&ceid=EE:et",
+      "scraped_at": "2026-04-09T03:50:25.441535+00:00",
+      "headlines": [
+        {
+          "title": "Relvarahu Iraaniga aitas saavutada USA asepresident Vance, heakskiidu andis ka Iraani juht Khamenei - Delfi",
+          "link": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxQbnRkUFc1VDQzWGx0bzhNdlBOVUJnRWVuT2tkejhTbUxQaEMtOTlIcVpqSHdNajNXMWtNUVU0ejBIalh2WlFQVkNraXdHamxUSFBFc2RhOHpZNDZQcG0xY3ctdnctWEd3MVVnRjJtSHVZVEFSUHFmcHJSeXVPY3VNdWU1NUJydVZJalhRT3Nyak5sM1VkVFNmYUVlQWs5TGFJTkV1TmF0UkZxQ1MtTmZScWlfazBnOXpvMnNSVmdSbi1WMzBFbFVuSXRLNGQ2NmxIeDR4UQ?oc=5",
+          "published": "Wed, 08 Apr 2026 10:38:38 GMT",
+          "source": "Delfi",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "GR",
+      "country_name": "Greece",
+      "language": "el",
+      "locale": "el-GR",
+      "feed_url": "https://news.google.com/rss?hl=el-GR&gl=GR&ceid=GR:el",
+      "scraped_at": "2026-04-09T03:50:25.593584+00:00",
+      "headlines": [
+        {
+          "title": "Live: Στην κόψη του ξυραφιού η εκεχειρία – Κατάπαυση πυρός στον Λίβανο ζητά το Ιράν, με σοβαρές συνέπειες αν παραβιαστεί η συμφωνία προειδοποιούν οι ΗΠΑ - ertnews.gr",
+          "link": "https://news.google.com/rss/articles/CBMimwJBVV95cUxORmNwRXRjRzNtNW9IVlRENHVoMEFfQ3JXaDk5N3JDQlFQa0VXeUJFSk5WS2ppSXNPQURQRDVETDZGeVByU0FmTzQ5ajU1VnRMVXVlaFZQV2paalhiSE1RNF8wdTl6QVhRTklWWUFaaEVHUmJ2Z1htbUd4aDYwWlFTWGpobmVEZXIxYm5LQ3AtblBQUThNZjcyZzMzaExzcW83X3RUbXA0YWZjMDgtVDlpaEItUXFxcEpLeEl3TTduX3J3aUIxVE1YSDZLaHRiTjY5dVZ3amd2YXNJYmt3M3NZZGhZMF9BN0E2TVdDUkRDajhRc3U0emZHT0Vic25SYUM5ZUZrZER1c3V5a2dRUHlBTElKdTZjZkxscFRn0gGgAkFVX3lxTE9Ha1BkbWp5d2RqTFlPeTdmNE4xYm1KRFRSa2U1ODFaU0wzUlVIQmVqcE93aTN1RVFncWJLOG0wOHZHUTBnR2ljVlctQTl5NVN1NUpoRGx6SG9HSmk2UXEtTWxUV1EtQTZTREpzREY0YUJMT1Uxb25NSFhoTHdHaUk4M1ZtTHBTVU5rMEJlVHU1aTFqdFNYUmJlNDZlaER1SGgyUHZzenR1RTB0SFZ4N3J4dm5YZngzWUJ0WWJ5a3RCTHJ1RC1SYmc5OHlJdGpwU09abUd1aDNhRXNwWkVmSXVXQzFfODJDY1p5elN1U3pfdFpVYjNmRnNOQ25lQ1J2ZGVPcmtETWxWdWV5LWw5cWlwLVBkM1J6UTRLWExVWS15Wg?oc=5",
+          "published": "Wed, 08 Apr 2026 21:44:00 GMT",
+          "source": "ertnews.gr",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "RU",
+      "country_name": "Russia",
+      "language": "ru",
+      "locale": "ru-RU",
+      "feed_url": "https://news.google.com/rss?hl=ru-RU&gl=RU&ceid=RU:ru",
+      "scraped_at": "2026-04-09T03:50:25.257855+00:00",
+      "headlines": [
+        {
+          "title": "Уиткофф и Кушнер отправятся в Пакистан на переговоры с Ираном - Интерфакс",
+          "link": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE1mbVQ2bm1vOVBRQ1RfbWtKdzFfRUVYQ2pVUzhaekVIcl9GUjAxT3NTcm5TWDRlcldOWjNlcWhQbXNLUk9zMlRlMGM4MTRlUdIBS0FVX3lxTFBod2pscWlTbEFUTGUwUGkyS0dZMHhrVFFweE9aTnpKMFhRZzNNTGNrNkFfdlR4cVFQNEs2Ry1qNkpXVU1vU3RpOHJIRQ?oc=5",
+          "published": "Wed, 08 Apr 2026 15:15:44 GMT",
+          "source": "Интерфакс",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "IL",
+      "country_name": "Israel",
+      "language": "he",
+      "locale": "he-IL",
+      "feed_url": "https://news.google.com/rss?hl=he-IL&gl=IL&ceid=IL:he",
+      "scraped_at": "2026-04-09T03:50:25.444124+00:00",
+      "headlines": [
+        {
+          "title": "דיווח בלבנון: חיל האוויר תקף בדאחייה - ynet",
+          "link": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE82bHFLSG1GTkRNRWwtR3lFbC0wbElOYU9TQnJKclR1RkVGZVcyRFRfd0RFZXFRcFVKRkRMQkk1MC1LREV4T1d5NWdwQWhiWUR2VWRVLXJwRnVoSmc?oc=5",
+          "published": "Wed, 08 Apr 2026 22:29:53 GMT",
+          "source": "ynet",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "SA",
+      "country_name": "Saudi Arabia",
+      "language": "ar",
+      "locale": "ar-SA",
+      "feed_url": "https://news.google.com/rss?hl=ar-SA&gl=SA&ceid=SA:ar",
+      "scraped_at": "2026-04-09T03:50:25.437200+00:00",
+      "headlines": [
+        {
+          "title": "الأمم المتحدة تدعو إلى تحقيق في الغارات الإسرائيلية على لبنان - العربية",
+          "link": "https://news.google.com/rss/articles/CBMixwRBVV95cUxON2JsX2kzU1Vld3Q1TGttVGxLZkRVcHJJWE03N3JRd1VBQm95Rzl6elZqd1h4OTh2ck9LUVZ5WVZKUXNFUEFpcXVNZzBSQ3c2OXhCaXlqWG45NEM0dXdJdXJZSnctMnZBdUpVMm1NVDBseFV5cUQtSzU2a25GMEtmdXNDdkQyblh2ZTRTUE9Ic2NtNHBJbHFxQlJuckF2c3hTN2cza05XeWlmTlBsellwbGplZmVudXF1Z2ZVRHdxOFJsRVNvUU9UUnZXbXU4Z1NkMUpxbVY3ODRVVmIzaFhDb2VYVlRVeU9WOUx1M21KSHFJQWdSV0Q1SXRPUmlnWGE3X2tybnk3VjVLZTA2ZF9uOEJCWUJDMFVjd3dlTm1VMjRMOFhSQ2hkR21OVDFHVGpYNkE0bllELWdMZjJnQXU5SUxsNk9PR2l5dE1Cb0FDRFhxdVN1MXhFREFic3RzeVYycWxUZUdpUnNnUHNJNVJzNmFidlNSMzEzajZ1RnFoaFJESWVrbkNqQ0FFVlpXQVpleHRIMERWMDZfRzNDTnE4ckZyVGx4TFB5ZTZhOHNxVmEzMl9wUUhwazlRTnJfcXA4VURZX2ZvTGxIVGllU2tOT250MVhYY2QyeUFONHpWYXJLTXRjUkpmaVBXOGp4YWtGaE5vUDkzY29UNVFmR25wOUtwUDVSbEdIaG1jRFZuaVpkaDAtSmZQMEZoaWNHM3pUVklBdlpHU2V4dzg1OGhjd19heHltMUVMeU1HTGl2Z3JQUFRiVkpn0gHMBEFVX3lxTE1GdlFucnBtdm11R3dHekxiRm5RcmowdFd0cXFob1hoemhQdUw5LUU0bEhzS2k1WERpcGNXSlY5R3lWRzBlZ1JZTEF1VzNoNDJGOGxkMDlpb21kQmNrby1TNkdVN083TXRBbXR4NkRkTDFaOE9JTFpqQ1JZazc2bGx0OVZ3UTNoRUZ1d3Y0UXpkQ0RMblVxbU1IX1lSOWFFTkQ1TUNDWmoybGluMzcxeVp6ckt3bloxekJDaE5YX2Z4UkN6TUlnTnFJTUlTTDRZc0tYZHB4Rzg5TWZNQ01KSEFjdDZ6NWpkN0dSWkNLZ0RUeWtyZWJNd3RTWE93S1VXSEtTb1FGQzkwN0puX3AtS3o3ckh3b3lKZXVlNTM4cTBiUWxvYVZpVEVBT3JLX3FmQjJEX0FrYV9XeThZNlRVN0cyNDZyd2tCZExEQmdOVWRtc0RSOGttTDdXSU1Ca01vV3ZZOXVNN2NaLWctS1haZVNoYl92LTh4cFhlMHZQN3NsaEhEMmtvTXY0TW0yLVZhbEU5aWZNelgzekVhb1JmZEZiQ2hXajg2dXhrS19HQmZoaEk1MHFzTGZfVE9YSFlVZmFnaXo4aF9jX0hiN0F0eUw3bE5XbnE1ckwwVW15MTdvbHdMbWRIeUJGSEFSZDF6M1NjQzNYNm9Xcm0ybm1wclRubWRIY3ZPZGRNWEU1Wkcyajhpc3Ftd2Ntc1hRQS1XRk1vTkN0eFZCM2pFTFJ1U3ZydVZoYlBZWUhIVVZwUDh6YS1wOTJUVlM5a2wxQg?oc=5",
+          "published": "Wed, 08 Apr 2026 19:54:00 GMT",
+          "source": "العربية",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "AE",
+      "country_name": "United Arab Emirates",
+      "language": "ar",
+      "locale": "ar-AE",
+      "feed_url": "https://news.google.com/rss?hl=ar-AE&gl=AE&ceid=AE:ar",
+      "scraped_at": "2026-04-09T03:50:25.942647+00:00",
+      "headlines": [
+        {
+          "title": "بزشكيان: وقف النار قام على قبول وجهات نظر إيران كمبادئ أساسية - Anadolu Ajansı",
+          "link": "https://news.google.com/rss/articles/CBMihwRBVV95cUxOdXhydl9SVHQ2cXlqNjFCZWdZVERNLUVyck42eGs2RlFfc3gyQThHMFhMclhsX2kyNGY0YU8zZHFPSll6UVRFbGg3VkVVb1AwVzVBSnpkbFNHQTBzWGY2S0hJS0xYT2dQb0hncWxEZWw4WXBPQW0wOUhqdFVjQ3FkQU1zajMxVklzdkNPQ3Z6WEp0MjA3RVlaWnItRkdRYVFPdXJFX3hLSlZBNmEyZy16b0ZsY2I4NXZuSEFNX3hTMk5kcGZSN1IzdWhtQzIwVjZBcTNBbzd3UVhOR2d5OTVSdWRPdFNTLTc5cUQ0MGdQWkg0cjBncVh0bFlaVmxlNmdRWWZqNUU2R0RvREFpdkpTNE5uSkVvdzRKb2FKZEo4VDR1WHVHTGRfOGoyM2p4VmY4OWMzXzV1cXRHd3ZudUFocm5PZVdOeW44c19lbEhYSTlfbGt6T0VlY2lwQ1pocG8yNjV1TlVXUUF5ZEhxRXJ1MXk3MXc2RURUQ1p3MXQ0M0ZiczJTNl9GNUl5VE9xLTlGQkkzX1hUNG5YUzk3TjNxR05FdGxlTm4ycm5OOEZ5ZEtBcUl6eXgtYkRUZ0VSU0NKOU9TVzVySHQyMXRxUEFMYVFYS1I4VHV3N3o0VDlGZGg2dExMQXJybHd0cGJReW9taHhnS1RBZ1c4aFlKaGs0ZER2TVhzZWs?oc=5",
+          "published": "Wed, 08 Apr 2026 11:52:44 GMT",
+          "source": "Anadolu Ajansı",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "EG",
+      "country_name": "Egypt",
+      "language": "ar",
+      "locale": "ar-EG",
+      "feed_url": "https://news.google.com/rss?hl=ar-EG&gl=EG&ceid=EG:ar",
+      "scraped_at": "2026-04-09T03:50:26.731913+00:00",
+      "headlines": [
+        {
+          "title": "البيت الأبيض: إيران وافقت على فتح مضيق هرمز - سكاي نيوز عربية",
+          "link": "https://news.google.com/rss/articles/CBMi3wJBVV95cUxNTnkybnduY3pHQThZX00zN3BwbzdCM3hlcHlpZ0xhMEZkQlZlc1Y0ZnQ4Y2pKWHdrV19XekdYLWVDbmNuYlhxRFljZXhDYVFrdHZ6aFlJaTFJYkV0WlZtNE5ZenNxbXRFVnpDZGVGUzF5VXVQQmdSaFlJWTV1QzFhVG5iRVBWd09JQXk5TUVCRWZaZXBLX3QzNXZWV1NZczNFa0sxMWZaR0hSSmxRZENweFU4cktncl95amNYelJsMEZ5NUdzZmdGeS05RThnTXEyVTBCVFFHNWNDaTBaY1BKeFVNOXZvTXF5aVRUMm9MYWlfZHdwb1B3YnFGcEl3cGw4QVE3U1pKYndha1lOSWdPdEtBaHl4N2Z0TVh6TWlFYnBmQURNalFBbHR6Y2UtNldJMG5QQ0Rodi1sdXRxR29DZVgtRm1hVHA5MkMwblpLUXhLS3I1SFowVnF5MlNqNlHSAeQCQVVfeXFMT0ZUWGJLNTJsX2hfbjNyNFdZaWdrZ1NEWWduX2NMX29oSjlOeTB4WmpjaWVmYUF3YTdJdzVSSFlBYzdZOTJCeEpZcEJtSEV4OWh0UHBqNTFsVE5zNmVRZUdtZXpBZlN6X2xBZHpJR19HeXRCOFFHejlrMTlJYVRLVHA4ZnFZMkx0MS1uOEp0SFZ4NnN6ZGg0SnMyc3liSmZiclo2NzFsZFh2cTVVai1EVHpZQUNqZlpETG05ZFU2OUtwMkZ1WGpabGFXR3BvVTNQYk5kVmZWNUxlSUIyTU14Zy1McGdzWUFFemJNZHdTbllZUzRHUjFDUVZvcmN2ZTk3MDRZS1c4ZXl4X3pldTM3Vi1JVklXbEhOOV9pTzRVN0tSeGZta0NhN01GemRscWNONmRmclR6T0twRTNmZEZ0aHVLRGo1b2NwSEFYbGNHM01BeGxJSGVBMXJDT1pVQjlKNUhxalI?oc=5",
+          "published": "Wed, 08 Apr 2026 18:27:08 GMT",
+          "source": "سكاي نيوز عربية",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "IQ",
+      "country_name": "Iraq",
+      "language": "ar",
+      "locale": "ar-IQ",
+      "feed_url": "https://news.google.com/rss?hl=ar-IQ&gl=IQ&ceid=IQ:ar",
+      "scraped_at": "2026-04-09T03:50:25.948666+00:00",
+      "headlines": [
+        {
+          "title": "البيت الأبيض: إيران وافقت على فتح مضيق هرمز - سكاي نيوز عربية",
+          "link": "https://news.google.com/rss/articles/CBMi3wJBVV95cUxNTnkybnduY3pHQThZX00zN3BwbzdCM3hlcHlpZ0xhMEZkQlZlc1Y0ZnQ4Y2pKWHdrV19XekdYLWVDbmNuYlhxRFljZXhDYVFrdHZ6aFlJaTFJYkV0WlZtNE5ZenNxbXRFVnpDZGVGUzF5VXVQQmdSaFlJWTV1QzFhVG5iRVBWd09JQXk5TUVCRWZaZXBLX3QzNXZWV1NZczNFa0sxMWZaR0hSSmxRZENweFU4cktncl95amNYelJsMEZ5NUdzZmdGeS05RThnTXEyVTBCVFFHNWNDaTBaY1BKeFVNOXZvTXF5aVRUMm9MYWlfZHdwb1B3YnFGcEl3cGw4QVE3U1pKYndha1lOSWdPdEtBaHl4N2Z0TVh6TWlFYnBmQURNalFBbHR6Y2UtNldJMG5QQ0Rodi1sdXRxR29DZVgtRm1hVHA5MkMwblpLUXhLS3I1SFowVnF5MlNqNlHSAeQCQVVfeXFMT0ZUWGJLNTJsX2hfbjNyNFdZaWdrZ1NEWWduX2NMX29oSjlOeTB4WmpjaWVmYUF3YTdJdzVSSFlBYzdZOTJCeEpZcEJtSEV4OWh0UHBqNTFsVE5zNmVRZUdtZXpBZlN6X2xBZHpJR19HeXRCOFFHejlrMTlJYVRLVHA4ZnFZMkx0MS1uOEp0SFZ4NnN6ZGg0SnMyc3liSmZiclo2NzFsZFh2cTVVai1EVHpZQUNqZlpETG05ZFU2OUtwMkZ1WGpabGFXR3BvVTNQYk5kVmZWNUxlSUIyTU14Zy1McGdzWUFFemJNZHdTbllZUzRHUjFDUVZvcmN2ZTk3MDRZS1c4ZXl4X3pldTM3Vi1JVklXbEhOOV9pTzRVN0tSeGZta0NhN01GemRscWNONmRmclR6T0twRTNmZEZ0aHVLRGo1b2NwSEFYbGNHM01BeGxJSGVBMXJDT1pVQjlKNUhxalI?oc=5",
+          "published": "Wed, 08 Apr 2026 18:27:08 GMT",
+          "source": "سكاي نيوز عربية",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "JO",
+      "country_name": "Jordan",
+      "language": "ar",
+      "locale": "ar-JO",
+      "feed_url": "https://news.google.com/rss?hl=ar-JO&gl=JO&ceid=JO:ar",
+      "scraped_at": "2026-04-09T03:50:27.427489+00:00",
+      "headlines": [
+        {
+          "title": "البيت الأبيض: إيران وافقت على فتح مضيق هرمز - سكاي نيوز عربية",
+          "link": "https://news.google.com/rss/articles/CBMi3wJBVV95cUxNTnkybnduY3pHQThZX00zN3BwbzdCM3hlcHlpZ0xhMEZkQlZlc1Y0ZnQ4Y2pKWHdrV19XekdYLWVDbmNuYlhxRFljZXhDYVFrdHZ6aFlJaTFJYkV0WlZtNE5ZenNxbXRFVnpDZGVGUzF5VXVQQmdSaFlJWTV1QzFhVG5iRVBWd09JQXk5TUVCRWZaZXBLX3QzNXZWV1NZczNFa0sxMWZaR0hSSmxRZENweFU4cktncl95amNYelJsMEZ5NUdzZmdGeS05RThnTXEyVTBCVFFHNWNDaTBaY1BKeFVNOXZvTXF5aVRUMm9MYWlfZHdwb1B3YnFGcEl3cGw4QVE3U1pKYndha1lOSWdPdEtBaHl4N2Z0TVh6TWlFYnBmQURNalFBbHR6Y2UtNldJMG5QQ0Rodi1sdXRxR29DZVgtRm1hVHA5MkMwblpLUXhLS3I1SFowVnF5MlNqNlHSAeQCQVVfeXFMT0ZUWGJLNTJsX2hfbjNyNFdZaWdrZ1NEWWduX2NMX29oSjlOeTB4WmpjaWVmYUF3YTdJdzVSSFlBYzdZOTJCeEpZcEJtSEV4OWh0UHBqNTFsVE5zNmVRZUdtZXpBZlN6X2xBZHpJR19HeXRCOFFHejlrMTlJYVRLVHA4ZnFZMkx0MS1uOEp0SFZ4NnN6ZGg0SnMyc3liSmZiclo2NzFsZFh2cTVVai1EVHpZQUNqZlpETG05ZFU2OUtwMkZ1WGpabGFXR3BvVTNQYk5kVmZWNUxlSUIyTU14Zy1McGdzWUFFemJNZHdTbllZUzRHUjFDUVZvcmN2ZTk3MDRZS1c4ZXl4X3pldTM3Vi1JVklXbEhOOV9pTzRVN0tSeGZta0NhN01GemRscWNONmRmclR6T0twRTNmZEZ0aHVLRGo1b2NwSEFYbGNHM01BeGxJSGVBMXJDT1pVQjlKNUhxalI?oc=5",
+          "published": "Wed, 08 Apr 2026 18:27:08 GMT",
+          "source": "سكاي نيوز عربية",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "KW",
+      "country_name": "Kuwait",
+      "language": "ar",
+      "locale": "ar-KW",
+      "feed_url": "https://news.google.com/rss?hl=ar-KW&gl=KW&ceid=KW:ar",
+      "scraped_at": "2026-04-09T03:50:26.556616+00:00",
+      "headlines": [
+        {
+          "title": "البيت الأبيض: إيران وافقت على فتح مضيق هرمز - سكاي نيوز عربية",
+          "link": "https://news.google.com/rss/articles/CBMi3wJBVV95cUxNTnkybnduY3pHQThZX00zN3BwbzdCM3hlcHlpZ0xhMEZkQlZlc1Y0ZnQ4Y2pKWHdrV19XekdYLWVDbmNuYlhxRFljZXhDYVFrdHZ6aFlJaTFJYkV0WlZtNE5ZenNxbXRFVnpDZGVGUzF5VXVQQmdSaFlJWTV1QzFhVG5iRVBWd09JQXk5TUVCRWZaZXBLX3QzNXZWV1NZczNFa0sxMWZaR0hSSmxRZENweFU4cktncl95amNYelJsMEZ5NUdzZmdGeS05RThnTXEyVTBCVFFHNWNDaTBaY1BKeFVNOXZvTXF5aVRUMm9MYWlfZHdwb1B3YnFGcEl3cGw4QVE3U1pKYndha1lOSWdPdEtBaHl4N2Z0TVh6TWlFYnBmQURNalFBbHR6Y2UtNldJMG5QQ0Rodi1sdXRxR29DZVgtRm1hVHA5MkMwblpLUXhLS3I1SFowVnF5MlNqNlHSAeQCQVVfeXFMT0ZUWGJLNTJsX2hfbjNyNFdZaWdrZ1NEWWduX2NMX29oSjlOeTB4WmpjaWVmYUF3YTdJdzVSSFlBYzdZOTJCeEpZcEJtSEV4OWh0UHBqNTFsVE5zNmVRZUdtZXpBZlN6X2xBZHpJR19HeXRCOFFHejlrMTlJYVRLVHA4ZnFZMkx0MS1uOEp0SFZ4NnN6ZGg0SnMyc3liSmZiclo2NzFsZFh2cTVVai1EVHpZQUNqZlpETG05ZFU2OUtwMkZ1WGpabGFXR3BvVTNQYk5kVmZWNUxlSUIyTU14Zy1McGdzWUFFemJNZHdTbllZUzRHUjFDUVZvcmN2ZTk3MDRZS1c4ZXl4X3pldTM3Vi1JVklXbEhOOV9pTzRVN0tSeGZta0NhN01GemRscWNONmRmclR6T0twRTNmZEZ0aHVLRGo1b2NwSEFYbGNHM01BeGxJSGVBMXJDT1pVQjlKNUhxalI?oc=5",
+          "published": "Wed, 08 Apr 2026 18:27:08 GMT",
+          "source": "سكاي نيوز عربية",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "LB",
+      "country_name": "Lebanon",
+      "language": "ar",
+      "locale": "ar-LB",
+      "feed_url": "https://news.google.com/rss?hl=ar-LB&gl=LB&ceid=LB:ar",
+      "scraped_at": "2026-04-09T03:50:27.233687+00:00",
+      "headlines": [
+        {
+          "title": "في أعنف أيام الحرب.. غارات إسرائيلية على لبنان تسفر عن مقتل 250 شخصا - SWI swissinfo.ch",
+          "link": "https://news.google.com/rss/articles/CBMi_gNBVV95cUxORGNMSkU0VERiRzhnZzl2Y1IxQi1lXy1HR2xIOHRKbS1NUnZwel9RMnV6MzdmQUZ3VHFQVlZhdUZPWUQ3Z1o0WWFYUm51cEF0bFdfRVpvWUktN284bmNpanotemEzZUFubEN4SGhuTTV3NEJncnM0SEh1N2diS0xhdEpXOUY4emExUmI1V0pWcWsyZmhYeTVZajF5amc0WTV0aXlQT2pMSFNwcEtGeGRmNFBzZVdhYzQ1VlZpVF92X0dvYVNwVnlzRnBtaU1KN0drRm5vNXFmN0J2RFpSZkJ3cnB6cmd3SmhrNkFxbm1YQ2JhZjN3WUVITXpGSk5Ta2drWXNTb1E2NXl2RHpXVFd2TUxGTkhFeURzaDJZcnZrRC0wVGFvNXdNdnlyeGc1M0g2MmxnRzlFV2N2Sld1eEs3T2xtYi1GM2NhNFZNS2x3V3hYQ0I1OWdnZnp5WVhxRjFtRDhHTDlsdms3ZERoVUFobnRGc2JJdXJrRndFaGE0LTZTM3d0SERmMXR5OWJ4STB1dzNZbENuWUFPX0tGYmNsZjZEcTdTdGxybC1kWmx2QUNZbnVKdFhXMzZERXZyTVYyQzRmM2d5c3g0UHdYcDJ5eGszV0tOYktIUmFjZkxXcDBzQUx3Tm56R2hNLXo0bkVqZXktUTVqWTRfSy14UkE?oc=5",
+          "published": "Wed, 08 Apr 2026 22:07:21 GMT",
+          "source": "SWI swissinfo.ch",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "LY",
+      "country_name": "Libya",
+      "language": "ar",
+      "locale": "ar-LY",
+      "feed_url": "https://news.google.com/rss?hl=ar-LY&gl=LY&ceid=LY:ar",
+      "scraped_at": "2026-04-09T03:50:26.205974+00:00",
+      "headlines": [
+        {
+          "title": "البيت الأبيض: إيران وافقت على فتح مضيق هرمز - سكاي نيوز عربية",
+          "link": "https://news.google.com/rss/articles/CBMi3wJBVV95cUxNTnkybnduY3pHQThZX00zN3BwbzdCM3hlcHlpZ0xhMEZkQlZlc1Y0ZnQ4Y2pKWHdrV19XekdYLWVDbmNuYlhxRFljZXhDYVFrdHZ6aFlJaTFJYkV0WlZtNE5ZenNxbXRFVnpDZGVGUzF5VXVQQmdSaFlJWTV1QzFhVG5iRVBWd09JQXk5TUVCRWZaZXBLX3QzNXZWV1NZczNFa0sxMWZaR0hSSmxRZENweFU4cktncl95amNYelJsMEZ5NUdzZmdGeS05RThnTXEyVTBCVFFHNWNDaTBaY1BKeFVNOXZvTXF5aVRUMm9MYWlfZHdwb1B3YnFGcEl3cGw4QVE3U1pKYndha1lOSWdPdEtBaHl4N2Z0TVh6TWlFYnBmQURNalFBbHR6Y2UtNldJMG5QQ0Rodi1sdXRxR29DZVgtRm1hVHA5MkMwblpLUXhLS3I1SFowVnF5MlNqNlHSAeQCQVVfeXFMT0ZUWGJLNTJsX2hfbjNyNFdZaWdrZ1NEWWduX2NMX29oSjlOeTB4WmpjaWVmYUF3YTdJdzVSSFlBYzdZOTJCeEpZcEJtSEV4OWh0UHBqNTFsVE5zNmVRZUdtZXpBZlN6X2xBZHpJR19HeXRCOFFHejlrMTlJYVRLVHA4ZnFZMkx0MS1uOEp0SFZ4NnN6ZGg0SnMyc3liSmZiclo2NzFsZFh2cTVVai1EVHpZQUNqZlpETG05ZFU2OUtwMkZ1WGpabGFXR3BvVTNQYk5kVmZWNUxlSUIyTU14Zy1McGdzWUFFemJNZHdTbllZUzRHUjFDUVZvcmN2ZTk3MDRZS1c4ZXl4X3pldTM3Vi1JVklXbEhOOV9pTzRVN0tSeGZta0NhN01GemRscWNONmRmclR6T0twRTNmZEZ0aHVLRGo1b2NwSEFYbGNHM01BeGxJSGVBMXJDT1pVQjlKNUhxalI?oc=5",
+          "published": "Wed, 08 Apr 2026 18:27:08 GMT",
+          "source": "سكاي نيوز عربية",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "MA",
+      "country_name": "Morocco",
+      "language": "fr",
+      "locale": "fr-MA",
+      "feed_url": "https://news.google.com/rss?hl=fr-MA&gl=MA&ceid=MA:fr",
+      "scraped_at": "2026-04-09T03:50:26.521559+00:00",
+      "headlines": [
+        {
+          "title": "Trêve entre l'Iran et les États-Unis: ce que l'on sait - Médias24 - Numéro un de l'information économique marocaine - Medias24",
+          "link": "https://news.google.com/rss/articles/CBMikAFBVV95cUxQcFFKSjQ4WDk0OUY5d3g1ZzlZRWFCbG51Y0JhUEVwM045V3JPU3NFaHBQOUJnS01fMHJhVU5EV1UwM3RhU0ZQdDV1cHpwb05TV2NnZjQyYzY4X0wwczZDbm5nR2RRUEctbWdFMXMtQm96QXZKbnRTakZWR3daRXFlbzdQaG9yelZxOEZUTXY2bHo?oc=5",
+          "published": "Wed, 08 Apr 2026 08:49:00 GMT",
+          "source": "Medias24",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "TN",
+      "country_name": "Tunisia",
+      "language": "fr",
+      "locale": "fr-TN",
+      "feed_url": "https://news.google.com/rss?hl=fr-TN&gl=TN&ceid=TN:fr",
+      "scraped_at": "2026-04-09T03:50:26.209289+00:00",
+      "headlines": [
+        {
+          "title": "Guerre en Iran : un cessez-le-feu en forme de débâcle stratégique pour les Etats-Unis - Le Monde.fr",
+          "link": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxQeGZtN0tSOFhsMXctRnowaUdzX0FDVGMwcGNQNm9GUS1kOXN0RWY5d0dyRkN0QWVRdU1sMzY3QWVPa2xDeTNRYmw5RW1GeXI0T1JNeTdPTzFXNUlHZ2V5MkExN2ljVEhwaGdHZHhSdF9KdENQOGM3Mnd1OGtJRW54Q252R0ZzdnIwLTVETDBScWtPWjlpcjRjMmtpcUhzR2lvcHpUVll0amJ6RE84SktEa096UFFKQmRVbjJPLUg4OWlDdGdTZEkzcXBWRWQ3YV9FYzA1UFNkQU5yb3AwazV5XzUtaHhSNm8xN01EdGNR?oc=5",
+          "published": "Thu, 09 Apr 2026 03:13:14 GMT",
+          "source": "Le Monde.fr",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "DZ",
+      "country_name": "Algeria",
+      "language": "fr",
+      "locale": "fr-DZ",
+      "feed_url": "https://news.google.com/rss?hl=fr-DZ&gl=DZ&ceid=DZ:fr",
+      "scraped_at": "2026-04-09T03:50:26.374722+00:00",
+      "headlines": [
+        {
+          "title": "Guerre en Iran : un cessez-le-feu en forme de débâcle stratégique pour les Etats-Unis - Le Monde.fr",
+          "link": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxQeGZtN0tSOFhsMXctRnowaUdzX0FDVGMwcGNQNm9GUS1kOXN0RWY5d0dyRkN0QWVRdU1sMzY3QWVPa2xDeTNRYmw5RW1GeXI0T1JNeTdPTzFXNUlHZ2V5MkExN2ljVEhwaGdHZHhSdF9KdENQOGM3Mnd1OGtJRW54Q252R0ZzdnIwLTVETDBScWtPWjlpcjRjMmtpcUhzR2lvcHpUVll0amJ6RE84SktEa096UFFKQmRVbjJPLUg4OWlDdGdTZEkzcXBWRWQ3YV9FYzA1UFNkQU5yb3AwazV5XzUtaHhSNm8xN01EdGNR?oc=5",
+          "published": "Thu, 09 Apr 2026 03:13:14 GMT",
+          "source": "Le Monde.fr",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "TR",
+      "country_name": "Turkey",
+      "language": "tr",
+      "locale": "tr-TR",
+      "feed_url": "https://news.google.com/rss?hl=tr-TR&gl=TR&ceid=TR:tr",
+      "scraped_at": "2026-04-09T03:50:26.340322+00:00",
+      "headlines": [
+        {
+          "title": "Türkiye ABD-İran ateşkes sürecinde Pakistan'a nasıl destek verdi? - BBC",
+          "link": "https://news.google.com/rss/articles/CBMiXEFVX3lxTE9WY19wUW5vRzlZN2gzTkpoek4yVTBoeWFWbXVyZG1fMXJHNGl5ZnNWQUNwaE9kTnJBa3NoWUJjTTd2Q3BQOXZyNlRlQXFMekRQZkZrcjlpZFF4RUtv0gFiQVVfeXFMTXB2cjRuWXVaeXRGLXB2a3RDSFBYVlNqdVpwMElwNlVvYi1EYlIzUGk1SG5iNWtJYTJWbHR3LUFSckdIZ0J6cy12dEF4UWdnOFZWTGVlVWNMWjg1Y21WSzJLQlE?oc=5",
+          "published": "Wed, 08 Apr 2026 17:06:50 GMT",
+          "source": "BBC",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "NG",
+      "country_name": "Nigeria",
+      "language": "en",
+      "locale": "en-NG",
+      "feed_url": "https://news.google.com/rss?hl=en-NG&gl=NG&ceid=NG:en",
+      "scraped_at": "2026-04-09T03:50:26.879030+00:00",
+      "headlines": [
+        {
+          "title": "We'll recommend sanctions against INEC officials, election riggers, says US firm hired by Atiku - TheCable",
+          "link": "https://news.google.com/rss/articles/CBMiuAFBVV95cUxOWnNFX3RjMFBqTE9uQ1VyVV9VVUtJV3RRWE5iM2YwYUFnZnZBc09xMTVKYlhVQWo3R2ptb3ZXQ3BzSUlURWVRSVBfQTBhRzZjQldEWkF6X0pabmE1bzRnZ2pCTFZrVmxGS1BPN3p3SExQazVjeFR0R2FvYy1FM19FYjdDNzhaczl4YlFVMmJfZVBSVlZPcXNZcFQxUFhKaUVXeTN2c2RRdlZ2c2NrQ1pIU2d4S2loVy1K?oc=5",
+          "published": "Wed, 08 Apr 2026 18:09:00 GMT",
+          "source": "TheCable",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "ZA",
+      "country_name": "South Africa",
+      "language": "en",
+      "locale": "en-ZA",
+      "feed_url": "https://news.google.com/rss?hl=en-ZA&gl=ZA&ceid=ZA:en",
+      "scraped_at": "2026-04-09T03:50:27.051914+00:00",
+      "headlines": [
+        {
+          "title": "PODCAST | The Lead: Revising SA’s school history curriculum – what we know so far - News24",
+          "link": "https://news.google.com/rss/articles/CBMizAFBVV95cUxQVlpjRnlub3dxWlFPSU1hX1dzWUNjVWZTUGtiSFcyMFNVMk96anJHY1ptWmMyOWFrOGJsRk1FWmZjaVVkSTFHY1ZFMmE1UVpBRllxTDZZMktuRWV1REIzemFYS2lYM3hsbnpjeU1MWENZZmkwYlBxUW85Z0U2NDdLRTNEX1A2Z2lrSWUtTkVVN0N1VVVwYVlxRVhPOVZ4QzV4ZnRRYnNnNG9Tc1pvYkprYjRTR0ZhLWROX3dwUVY5bl9sLUpSTGwwZTBld1I?oc=5",
+          "published": "Wed, 08 Apr 2026 17:03:12 GMT",
+          "source": "News24",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "KE",
+      "country_name": "Kenya",
+      "language": "en",
+      "locale": "en-KE",
+      "feed_url": "https://news.google.com/rss?hl=en-KE&gl=KE&ceid=KE:en",
+      "scraped_at": "2026-04-09T03:50:27.587126+00:00",
+      "headlines": [
+        {
+          "title": "Fate of recalled Sh12bn controversial petrol unknown - Business Daily",
+          "link": "https://news.google.com/rss/articles/CBMiugFBVV95cUxNQ1pTVk5xeDMwd2VaQ0h2YWM2dUh1TkhzNUlGOWdrb3JhTTFORHUyZjlaU2dFOWZfZXlHNk1KMVZyamVSOUVGQWNXUXVLbW92eEs4dlZCQ0pnZ1k1V3ozWXRnMFhsVzBkdXZ6aE9fNVBZTHFtekJiY3NRYy1YbG9VcVFMUlR2S0czVEhkWFBoVEswUHVpeEJMdGVId2JfR01BeWZteVFkT29pZTZnQUpvY3JUTko5d2hnRWc?oc=5",
+          "published": "Wed, 08 Apr 2026 18:45:00 GMT",
+          "source": "Business Daily",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "GH",
+      "country_name": "Ghana",
+      "language": "en",
+      "locale": "en-GH",
+      "feed_url": "https://news.google.com/rss?hl=en-GH&gl=GH&ceid=GH:en",
+      "scraped_at": "2026-04-09T03:50:27.589444+00:00",
+      "headlines": [
+        {
+          "title": "Ofori-Atta’s ICE release positive; he is elderly and poses no risk – Amanda Clinton - MyJoyOnline",
+          "link": "https://news.google.com/rss/articles/CBMirAFBVV95cUxOenpyUEJyRU9Gcm9kT2RPNGlZamlici1yVHJ6b18yYldhQ3VIcWxGeFlkbnUxOEh1R3NnajZvakNwVnlBRGptaVlTSnU5aTRVX1RDSktfLTd5blZLQmRDd1EwblFsUGtNMDhYcVdOTGVyVTk5OVMwQ1NPWDNEM0YtZzB5VVNPLVY1QjhVdFlnblhnNncxZkxrRjhEOVBoajB1aEwtS2ViMHZOVm8z?oc=5",
+          "published": "Wed, 08 Apr 2026 19:12:54 GMT",
+          "source": "MyJoyOnline",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "TZ",
+      "country_name": "Tanzania",
+      "language": "en",
+      "locale": "en-TZ",
+      "feed_url": "https://news.google.com/rss?hl=en-TZ&gl=TZ&ceid=TZ:en",
+      "scraped_at": "2026-04-09T03:50:27.405170+00:00",
+      "headlines": [
+        {
+          "title": "Tanzania president orders officials to travel by bus amid fuel shortages - Macau Business",
+          "link": "https://news.google.com/rss/articles/CBMioAFBVV95cUxNRFpmVmxKTmpVSEwzZGVDLVVFQVJRYjZSM1VkbkpWaksyejJBbk9iYzFqcU43b3Jpd3ZHOGdUUm9pQlk1NThaZGVMWFFEcWxFcFdyOFMtMGwyYmJfeEppRVJfWlNRTU9zbWRtX3FLQTFURlhYaWp5N3ZFdVljNW1UVWotOURmbEduc1A1d0ZWLWtnc3pyRUE2amhNQi1WbTZ0?oc=5",
+          "published": "Thu, 09 Apr 2026 00:01:02 GMT",
+          "source": "Macau Business",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "UG",
+      "country_name": "Uganda",
+      "language": "en",
+      "locale": "en-UG",
+      "feed_url": "https://news.google.com/rss?hl=en-UG&gl=UG&ceid=UG:en",
+      "scraped_at": "2026-04-09T03:50:27.429024+00:00",
+      "headlines": [
+        {
+          "title": "Uganda's economic growth is private sector-led, says Museveni - Daily Monitor",
+          "link": "https://news.google.com/rss/articles/CBMitgFBVV95cUxNa3dSU0JQVUxVZ0t1dGZlc3NQaENFcUhfMUVPVC1TQi1BODNZb0FwbDBqTTNIMldwYzA4TzJnZWNvT3RYdHg2WWwxbnU1a2xIcnVVUTZsREo5MGp1emdsS1Iya0FaYTY2aGFOdFRTQ3dhRm5NYjZlWWg4RWVQNEgzMUpfbTV5b2tyUHRvVFBOdEFoYk9OVDlYWEx0X0l5NzVId3p1YzBsOV9pRVg1R18tY0VHdEtMQQ?oc=5",
+          "published": "Wed, 08 Apr 2026 16:43:14 GMT",
+          "source": "Daily Monitor",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "ET",
+      "country_name": "Ethiopia",
+      "language": "en",
+      "locale": "en-ET",
+      "feed_url": "https://news.google.com/rss?hl=en-ET&gl=ET&ceid=ET:en",
+      "scraped_at": "2026-04-09T03:50:26.875544+00:00",
+      "headlines": [
+        {
+          "title": "Somalia Takes Seat On African Union Peace and Security Council for First Time - allAfrica.com",
+          "link": "https://news.google.com/rss/articles/CBMiW0FVX3lxTE11MU8tcVhuek5FUS13R2FlYVZIbllrVS1BdzQ5dDFXcVB3UXd4TTZoaGt2YVhoc1lhejBYVjhOY2dnZzJHVTlmOWJOQ0toZ2lRaFhEcFhiYUx2X28?oc=5",
+          "published": "Wed, 08 Apr 2026 12:30:44 GMT",
+          "source": "allAfrica.com",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "SN",
+      "country_name": "Senegal",
+      "language": "fr",
+      "locale": "fr-SN",
+      "feed_url": "https://news.google.com/rss?hl=fr-SN&gl=SN&ceid=SN:fr",
+      "scraped_at": "2026-04-09T03:50:27.976092+00:00",
+      "headlines": [
+        {
+          "title": "Tensions au Moyen-Orient : le Sénégal salue l’accord de cessez-le-feu entre les États-Unis et l’Iran - pressafrik.com",
+          "link": "https://news.google.com/rss/articles/CBMi1AFBVV95cUxOazY3WE5QdEJzaTVoTEM2d1U2WnNlSzVwSEx6UVpUYWF5Q29Qa3piTXduV1ZxOFJGRC1RZDltWTZnYXduY3dCZ3BxVDZjMmdvS29ncmVZWlN5WTV6b1ZDd0x5OEVHaS1xMGVtNV96dXpuYUJRRzdZN0xnSG4tSkJuQVNMa0VfcDFFZHVRMHgzaWlKSnFSbUR6T0RXWlEwVlVhVmZKd1JYN3JkMnF1Zmk3ejZudzhvaFliU3ZQb3dETjZPTm15YzBCTkZCUkxwQ0JPZVdfaQ?oc=5",
+          "published": "Wed, 08 Apr 2026 19:50:00 GMT",
+          "source": "pressafrik.com",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CI",
+      "country_name": "Ivory Coast",
+      "language": "fr",
+      "locale": "fr-CI",
+      "feed_url": "https://news.google.com/rss?hl=fr-CI&gl=CI&ceid=CI:fr",
+      "scraped_at": "2026-04-09T03:50:27.623958+00:00",
+      "headlines": [
+        {
+          "title": "Guerre en Iran : un cessez-le-feu en forme de débâcle stratégique pour les Etats-Unis - Le Monde.fr",
+          "link": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxQeGZtN0tSOFhsMXctRnowaUdzX0FDVGMwcGNQNm9GUS1kOXN0RWY5d0dyRkN0QWVRdU1sMzY3QWVPa2xDeTNRYmw5RW1GeXI0T1JNeTdPTzFXNUlHZ2V5MkExN2ljVEhwaGdHZHhSdF9KdENQOGM3Mnd1OGtJRW54Q252R0ZzdnIwLTVETDBScWtPWjlpcjRjMmtpcUhzR2lvcHpUVll0amJ6RE84SktEa096UFFKQmRVbjJPLUg4OWlDdGdTZEkzcXBWRWQ3YV9FYzA1UFNkQU5yb3AwazV5XzUtaHhSNm8xN01EdGNR?oc=5",
+          "published": "Thu, 09 Apr 2026 03:13:14 GMT",
+          "source": "Le Monde.fr",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CM",
+      "country_name": "Cameroon",
+      "language": "fr",
+      "locale": "fr-CM",
+      "feed_url": "https://news.google.com/rss?hl=fr-CM&gl=CM&ceid=CM:fr",
+      "scraped_at": "2026-04-09T03:50:27.612007+00:00",
+      "headlines": [
+        {
+          "title": "Guerre en Iran : un cessez-le-feu en forme de débâcle stratégique pour les Etats-Unis - Le Monde.fr",
+          "link": "https://news.google.com/rss/articles/CBMi7gFBVV95cUxQeGZtN0tSOFhsMXctRnowaUdzX0FDVGMwcGNQNm9GUS1kOXN0RWY5d0dyRkN0QWVRdU1sMzY3QWVPa2xDeTNRYmw5RW1GeXI0T1JNeTdPTzFXNUlHZ2V5MkExN2ljVEhwaGdHZHhSdF9KdENQOGM3Mnd1OGtJRW54Q252R0ZzdnIwLTVETDBScWtPWjlpcjRjMmtpcUhzR2lvcHpUVll0amJ6RE84SktEa096UFFKQmRVbjJPLUg4OWlDdGdTZEkzcXBWRWQ3YV9FYzA1UFNkQU5yb3AwazV5XzUtaHhSNm8xN01EdGNR?oc=5",
+          "published": "Thu, 09 Apr 2026 03:13:14 GMT",
+          "source": "Le Monde.fr",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "IN",
+      "country_name": "India",
+      "language": "en",
+      "locale": "en-IN",
+      "feed_url": "https://news.google.com/rss?hl=en-IN&gl=IN&ceid=IN:en",
+      "scraped_at": "2026-04-09T03:50:27.626871+00:00",
+      "headlines": [
+        {
+          "title": "Assembly elections 2026 LIVE updates: Voting underway in Karnataka and Tripura bypolls - The Hindu",
+          "link": "https://news.google.com/rss/articles/CBMigAJBVV95cUxPdXc2cEt6OG5CaW4yc3R0Y2RzS1g4cFg2SW8tNVFGS2ZKTnFNR3JjLXhnS3lUNlhMNkhSN3NRY0lEZDlzaVN5RzlKeE0ybWtaU3JwZ3BubEFUR2J6Q0d4T3YwME9Ld19Gbi1xaDdFN1ZrMFdGRFdXRjZYWDZ6dzlTTWhmWExUdzJxZEctQ0xPa1gwU2dPTUpsZTBfZGZpeWdCamhtVWthcjdremJJMjdpQi1Ieko0UXg4Zl9fQi1LZ211SVU0SXQyYThpMW0tbXZtTlE2bDhfcVZ2ZDZKVVJSOWVzVWZxSFZOS2NJT2x0WGdLOVhmb2cwdlluUWs1d3FP?oc=5",
+          "published": "Thu, 09 Apr 2026 03:33:04 GMT",
+          "source": "The Hindu",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "PK",
+      "country_name": "Pakistan",
+      "language": "en",
+      "locale": "en-PK",
+      "feed_url": "https://news.google.com/rss?hl=en-PK&gl=PK&ceid=PK:en",
+      "scraped_at": "2026-04-09T03:50:28.139190+00:00",
+      "headlines": [
+        {
+          "title": "How Pakistan managed to get the US and Iran to a ceasefire - Al Jazeera",
+          "link": "https://news.google.com/rss/articles/CBMipAFBVV95cUxNZ0dZRk1FRTU2MzRabWkxUUVQQmZ4Tjg4UDgtMHRRU2k0YWVZdnZ5NlY1ZFJ0LWpUVHp2TThoRkh5WVN0d2lQSGY4ODlPMXVnLXRLSjdCU3pISi1nMUxuS1VmN0ZLYjZWb2VBQW1ocFoyei1mMGg5SUlMTkF6VGRqTzY2R0Z3UG9CelRSMnQxTlRITEZrYjVwbGdhUi1WTlZrZGZ6TtIBqgFBVV95cUxNU01pSi1kR3V2WTVMWE1zdXprVVEwYkRsV1RfSVJWYzlyanV1OUpkeU9JNUh6M0lTVk9rZ1NiTV9ub0xKakpxZHlHYld6cl9LSmZHZ2dIMFlfMTZmX1lSNDY3dE9ReW1ISXMxS3RGelktU0gyX2RWX2kybC1vcEhNRzc1X21NdUtMbEdFSU0ybTNYUm9JZlJ1OEJvcEVfQ0p1dTQ5MFNiMDVzQQ?oc=5",
+          "published": "Wed, 08 Apr 2026 15:57:37 GMT",
+          "source": "Al Jazeera",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "BD",
+      "country_name": "Bangladesh",
+      "language": "bn",
+      "locale": "bn-BD",
+      "feed_url": "https://news.google.com/rss?hl=bn-BD&gl=BD&ceid=BD:bn",
+      "scraped_at": "2026-04-09T03:50:28.827011+00:00",
+      "headlines": [
+        {
+          "title": "ট্রাম্প ‘দয়া’ দেখানোয় যুদ্ধবিরতি সম্ভব হয়েছে - The Daily Ittefaq",
+          "link": "https://news.google.com/rss/articles/CBMipARBVV95cUxPR05tYzRzTVk4NDBCM3ZlUy00QXBCWHZGZGtjeEpPWFZxd2FzS0ZEN0FBdGRSTXJvS3djcUdaWXI1NEV1TGNJT0ZuMjI4NXk0ZFV5azN1TkRRdUpPLWJHcWZUbnBvYWtEenN3cDlBMDdoSDZTR3pILWN4UFJ6NWs0NkxhcEJrWmZQd3cyTzlMejEzOWhuTnRRaFR5cDlncHgyQmYtQ3Z4RmVORTFPcVJTNWduUmdTZ0VWYnRDbUh5YVlseUE3aFZ0RnBNYnh0bW5zQzdfVUJaNmJzMXZiWHJwOHJLQlh5TVFTTURfd3ZDb3ktclljVVJ5RkNvai1qaEdoOUV1VnRFcy1peGRSdnR2YkR1cnBuMkRWODhxWTYtUk1KR2FudDFJaE0weGRuamRKQTRIQm5Fb2VTZ1FwZUdXTC1oemJTS2xaOXVJeVhVN1FjTlRsYjFicXBhUDJHZEJQZFg4cUJ0WF9xMjVLVjRoTDZTQ0RnTlJzOE5ONVpSdjl5endCaVc1YUZkUTJ4V3JfUzJGYVcwRFRZZkJwc0pCdTliR2tkbkFXM3NOZVNrelRnME9TOGVmU01NazkxVDh5T2tUR0kzWnlqTnhaVzJUWmFuQWxVVmVtTFFkTHdGc1U4ckR5REhuMnBTMGd4YUlMT2hLWHVvV29DckNjaERpdlJLUmdqMDlpVDVfSnB1VUlfTmxaWlJubUhxdzRvWmZzUi1aMNIBqgRBVV95cUxNZzdQVzNJZlo3YkxoXzBMX2JSMjNxVXNwUkVYQ3FlWHljMllJNlJBMmtfRVRuZWZlQUFVUkctQTBnVjZJUXk0VmNWQ1BIdjJnM2pMMWIzdlREMGVlN20wcWpmSUtDcmRmVHJfWC1rb1FtdE9oT1drU2loZW1mNTBLemV6SlFSZE94WEJmRUQ4RURJa2FJUG5qcGI3TTJkblRzLXhDV2J3eVJVb3c4V3cxZV85TzhoVy1MWkpFWV9SYWJBYnliT3dVZVRCM21uWkV0NkN4bFZiOUF0aWJLeHRBVVNUMXBxWU5pT1VPWVR6S29haU8tbkZKLTd2d1VmelhFZk1CTEJSblNBV05ITklhb203TF9DQXVsUm54bmVndnhpVGxGbkhRSk9Gc1hMV1FvWVpRWWdRWl9DQ1V0UWZYcVVrNXhUaDFzYThuQXpLcWlhazRhS3RVTk5zRVpJWkc2TE1XMk51SGF5NUhUa1F4QkNKQUNoVDAyeXR1T3BfUWw5Snpzb2EzbE9mZWlxQXJzOWJ4SEozbjFKZnVvdUVJX3dxak5CUm82bVNpaFlzSjBWV3RnVVYxUUxJeXdxbElZVF8tNnJHRHRsYVpGdUtuYkVWMXBSNk1kYmZ1a1BWb1UyZ2dYNzh4WnJYQlY0d01ncXdvNlF0M09maXRMX3VmSVg5bkN0eExqN3ctczlZZ2FoeDNzQW4wZ0Mza2syYzQwQnJVLW9Nd25SUQ?oc=5",
+          "published": "Thu, 09 Apr 2026 02:31:45 GMT",
+          "source": "The Daily Ittefaq",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "LK",
+      "country_name": "Sri Lanka",
+      "language": "en",
+      "locale": "en-LK",
+      "feed_url": "https://news.google.com/rss?hl=en-LK&gl=LK&ceid=LK:en",
+      "scraped_at": "2026-04-09T03:50:27.787451+00:00",
+      "headlines": [
+        {
+          "title": "President Trump’s ceasefire with Iran draws praise from world leaders - Fox News",
+          "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPNzlkeW5RWXFGNmgzMkZFbDhJbkJSdHA5RXA3X1ZlSGJFeTVzTzVJZUJLMHBpRG9pVFR3YTdVUzJhcTdib0FScl9xZnhnM1daQlRZZG5NRkRDYjZranlDNS1GV0dWSFNyZ2l4U2RmQzYycE84VlJybDRnYl9iSDFELUs0blNjS1VSNlJtT0RaREtUZmxSZGZOUC12ZWZQWXdHUm1rYmRXWHZOQdIBrwFBVV95cUxNWG9xNk5USVZ0eE9aU3h4ZDBBRmxRYmlSU0EtSjBVMm93ZjRzVGJ0bmtJd0xTLUFLS0xpSElWd25LU0pValM5aDB3b04yV2FUN0hHc0MyZ2pENE1vVGEwemthRmxvTnlXLXRxSGw1MVltb1dMS3ZhYzBaQmJ1QWhJRnktbHZOWXhRR0s4QjdsMkh2SFpzRzdNaDBYT3JnWm94T0t2QnVDV1k0TEdkalcw?oc=5",
+          "published": "Wed, 08 Apr 2026 22:28:09 GMT",
+          "source": "Fox News",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "NP",
+      "country_name": "Nepal",
+      "language": "ne",
+      "locale": "ne-NP",
+      "feed_url": "https://news.google.com/rss?hl=ne-NP&gl=NP&ceid=NP:ne",
+      "scraped_at": "2026-04-09T03:50:27.760653+00:00",
+      "headlines": [
+        {
+          "title": "President Trump’s ceasefire with Iran draws praise from world leaders - Fox News",
+          "link": "https://news.google.com/rss/articles/CBMiqgFBVV95cUxPNzlkeW5RWXFGNmgzMkZFbDhJbkJSdHA5RXA3X1ZlSGJFeTVzTzVJZUJLMHBpRG9pVFR3YTdVUzJhcTdib0FScl9xZnhnM1daQlRZZG5NRkRDYjZranlDNS1GV0dWSFNyZ2l4U2RmQzYycE84VlJybDRnYl9iSDFELUs0blNjS1VSNlJtT0RaREtUZmxSZGZOUC12ZWZQWXdHUm1rYmRXWHZOQdIBrwFBVV95cUxNWG9xNk5USVZ0eE9aU3h4ZDBBRmxRYmlSU0EtSjBVMm93ZjRzVGJ0bmtJd0xTLUFLS0xpSElWd25LU0pValM5aDB3b04yV2FUN0hHc0MyZ2pENE1vVGEwemthRmxvTnlXLXRxSGw1MVltb1dMS3ZhYzBaQmJ1QWhJRnktbHZOWXhRR0s4QjdsMkh2SFpzRzdNaDBYT3JnWm94T0t2QnVDV1k0TEdkalcw?oc=5",
+          "published": "Wed, 08 Apr 2026 22:28:09 GMT",
+          "source": "Fox News",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "CN",
+      "country_name": "China",
+      "language": "zh-Hans",
+      "locale": "zh-CN",
+      "feed_url": "https://news.google.com/rss?hl=zh-CN&gl=CN&ceid=CN:zh-Hans",
+      "scraped_at": "2026-04-09T03:50:27.764139+00:00",
+      "headlines": [
+        {
+          "title": "锚定百万亿蓝海 中国服务业“扩能提质”路径明确 - 新华网",
+          "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxPQ012a3N2ZmxMWTR0M3BvaWVNRFR5N0ZrbzB6eFcwejVfU2VhWnF6VHUxeTNmeDNSbTJiT3BYTkRtMjZRbTdneHdCNno5NUxPQmZIZ0VlS3h2MGk3M01QdFNMSnFFYVBSNFFkTnRWMUQ0V3BWWDF2YlE0dy1nSlhoemoyT2FqVktU?oc=5",
+          "published": "Thu, 09 Apr 2026 01:20:51 GMT",
+          "source": "新华网",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "JP",
+      "country_name": "Japan",
+      "language": "ja",
+      "locale": "ja-JP",
+      "feed_url": "https://news.google.com/rss?hl=ja-JP&gl=JP&ceid=JP:ja",
+      "scraped_at": "2026-04-09T03:50:27.938614+00:00",
+      "headlines": [
+        {
+          "title": "ヒズボラ、イスラエルにロケット弾攻撃 レバノン攻撃は「停戦違反」 - Reuters",
+          "link": "https://news.google.com/rss/articles/CBMiiAFBVV95cUxObHZsZ0FVRXVnUzVmQlVaLWJ6OGliWkNSc0tLQmE4NFk2X3FVNnNfWEtvRGhBTERjZnBTNlluOTdHcVd6dWdVZW4tb1NvZWxGMFFGMDhlRC1vdmRxclR5aWNNVnJpZk5JVnMzWHYyWE9ScDdIa2s1bXdZbjUwNC1FcmdJcF8xZTZY?oc=5",
+          "published": "Thu, 09 Apr 2026 01:00:00 GMT",
+          "source": "Reuters",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "KR",
+      "country_name": "South Korea",
+      "language": "ko",
+      "locale": "ko-KR",
+      "feed_url": "https://news.google.com/rss?hl=ko-KR&gl=KR&ceid=KR:ko",
+      "scraped_at": "2026-04-09T03:50:28.115225+00:00",
+      "headlines": [
+        {
+          "title": "“이란, 호르무즈 대체항로 발표…기뢰 회피 위해” 이란 반관영 매체 - 경향신문",
+          "link": "https://news.google.com/rss/articles/CBMiWkFVX3lxTFBkbEZuYks0M3RzWDBOUVhVbWstRjh2OGFaaXdQUE11d0hOMlJQdHJMQThIMUtBLVdtOGpSZVcyY3o5eGl2T3IxMjVKS0c0WVpFNlF4Um5QaDZqd9IBX0FVX3lxTE91Q1lYWkRVQ2hKeXU2VHduMFh3LXRMWFRzeG5IS05sZW5pa3FYbDcwS1pMbFVGM1VjWVNGUEJDX3RzVkJ6bTdGVE4zWktJLUV4UFJ6MjFkZmlVMlA4NEZ3?oc=5",
+          "published": "Wed, 08 Apr 2026 23:16:00 GMT",
+          "source": "경향신문",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "TW",
+      "country_name": "Taiwan",
+      "language": "zh-Hant",
+      "locale": "zh-TW",
+      "feed_url": "https://news.google.com/rss?hl=zh-TW&gl=TW&ceid=TW:zh-Hant",
+      "scraped_at": "2026-04-09T03:50:28.844590+00:00",
+      "headlines": [
+        {
+          "title": "川普停火「連幕僚都猜錯」！穆吉塔巴「開綠燈」成關鍵 - 自由時報",
+          "link": "https://news.google.com/rss/articles/CBMiZkFVX3lxTFBkN0ZqZ2JoM2lsaGU1WDh6RURTcEQxOGJOU0cyclgwb2lNemZ6NlJyZllYSTNBV21xS1BYNG9ucERPWDV6RThVcV9JMEpXUVVBRTFaQ3RXdExNVXJVWVBiY1FSTHE2QdIBa0FVX3lxTE9IS1MyQVJkdkc3SFl2OHFQd01qT2FEZlE1QWRBSVByS2U2TGNjSE9QZklPTTdVLTJjM0RaZjV0Mll2Vno2OXZUREFWYWRvY29LRkFYMzdyX0pZUDNabFpuUk9IUFN3QWo2bUEw?oc=5",
+          "published": "Wed, 08 Apr 2026 10:59:15 GMT",
+          "source": "自由時報",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "HK",
+      "country_name": "Hong Kong",
+      "language": "zh-Hant",
+      "locale": "zh-HK",
+      "feed_url": "https://news.google.com/rss?hl=zh-HK&gl=HK&ceid=HK:zh-Hant",
+      "scraped_at": "2026-04-09T03:50:28.292609+00:00",
+      "headlines": [
+        {
+          "title": "特朗普：美伊很快面對面談判 伊朗總統稱果斷回應侵略行為 - 香港電台新聞網",
+          "link": "https://news.google.com/rss/articles/CBMib0FVX3lxTE9GdVZHQlg1RjlVMkEyeG9xdXJnc2lqdzhBeDBmZXhFZ0x0Y21qVkNMNWF4VmJ0NnUxSS1vbFo2aWkzRm5RSXUyZ25sYnB1cU5mWllNMmtpT3c4VnNMOTFVUDFKM0ZreWNwVUViV3RNZw?oc=5",
+          "published": "Wed, 08 Apr 2026 17:40:00 GMT",
+          "source": "香港電台新聞網",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "MN",
+      "country_name": "Mongolia",
+      "language": "mn",
+      "locale": "mn-MN",
+      "feed_url": "https://news.google.com/rss?hl=mn-MN&gl=MN&ceid=MN:mn",
+      "scraped_at": "2026-04-09T03:50:28.508917+00:00",
+      "headlines": [
+        {
+          "title": "Уиткофф и Кушнер отправятся в Пакистан на переговоры с Ираном - Интерфакс",
+          "link": "https://news.google.com/rss/articles/CBMiTkFVX3lxTE1mbVQ2bm1vOVBRQ1RfbWtKdzFfRUVYQ2pVUzhaekVIcl9GUjAxT3NTcm5TWDRlcldOWjNlcWhQbXNLUk9zMlRlMGM4MTRlUdIBS0FVX3lxTFBod2pscWlTbEFUTGUwUGkyS0dZMHhrVFFweE9aTnpKMFhRZzNNTGNrNkFfdlR4cVFQNEs2Ry1qNkpXVU1vU3RpOHJIRQ?oc=5",
+          "published": "Wed, 08 Apr 2026 15:15:44 GMT",
+          "source": "Интерфакс",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "SG",
+      "country_name": "Singapore",
+      "language": "en",
+      "locale": "en-SG",
+      "feed_url": "https://news.google.com/rss?hl=en-SG&gl=SG&ceid=SG:en",
+      "scraped_at": "2026-04-09T03:50:28.471081+00:00",
+      "headlines": [
+        {
+          "title": "Iran says peace talks would be 'unreasonable' following Israeli strikes on Lebanon - CNA",
+          "link": "https://news.google.com/rss/articles/CBMirgFBVV95cUxNeFhCMVc1ZmlBckdqR0h3MEpsQUszS3FJUE5KNGxFNnBteExuN0dSUlhNUXdvYnR5YlRjOEF0c3pYRFI2QmNoZ2o1MXJsOXJNdmhBcVVXcnl5bzBxWm5VbEhycGliS28yeW01dHBHQk5FU3U1TGlabVFnV3c2V0VCdlE5MEdsYVRSX0VfZTJfQ0pKeENDZTNkbm1KUlk5eHJEYldRNndZaHdsMzlyUlE?oc=5",
+          "published": "Wed, 08 Apr 2026 22:38:00 GMT",
+          "source": "CNA",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "PH",
+      "country_name": "Philippines",
+      "language": "en",
+      "locale": "en-PH",
+      "feed_url": "https://news.google.com/rss?hl=en-PH&gl=PH&ceid=PH:en",
+      "scraped_at": "2026-04-09T03:50:28.689082+00:00",
+      "headlines": [
+        {
+          "title": "Senate flood control inquiry stalled pending affidavit, consensus - Philippine News Agency",
+          "link": "https://news.google.com/rss/articles/CBMiUEFVX3lxTE9ZOVk0OERHNlU1ZERTMzM0eVJGMUdzb0UweHFhV2ZpVmlJTnEwajVFekpmcmVLR2xrRWo1UHA5bWpBN2JVbjlzbUE5TVZmeXNq?oc=5",
+          "published": "Thu, 09 Apr 2026 03:03:06 GMT",
+          "source": "Philippine News Agency",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "MY",
+      "country_name": "Malaysia",
+      "language": "ms",
+      "locale": "ms-MY",
+      "feed_url": "https://news.google.com/rss?hl=ms-MY&gl=MY&ceid=MY:ms",
+      "scraped_at": "2026-04-09T03:50:28.322570+00:00",
+      "headlines": [
+        {
+          "title": "Gencatan senjata AS-Iran bukti Trump sedar perang tidak memihak kepadanya - Penganalisis - Astro Awani",
+          "link": "https://news.google.com/rss/articles/CBMiwAFBVV95cUxNX1FUSklnU3J6UWpqUUZoTVV5ajVhdXYxNm9sYWNwUFJ6WnZjVHVjMEVrN2JtX2RxZG1KSnpMektzLUlBYWtSdnJFVk45VUdKUWtBY2xDYUFZTHU4TGlIbkIxYVVaVlBNYVhXUUZoR041UDdCOEs5Z1NUMWhxcFZtMVh1YWRMLVpIUE9mZDllaFZBS2U2WnB3RThXN2lpZmNhV05wWXloeTZ2dHFMWnE0c3F4ZDJ0MV9STTZsZlBYSHk?oc=5",
+          "published": "Thu, 09 Apr 2026 00:42:51 GMT",
+          "source": "Astro Awani",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "ID",
+      "country_name": "Indonesia",
+      "language": "id",
+      "locale": "id-ID",
+      "feed_url": "https://news.google.com/rss?hl=id-ID&gl=ID&ceid=ID:id",
+      "scraped_at": "2026-04-09T03:50:29.052317+00:00",
+      "headlines": [
+        {
+          "title": "Iran dan AS sepakat gencatan senjata dua minggu, kedua negara klaim kemenangan - BBC",
+          "link": "https://news.google.com/rss/articles/CBMiYEFVX3lxTE9VVDhyTU9QRzBTM1VVQjhyRjRsT1V6SmE0OXhPR0tPQVpYUkZTeWtvbnE0aURNejlRVlJ5RXlSbWt2Q3Q3VmRTNDF2b3hNSUp2NWlPelU4YkxEOF9iWjdBUtIBZkFVX3lxTFBZNzZVNnFjZzNwQ0ZMU29QeWNBVjdlbVNJOXVsYVhGVHFTODRyTGhpdHJtTXZvRUZNTTQ5bEVBLU9vS3l0S19EX2VQVmlrOUVfV2xZNlFXOWQxUHZVbE16V25wSW5PUQ?oc=5",
+          "published": "Wed, 08 Apr 2026 14:59:30 GMT",
+          "source": "BBC",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "TH",
+      "country_name": "Thailand",
+      "language": "th",
+      "locale": "th-TH",
+      "feed_url": "https://news.google.com/rss?hl=th-TH&gl=TH&ceid=TH:th",
+      "scraped_at": "2026-04-09T03:50:29.054973+00:00",
+      "headlines": [
+        {
+          "title": "ประธานเสธ.ลั่น สหรัฐพร้อมรบอิหร่านใหม่ถ้าการทูตล้มเหลว - bangkokbiznews",
+          "link": "https://news.google.com/rss/articles/CBMiZ0FVX3lxTE8tRzI5YzgyVndQMjh5UTZHN3o4cXR4d3BXakc5NWJvN243VDBqMHF3eGJjQ19WLVY0aUxRQTJDLWxoeWJpWUxuaVRNM3FIWnhKUmNoZWpsY2ZKU0hJOXZKSVlQV0JsbFU?oc=5",
+          "published": "Wed, 08 Apr 2026 23:54:00 GMT",
+          "source": "bangkokbiznews",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "VN",
+      "country_name": "Vietnam",
+      "language": "vi",
+      "locale": "vi-VN",
+      "feed_url": "https://news.google.com/rss?hl=vi-VN&gl=VN&ceid=VN:vi",
+      "scraped_at": "2026-04-09T03:50:28.681647+00:00",
+      "headlines": [
+        {
+          "title": "Điểm nóng xung đột ngày 9-4: Vì sao ông Donald Trump “quay ngoắt” 180 độ với Iran? - Báo Người Lao Động",
+          "link": "https://news.google.com/rss/articles/CBMivAFBVV95cUxPejEwbl90MERiR0VoaEFpdmZxSWtaT255S19JUVRXallmUkNtUUJBQmw3SGdRQWF2M0VyN0FrZFg3Y1dXU0ZWTGIzZHVWb0VVYVlldFJmZ2JISTZLLWY5cnJ5d1NuUnYyNUNTU2I4b244Mm1qYmVRUHF3enh1ZGdtU1J5a0p4ZXhkbzdpc05xZHV2YWZ3VHNLemM0U2Y4eEpzWUpyTWgwT1lxUjRhMDZEQ25uRjBkdHFXeFBPOQ?oc=5",
+          "published": "Wed, 08 Apr 2026 21:33:00 GMT",
+          "source": "Báo Người Lao Động",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "AU",
+      "country_name": "Australia",
+      "language": "en",
+      "locale": "en-AU",
+      "feed_url": "https://news.google.com/rss?hl=en-AU&gl=AU&ceid=AU:en",
+      "scraped_at": "2026-04-09T03:50:28.648962+00:00",
+      "headlines": [
+        {
+          "title": "Singapore's PM knows Australia is vulnerable but Albanese has leverage - Australian Broadcasting Corporation",
+          "link": "https://news.google.com/rss/articles/CBMiowFBVV95cUxNVVV0WVdZd2ZhMEVhVTNRNDJwY0haT3B4ZWl0c0l6V1k3WDJpNnF1bDI2aDVJX2lVeW9yRllvaDJsaWlfZTdBQTZweFo2QVM2VFFRUGNTS3c2UzNhMmJPelNXYmdnSjBRMFpLQnRrX1JpMVdITF90Z0o5NjR6MFpXUGt4U2FHdkNyLXBScVJOMWJuTzFoeEtqYVBXcExHZUVxTHVj?oc=5",
+          "published": "Wed, 08 Apr 2026 18:53:58 GMT",
+          "source": "Australian Broadcasting Corporation",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    },
+    {
+      "country_code": "NZ",
+      "country_name": "New Zealand",
+      "language": "en",
+      "locale": "en-NZ",
+      "feed_url": "https://news.google.com/rss?hl=en-NZ&gl=NZ&ceid=NZ:en",
+      "scraped_at": "2026-04-09T03:50:29.030329+00:00",
+      "headlines": [
+        {
+          "title": "‘Later could be too late’: Northlanders urged to prepare as Cyclone Vaianu approaches - NZ Herald",
+          "link": "https://news.google.com/rss/articles/CBMi_AFBVV95cUxQNWQ0NjZ3RklESEJYRVpyQ0dZT1NldGZlYzVKRG8tNm1EMW1QdzVENVo4bmNLSEprbmw5a09NTTlpYm5zeG1NYmotclJXVkNHTHg0V3E1eUdudnFiN2RQNjFZa1N4aWt1R3lLeURTZ1BERkRISWpfTngzc0JiZjgzNmpaU1VNQ1ZucjUzVjdWb2Z2c3QzRUQtU2NkU0NvR19ybUs4OG9Leng4cEczSkQ1VC1BcTVUMVU5U3RHR0w0THFFMVpBdnpBTkpfNWZSc0FtQnFRc3E4Y1lyLVBfeFhLWGpydVhpRHFTSDZERzJ1dVNpQVNvVy1lWEFfaXk?oc=5",
+          "published": "Thu, 09 Apr 2026 01:05:50 GMT",
+          "source": "NZ Herald",
+          "categorization": {
+            "groq": null
+          }
+        }
+      ],
+      "error": null
+    }
+  ],
+  "clusters": []
+}
