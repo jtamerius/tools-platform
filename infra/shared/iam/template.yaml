@@ -497,6 +497,69 @@ Resources:
                 Resource:
                   - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/tools/${Environment}/*'
 
+        # Lambda function management for maritime backend functions.
+        - PolicyName: LambdaMaritimePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageMaritimeFunctions
+                Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:TagResource
+                  - lambda:UntagResource
+                  - lambda:ListTags
+                Resource:
+                  - !Sub 'arn:aws:lambda:*:${AWS::AccountId}:function:tools-maritime-*'
+
+        # API Gateway v2 (HTTP API) management.
+        # API GW ARNs are not nameable, so resource scope uses wildcard with
+        # condition tags where possible; use least-privilege in production.
+        - PolicyName: ApiGatewayMaritimePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageHttpApis
+                Effect: Allow
+                Action:
+                  - apigateway:POST
+                  - apigateway:GET
+                  - apigateway:PUT
+                  - apigateway:PATCH
+                  - apigateway:DELETE
+                  - apigateway:TagResource
+                  - apigateway:UntagResource
+                Resource: '*'
+
+        # Amplify app + branch management for the maritime trajectory frontend.
+        # The existing AmplifyDeployPolicy only covers build-triggering actions.
+        - PolicyName: AmplifyAppManagementPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: ManageAmplifyApps
+                Effect: Allow
+                Action:
+                  - amplify:CreateApp
+                  - amplify:DeleteApp
+                  - amplify:GetApp
+                  - amplify:UpdateApp
+                  - amplify:CreateBranch
+                  - amplify:DeleteBranch
+                  - amplify:GetBranch
+                  - amplify:UpdateBranch
+                  - amplify:TagResource
+                  - amplify:UntagResource
+                  - amplify:ListTagsForResource
+                Resource: '*'
+
   # ---------------------------------------------------------------------------
   # Amplify Service Role — assumed by AWS Amplify to access other AWS services
   # ---------------------------------------------------------------------------
