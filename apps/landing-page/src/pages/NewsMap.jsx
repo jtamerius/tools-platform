@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useRef, useState, useMemo } from 'react'
 import {
   ComposableMap,
   Geographies,
@@ -61,54 +61,48 @@ const FALLBACK_CENTROIDS = {
   PR: [-66.59, 18.22],
 }
 
-function buildArcPairs(centroidMap, countryData, activeLabel, hoveredCode) {
+// Return dominant CATEGORY_COLORS color for a given arcGroup topic
+function topicColor(topic, countryData) {
+  const counts = {}
+  Object.values(countryData).forEach(d => {
+    if (d?.arcGroup === topic && d?.label)
+      counts[d.label] = (counts[d.label] || 0) + 1
+  })
+  const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0]
+  return CATEGORY_COLORS[top] ?? '#aaa'
+}
+
+function buildArcPairs(centroidMap, countryData, activeTopic, hoveredCode) {
+  if (!activeTopic) return []
+
+  const members = Object.entries(countryData)
+    .filter(([code, d]) => d?.arcGroup === activeTopic && centroidMap[code])
+    .map(([code]) => code)
+
+  if (members.length < 2) return []
+
   const pairs = []
 
-  if (hoveredCode && centroidMap[hoveredCode]) {
-    // Hover: star from hovered country to all sharing the same specific topic/arcGroup
-    const myGroup = countryData[hoveredCode]?.arcGroup
-    if (!myGroup) return []
+  if (hoveredCode && centroidMap[hoveredCode] && countryData[hoveredCode]?.arcGroup === activeTopic) {
+    // Star topology from hovered country
     const from = centroidMap[hoveredCode]
-    for (const [code, d] of Object.entries(countryData)) {
-      if (code !== hoveredCode && d?.arcGroup === myGroup && centroidMap[code]) {
-        pairs.push([from, centroidMap[code], `${hoveredCode}-${code}`])
-      }
-    }
-    return pairs
-  }
-
-  if (!activeLabel) return []
-
-  // Legend active: within the label group, connect only countries that share
-  // the same arcGroup (specific topic), not the full cross-topic mesh.
-  const members = Object.entries(countryData).filter(
-    ([code, d]) => d?.label === activeLabel && centroidMap[code]
-  )
-
-  // Cluster members by their arcGroup
-  const byGroup = {}
-  members.forEach(([code, d]) => {
-    const g = d.arcGroup ?? ''
-    ;(byGroup[g] ??= []).push(code)
-  })
-
-  for (const group of Object.values(byGroup)) {
-    if (group.length < 2) continue
-    if (group.length <= 8) {
-      // Full mesh within this topic cluster
-      for (let i = 0; i < group.length; i++)
-        for (let j = i + 1; j < group.length; j++)
-          pairs.push([centroidMap[group[i]], centroidMap[group[j]], `${group[i]}-${group[j]}`])
-    } else {
-      // Star from geographic centroid for large clusters
-      const lons = group.map(c => centroidMap[c][0])
-      const lats = group.map(c => centroidMap[c][1])
-      const center = [
-        lons.reduce((a, b) => a + b, 0) / lons.length,
-        lats.reduce((a, b) => a + b, 0) / lats.length,
-      ]
-      group.forEach(code => pairs.push([center, centroidMap[code], `center-${code}`]))
-    }
+    members.forEach(code => {
+      if (code !== hoveredCode) pairs.push([from, centroidMap[code], `${hoveredCode}-${code}`])
+    })
+  } else if (members.length <= 8) {
+    // Full mesh for small groups
+    for (let i = 0; i < members.length; i++)
+      for (let j = i + 1; j < members.length; j++)
+        pairs.push([centroidMap[members[i]], centroidMap[members[j]], `${members[i]}-${members[j]}`])
+  } else {
+    // Star from geographic centroid for large groups
+    const lons = members.map(c => centroidMap[c][0])
+    const lats = members.map(c => centroidMap[c][1])
+    const center = [
+      lons.reduce((a, b) => a + b, 0) / lons.length,
+      lats.reduce((a, b) => a + b, 0) / lats.length,
+    ]
+    members.forEach(code => pairs.push([center, centroidMap[code], `center-${code}`]))
   }
 
   return pairs
@@ -118,15 +112,27 @@ function buildArcPairs(centroidMap, countryData, activeLabel, hoveredCode) {
 export default function NewsMap({ countryData = {} }) {
   const containerRef = useRef(null)
   const [hoveredCode, setHoveredCode] = useState(null)
-  const [activeLegendLabel, setActiveLegendLabel] = useState(null)
+  const [activeLegendTopic, setActiveLegendTopic] = useState(null)
   const [tooltip, setTooltip] = useState(null)
 
-  const presentLabels = [...new Set(
-    Object.values(countryData).map(d => d?.label).filter(Boolean)
-  )].sort()
+  // Top 4 topics by country count (arcGroup with ≥2 countries), rest → "Other"
+  const topTopics = useMemo(() => {
+    const counts = {}
+    Object.values(countryData).forEach(d => {
+      if (d?.arcGroup) counts[d.arcGroup] = (counts[d.arcGroup] || 0) + 1
+    })
+    return Object.entries(counts)
+      .filter(([, n]) => n >= 2)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4)
+      .map(([topic, count]) => ({ topic, count }))
+  }, [countryData])
 
-  // Active label: legend selection takes priority, then hover
-  const activeLabel = activeLegendLabel ?? (hoveredCode ? (countryData[hoveredCode]?.label ?? null) : null)
+  const topTopicSet = useMemo(() => new Set(topTopics.map(t => t.topic)), [topTopics])
+
+  // Active topic: legend selection takes priority, then hover
+  const hoveredTopic = hoveredCode ? (countryData[hoveredCode]?.arcGroup ?? null) : null
+  const activeTopic = activeLegendTopic ?? hoveredTopic
 
   function handleEnter(a2, info, e) {
     setHoveredCode(a2)
@@ -164,8 +170,9 @@ export default function NewsMap({ countryData = {} }) {
                 if (a2) centroidMap[a2] = geoCentroid(geo)
               })
 
-              const arcPairs = buildArcPairs(centroidMap, countryData, activeLabel, hoveredCode)
-              const arcColor = CATEGORY_COLORS[activeLabel] ?? '#aaa'
+              const isOther = activeTopic === '__other__'
+              const arcPairs = isOther ? [] : buildArcPairs(centroidMap, countryData, activeTopic, hoveredCode)
+              const arcColor = activeTopic ? topicColor(activeTopic, countryData) : '#aaa'
 
               return (
                 <>
@@ -174,7 +181,9 @@ export default function NewsMap({ countryData = {} }) {
                     const info = a2 ? (countryData[a2] ?? null) : null
                     const cat = info?.label ?? null
                     const baseColor = cat ? (CATEGORY_COLORS[cat] ?? DEFAULT_COLOR) : DEFAULT_COLOR
-                    const dimmed = activeLabel && cat !== activeLabel
+                    // Dim countries not matching the active selection
+                    const inOther = isOther && info?.arcGroup && !topTopicSet.has(info.arcGroup)
+                    const dimmed = activeTopic && (isOther ? !inOther : info?.arcGroup !== activeTopic)
 
                     return (
                       <Geography
@@ -246,31 +255,56 @@ export default function NewsMap({ countryData = {} }) {
         )}
       </div>
 
-      {/* Legend */}
-      {presentLabels.length > 0 && (
+      {/* Legend — top 4 topics + Other */}
+      {topTopics.length > 0 && (
         <div style={styles.legend}>
-          {presentLabels.map(label => {
-            const color = CATEGORY_COLORS[label] ?? DEFAULT_COLOR
-            const active = activeLegendLabel === label
+          {topTopics.map(({ topic, count }) => {
+            const color = topicColor(topic, countryData)
+            const active = activeLegendTopic === topic
             return (
               <span
-                key={label}
-                onClick={() => setActiveLegendLabel(v => v === label ? null : label)}
+                key={topic}
+                onClick={() => setActiveLegendTopic(v => v === topic ? null : topic)}
                 style={{
                   ...styles.legendItem,
                   background: active ? color : 'transparent',
                   color: active ? '#fff' : color,
                   border: `1px solid ${color}`,
-                  opacity: activeLegendLabel && !active ? 0.4 : 1,
+                  opacity: activeLegendTopic && !active ? 0.4 : 1,
                 }}
               >
-                {label}
+                {topic}
+                <span style={styles.legendCount}>{count}</span>
               </span>
             )
           })}
-          {activeLegendLabel && (
+          {/* "Other" entry — countries outside the top 4 topics */}
+          {(() => {
+            const otherCount = Object.values(countryData).filter(
+              d => d?.arcGroup && !topTopicSet.has(d.arcGroup)
+            ).length
+            if (otherCount === 0) return null
+            const active = activeLegendTopic === '__other__'
+            return (
+              <span
+                key="__other__"
+                onClick={() => setActiveLegendTopic(v => v === '__other__' ? null : '__other__')}
+                style={{
+                  ...styles.legendItem,
+                  background: active ? '#556' : 'transparent',
+                  color: active ? '#fff' : '#889',
+                  border: '1px solid #445',
+                  opacity: activeLegendTopic && !active ? 0.4 : 1,
+                }}
+              >
+                Other
+                <span style={styles.legendCount}>{otherCount}</span>
+              </span>
+            )
+          })()}
+          {activeLegendTopic && (
             <span
-              onClick={() => setActiveLegendLabel(null)}
+              onClick={() => setActiveLegendTopic(null)}
               style={styles.legendClear}
             >
               ✕ clear
@@ -343,6 +377,14 @@ const styles = {
     whiteSpace: 'nowrap',
     transition: 'opacity 0.15s',
     userSelect: 'none',
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '5px',
+  },
+  legendCount: {
+    fontSize: '0.65rem',
+    opacity: 0.7,
+    fontVariantNumeric: 'tabular-nums',
   },
   legendClear: {
     padding: '3px 9px',
