@@ -112,23 +112,29 @@ export default function News() {
     if (isLatest) {
       const result = {}
       annotated.forEach(c => {
-        result[c.country_code] = {
-          label: getCat(c),
+        const code = c.country_code
+        const aiLabel = overrides[code] || null
+        result[code] = {
+          label: aiLabel || getCat(c),
           topic: getTopic(c),
           title_en: getTitleEn(c),
           country_name: c.country_name,
+          // arcGroup drives arc connections: AI override label groups user-defined
+          // clusters; otherwise use the specific topic so only countries covering
+          // the exact same story are connected, not every country in a broad category.
+          arcGroup: aiLabel || getTopic(c) || getCat(c),
         }
-      })
-      // Apply AI overrides to label for map coloring
-      Object.entries(overrides).forEach(([code, label]) => {
-        if (label && result[code]) result[code].label = label
       })
       return result
     } else {
       const snapshot = history[historyIdx]
       const result = {}
       Object.entries(snapshot?.countries ?? {}).forEach(([code, info]) => {
-        result[code] = { ...info, country_name: codeToName[code] ?? code }
+        result[code] = {
+          ...info,
+          country_name: codeToName[code] ?? code,
+          arcGroup: info.topic || info.label,
+        }
       })
       return result
     }
@@ -282,7 +288,7 @@ export default function News() {
         </div>
         {activeOverrides > 0 && isLatest && !aiLoading && (
           <p style={styles.aiStatus}>
-            {activeOverrides} headline{activeOverrides !== 1 ? 's' : ''} recategorized
+            {activeOverrides} headline{activeOverrides !== 1 ? 's' : ''} recategorized · saved locally in your browser (not written to S3)
           </p>
         )}
         {aiError && <p style={styles.aiError}>{aiError}</p>}

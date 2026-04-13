@@ -62,43 +62,52 @@ const FALLBACK_CENTROIDS = {
 }
 
 function buildArcPairs(centroidMap, countryData, activeLabel, hoveredCode) {
-  if (!activeLabel) return []
-
-  const members = Object.entries(countryData)
-    .filter(([code, d]) => d?.label === activeLabel && centroidMap[code])
-    .map(([code]) => code)
-
-  if (members.length < 2) return []
-
   const pairs = []
 
-  if (hoveredCode && centroidMap[hoveredCode] && countryData[hoveredCode]?.label === activeLabel) {
-    // Star topology from hovered country to all others in group
+  if (hoveredCode && centroidMap[hoveredCode]) {
+    // Hover: star from hovered country to all sharing the same specific topic/arcGroup
+    const myGroup = countryData[hoveredCode]?.arcGroup
+    if (!myGroup) return []
     const from = centroidMap[hoveredCode]
-    members.forEach(code => {
-      if (code !== hoveredCode) {
+    for (const [code, d] of Object.entries(countryData)) {
+      if (code !== hoveredCode && d?.arcGroup === myGroup && centroidMap[code]) {
         pairs.push([from, centroidMap[code], `${hoveredCode}-${code}`])
       }
-    })
-  } else {
-    // Full mesh if small group, star from geographic center if large
-    if (members.length <= 20) {
-      for (let i = 0; i < members.length; i++) {
-        for (let j = i + 1; j < members.length; j++) {
-          pairs.push([centroidMap[members[i]], centroidMap[members[j]], `${members[i]}-${members[j]}`])
-        }
-      }
+    }
+    return pairs
+  }
+
+  if (!activeLabel) return []
+
+  // Legend active: within the label group, connect only countries that share
+  // the same arcGroup (specific topic), not the full cross-topic mesh.
+  const members = Object.entries(countryData).filter(
+    ([code, d]) => d?.label === activeLabel && centroidMap[code]
+  )
+
+  // Cluster members by their arcGroup
+  const byGroup = {}
+  members.forEach(([code, d]) => {
+    const g = d.arcGroup ?? ''
+    ;(byGroup[g] ??= []).push(code)
+  })
+
+  for (const group of Object.values(byGroup)) {
+    if (group.length < 2) continue
+    if (group.length <= 8) {
+      // Full mesh within this topic cluster
+      for (let i = 0; i < group.length; i++)
+        for (let j = i + 1; j < group.length; j++)
+          pairs.push([centroidMap[group[i]], centroidMap[group[j]], `${group[i]}-${group[j]}`])
     } else {
-      // Star from geographic centroid of the group
-      const lons = members.map(c => centroidMap[c][0])
-      const lats = members.map(c => centroidMap[c][1])
+      // Star from geographic centroid for large clusters
+      const lons = group.map(c => centroidMap[c][0])
+      const lats = group.map(c => centroidMap[c][1])
       const center = [
         lons.reduce((a, b) => a + b, 0) / lons.length,
         lats.reduce((a, b) => a + b, 0) / lats.length,
       ]
-      members.forEach(code => {
-        pairs.push([center, centroidMap[code], `center-${code}`])
-      })
+      group.forEach(code => pairs.push([center, centroidMap[code], `center-${code}`]))
     }
   }
 
