@@ -1,10 +1,13 @@
 """
-Recategorize Lambda — applies a user-defined AI prompt to the current
-news headlines and returns per-country category overrides.
+Recategorize Lambda — two endpoints:
 
 POST /recategorize
-  Body: { "prompt": "...", "countries": [...] }  (countries from latest.json)
+  Body: { "prompt": "...", "countries": [...] }
   Returns: { "recategorizations": { "US": "Iran-US War", "DE": null, ... } }
+
+POST /run
+  Triggers the news scraper Lambda asynchronously.
+  Returns: { "status": "started" }
 """
 
 import json
@@ -44,7 +47,8 @@ Every country code in the input must appear in the output.\
 
 MODEL_ID = 'amazon.nova-lite-v1:0'
 
-_bedrock: boto3.client = None
+_bedrock = None
+_lambda_client = None
 
 
 def _get_bedrock():
@@ -57,10 +61,20 @@ def _get_bedrock():
     return _bedrock
 
 
+def _get_lambda():
+    global _lambda_client
+    if _lambda_client is None:
+        _lambda_client = boto3.client(
+            'lambda',
+            region_name=os.environ.get('AWS_REGION', 'us-east-1'),
+        )
+    return _lambda_client
+
+
 def _extract_title(country: dict) -> str:
     h = (country.get('headlines') or [{}])[0]
     cats = h.get('categorization') or {}
-    for p in ('groq', 'gemini', 'huggingface', 'openrouter'):
+    for p in ('bedrock', 'groq', 'gemini', 'huggingface', 'openrouter'):
         t = (cats.get(p) or {}).get('title_en')
         if t:
             return t
@@ -88,7 +102,6 @@ def _call_nova(user_message: str) -> dict:
     data = json.loads(resp['body'].read())
     raw = data['output']['message']['content'][0]['text'].strip()
 
-    # Strip markdown fences if the model wraps output anyway
     if raw.startswith('```'):
         raw = raw.split('```', 2)[1]
         if raw.startswith('json'):
@@ -111,10 +124,30 @@ def _cors(status: int, body: dict) -> dict:
 
 
 def handler(event: dict, _context) -> dict:
+    http = event.get('requestContext', {}).get('http', {})
+    method = http.get('method', '')
+    path = http.get('path', '')
+
     # CORS preflight
-    if event.get('requestContext', {}).get('http', {}).get('method') == 'OPTIONS':
+    if method == 'OPTIONS':
         return _cors(204, {})
 
+    # POST /run — trigger the scraper Lambda asynchronously
+    if path == '/run' and method == 'POST':
+        scraper_fn = os.environ.get('SCRAPER_FUNCTION_NAME', '')
+        if not scraper_fn:
+            return _cors(500, {'error': 'SCRAPER_FUNCTION_NAME not configured'})
+        try:
+            _get_lambda().invoke(
+                FunctionName=scraper_fn,
+                InvocationType='Event',  # async — returns immediately
+                Payload=b'{}',
+            )
+        except Exception as exc:
+            return _cors(502, {'error': str(exc)})
+        return _cors(202, {'status': 'started'})
+
+    # POST /recategorize
     try:
         body = json.loads(event.get('body') or '{}')
     except (json.JSONDecodeError, TypeError):
@@ -128,7 +161,6 @@ def handler(event: dict, _context) -> dict:
     if not countries:
         return _cors(400, {'error': '"countries" is required'})
 
-    # Build compact headline list — only what the LLM needs
     headlines = [
         {'code': c['country_code'], 'title': _extract_title(c)}
         for c in countries

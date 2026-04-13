@@ -48,6 +48,14 @@ export class NewsScraperStack extends cdk.Stack {
       resources: ['arn:aws:s3:::jtamerius-news-data/*'],
     }));
 
+    executionRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'BedrockInvokeNova',
+      actions: ['bedrock:InvokeModel'],
+      resources: [
+        `arn:aws:bedrock:${cfg.region}::foundation-model/amazon.nova-lite-v1:0`,
+      ],
+    }));
+
     const deployBucket = s3.Bucket.fromBucketName(this, 'DeployBucket', 'jtamerius-website-deploy');
 
     // ── CloudWatch: scraper log group ────────────────────────────────────────
@@ -94,11 +102,17 @@ export class NewsScraperStack extends cdk.Stack {
       ],
     });
     recatRole.addToPolicy(new iam.PolicyStatement({
-      sid: 'BedrockInvokeNova',
+      sid: 'BedrockInvokeNovaRecat',
       actions: ['bedrock:InvokeModel'],
       resources: [
         `arn:aws:bedrock:${cfg.region}::foundation-model/amazon.nova-lite-v1:0`,
       ],
+    }));
+
+    recatRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'InvokeScraper',
+      actions: ['lambda:InvokeFunction'],
+      resources: [fn.functionArn],
     }));
 
     // ── Lambda: recategorize ─────────────────────────────────────────────────
@@ -113,6 +127,9 @@ export class NewsScraperStack extends cdk.Stack {
       code: lambda.Code.fromAsset(
         path.join(__dirname, '../../../../apps/news-scraper/recategorize'),
       ),
+      environment: {
+        SCRAPER_FUNCTION_NAME: fn.functionName,
+      },
     });
 
     // ── API Gateway v2: recategorize HTTP API ────────────────────────────────
@@ -138,6 +155,12 @@ export class NewsScraperStack extends cdk.Stack {
     new apigwv2.CfnRoute(this, 'RecategorizeRoute', {
       apiId: api.ref,
       routeKey: 'POST /recategorize',
+      target: `integrations/${integration.ref}`,
+    });
+
+    new apigwv2.CfnRoute(this, 'RunScraperRoute', {
+      apiId: api.ref,
+      routeKey: 'POST /run',
       target: `integrations/${integration.ref}`,
     });
 

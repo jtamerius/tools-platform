@@ -16,7 +16,6 @@ import os
 from typing import Optional
 
 import aiohttp
-import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -64,6 +63,7 @@ async def _fetch_embeddings_batch(
 
 
 def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    import numpy as np
     va, vb = np.array(a), np.array(b)
     denom = np.linalg.norm(va) * np.linalg.norm(vb)
     if denom == 0:

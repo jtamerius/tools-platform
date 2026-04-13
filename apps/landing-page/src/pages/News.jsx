@@ -1,9 +1,10 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
+import NewsMap from './NewsMap'
 
 const S3_URL = 'https://jtamerius-news-data.s3.amazonaws.com/latest.json'
 const RECAT_URL = import.meta.env.VITE_NEWS_RECATEGORIZE_API_URL || ''
 const FLAG_BASE = 'https://flagcdn.com/20x15'
-const PROVIDERS = ['groq', 'gemini', 'huggingface', 'openrouter']
+const PROVIDERS = ['groq', 'gemini', 'huggingface', 'openrouter', 'bedrock']
 const LS_PROMPT = 'news-ai-prompt'
 const LS_OVERRIDES = 'news-ai-overrides'
 
@@ -45,6 +46,13 @@ function formatTime(iso) {
   } catch { return '—' }
 }
 
+function formatDate(iso) {
+  if (!iso) return ''
+  try {
+    return new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+  } catch { return '' }
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function News() {
@@ -53,15 +61,19 @@ export default function News() {
   const [loading, setLoading] = useState(true)
 
   const [prompt, setPrompt] = useState(() => localStorage.getItem(LS_PROMPT) || '')
-  // overrides: { [country_code]: string | null }
   const [overrides, setOverrides] = useState(() => {
     try { return JSON.parse(localStorage.getItem(LS_OVERRIDES) || 'null') || {} }
     catch { return {} }
   })
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState(null)
+  const [scraping, setScraping] = useState(false)
+  const [scrapeMsg, setScrapeMsg] = useState(null)
 
   const [selectedCat, setSelectedCat] = useState('All')
+  // Infinity = latest; integer = history index
+  const [historyIdx, setHistoryIdx] = useState(Infinity)
+
   const promptRef = useRef(null)
 
   useEffect(() => {
@@ -71,34 +83,81 @@ export default function News() {
       .catch(e => { setError(e.message); setLoading(false) })
   }, [])
 
+  const history = data?.history ?? []
+  const isLatest = historyIdx >= history.length
+
   const allCountries = data?.countries?.filter(c => c.headlines?.length) ?? []
   const runAt = data?.run_metadata?.run_started_at
+
+  // country_code → country_name map (from live data, stable across history)
+  const codeToName = useMemo(() => {
+    const m = {}
+    data?.countries?.forEach(c => { m[c.country_code] = c.country_name })
+    return m
+  }, [data])
 
   // Build category list — taxonomy + any custom labels from overrides
   const customCats = [...new Set(Object.values(overrides).filter(v => v && !TAXONOMY.includes(v)))]
   const allCats = ['All', ...TAXONOMY, ...customCats]
 
-  // Annotate countries with their resolved badge
+  // Annotate live countries with their resolved badge
   const annotated = allCountries.map(c => {
-    const aiOverride = overrides[c.country_code] ?? null
+    const aiOverride = isLatest ? (overrides[c.country_code] ?? null) : null
     const display = aiOverride ?? getTopic(c) ?? getCat(c)
     return { ...c, _badge: { display, isAI: !!aiOverride } }
   })
 
-  // Apply category filter
-  const countries = selectedCat === 'All'
-    ? annotated
-    : annotated.filter(c =>
-        c._badge.display === selectedCat ||
-        getCat(c) === selectedCat
-      )
+  // ── countryData for the map ──────────────────────────────────────────────
+  const mapCountryData = useMemo(() => {
+    if (isLatest) {
+      const result = {}
+      annotated.forEach(c => {
+        result[c.country_code] = {
+          label: getCat(c),
+          topic: getTopic(c),
+          title_en: getTitleEn(c),
+          country_name: c.country_name,
+        }
+      })
+      // Apply AI overrides to label for map coloring
+      Object.entries(overrides).forEach(([code, label]) => {
+        if (label && result[code]) result[code].label = label
+      })
+      return result
+    } else {
+      const snapshot = history[historyIdx]
+      const result = {}
+      Object.entries(snapshot?.countries ?? {}).forEach(([code, info]) => {
+        result[code] = { ...info, country_name: codeToName[code] ?? code }
+      })
+      return result
+    }
+  }, [isLatest, annotated, overrides, history, historyIdx, codeToName])
 
+  // ── Table rows ───────────────────────────────────────────────────────────
+  const historicalRows = useMemo(() => {
+    if (isLatest) return null
+    const snapshot = history[historyIdx]
+    return Object.entries(snapshot?.countries ?? {}).map(([code, info]) => ({
+      country_code: code,
+      country_name: codeToName[code] ?? code,
+      ...info,
+    }))
+  }, [isLatest, history, historyIdx, codeToName])
+
+  // Apply category filter
+  const displayRows = isLatest
+    ? (selectedCat === 'All'
+        ? annotated
+        : annotated.filter(c => c._badge.display === selectedCat || getCat(c) === selectedCat))
+    : (selectedCat === 'All'
+        ? (historicalRows ?? [])
+        : (historicalRows ?? []).filter(r => r.label === selectedCat))
+
+  // ── AI recategorize ──────────────────────────────────────────────────────
   async function handleApplyAI() {
     if (!prompt.trim()) return
-    if (!RECAT_URL) {
-      setAiError('Recategorize API URL not configured.')
-      return
-    }
+    if (!RECAT_URL) { setAiError('Recategorize API URL not configured.'); return }
     setAiLoading(true)
     setAiError(null)
     try {
@@ -122,6 +181,21 @@ export default function News() {
     }
   }
 
+  async function handleRunScraper() {
+    if (!RECAT_URL) return
+    setScraping(true)
+    setScrapeMsg(null)
+    try {
+      const res = await fetch(`${RECAT_URL}/run`, { method: 'POST' })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setScrapeMsg('Scraper started — refresh in ~5 minutes for fresh data.')
+    } catch (err) {
+      setScrapeMsg(`Failed to start: ${err.message}`)
+    } finally {
+      setScraping(false)
+    }
+  }
+
   function handleClear() {
     setOverrides({})
     setPrompt('')
@@ -138,7 +212,47 @@ export default function News() {
       <div style={styles.header}>
         <h1 style={styles.heading}>Global News</h1>
         {runAt && <span style={styles.meta}>Updated {formatTime(runAt)}</span>}
+        {RECAT_URL && (
+          <button
+            style={scraping ? { ...styles.btnRun, opacity: 0.6, cursor: 'not-allowed' } : styles.btnRun}
+            onClick={handleRunScraper}
+            disabled={scraping}
+          >
+            {scraping ? 'Starting…' : '↻ Run Scraper'}
+          </button>
+        )}
+        {scrapeMsg && <span style={styles.scrapeMsg}>{scrapeMsg}</span>}
       </div>
+
+      {/* ── World map ────────────────────────────────────────────────────── */}
+      {!loading && !error && (
+        <NewsMap countryData={mapCountryData} />
+      )}
+
+      {/* ── Time slider ─────────────────────────────────────────────────── */}
+      {!loading && !error && history.length > 0 && (
+        <div style={styles.sliderRow}>
+          <input
+            type="range"
+            min={0}
+            max={history.length}
+            value={isLatest ? history.length : historyIdx}
+            onChange={e => setHistoryIdx(+e.target.value >= history.length ? Infinity : +e.target.value)}
+            style={styles.slider}
+          />
+          <span style={styles.sliderLabel}>
+            {isLatest
+              ? <><span style={styles.liveDot} />Live</>
+              : formatDate(history[historyIdx]?.run_ts)
+            }
+          </span>
+          {!isLatest && (
+            <button style={styles.btnSecondary} onClick={() => setHistoryIdx(Infinity)}>
+              Back to live
+            </button>
+          )}
+        </div>
+      )}
 
       {/* ── AI recategorization prompt ───────────────────────────────────── */}
       <div style={styles.aiPanel}>
@@ -151,12 +265,12 @@ export default function News() {
             onChange={e => setPrompt(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleApplyAI()}
             placeholder='e.g. "Iran war"  or  "economic crises"  or  "EU political instability"'
-            disabled={aiLoading}
+            disabled={aiLoading || !isLatest}
           />
           <button
-            style={aiLoading ? { ...styles.btnPrimary, ...styles.btnDisabled } : styles.btnPrimary}
+            style={aiLoading || !isLatest ? { ...styles.btnPrimary, ...styles.btnDisabled } : styles.btnPrimary}
             onClick={handleApplyAI}
-            disabled={aiLoading || !prompt.trim()}
+            disabled={aiLoading || !prompt.trim() || !isLatest}
           >
             {aiLoading ? 'Thinking…' : 'Apply with AI'}
           </button>
@@ -166,7 +280,7 @@ export default function News() {
             </button>
           )}
         </div>
-        {activeOverrides > 0 && !aiLoading && (
+        {activeOverrides > 0 && isLatest && !aiLoading && (
           <p style={styles.aiStatus}>
             {activeOverrides} headline{activeOverrides !== 1 ? 's' : ''} recategorized
           </p>
@@ -184,7 +298,7 @@ export default function News() {
           {allCats.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
         {!loading && !error && (
-          <span style={styles.countLabel}>{countries.length} countries</span>
+          <span style={styles.countLabel}>{displayRows.length} countries</span>
         )}
       </div>
 
@@ -199,40 +313,61 @@ export default function News() {
                 <th style={styles.th}>Country</th>
                 <th style={styles.th}>Top Headline</th>
                 <th style={styles.th}>Category</th>
-                <th style={styles.th}>Source</th>
-                <th style={styles.th}>Published</th>
+                {isLatest && <th style={styles.th}>Source</th>}
+                {isLatest && <th style={styles.th}>Published</th>}
               </tr>
             </thead>
             <tbody>
-              {countries.map(country => {
-                const headline = country.headlines[0]
-                const { display, isAI } = country._badge
-                return (
-                  <tr key={country.country_code} style={styles.row}>
-                    <td style={styles.tdCountry}>
-                      <img
-                        src={`${FLAG_BASE}/${country.country_code.toLowerCase()}.png`}
-                        alt={country.country_code}
-                        style={styles.flag}
-                        onError={e => { e.currentTarget.style.display = 'none' }}
-                      />
-                      {country.country_name}
-                    </td>
-                    <td style={styles.td}>
-                      {headline.link
-                        ? <a href={headline.link} target="_blank" rel="noopener noreferrer" style={styles.link}>{getTitleEn(country) || headline.title}</a>
-                        : (getTitleEn(country) || headline.title)}
-                    </td>
-                    <td style={styles.td}>
-                      {display
-                        ? <span style={isAI ? styles.badgeAI : styles.badge}>{display}</span>
-                        : '—'}
-                    </td>
-                    <td style={styles.tdMuted}>{headline.source || '—'}</td>
-                    <td style={styles.tdMuted}>{formatTime(headline.published)}</td>
-                  </tr>
-                )
-              })}
+              {isLatest
+                ? displayRows.map(country => {
+                    const headline = country.headlines[0]
+                    const { display, isAI } = country._badge
+                    return (
+                      <tr key={country.country_code} style={styles.row}>
+                        <td style={styles.tdCountry}>
+                          <img
+                            src={`${FLAG_BASE}/${country.country_code.toLowerCase()}.png`}
+                            alt={country.country_code}
+                            style={styles.flag}
+                            onError={e => { e.currentTarget.style.display = 'none' }}
+                          />
+                          {country.country_name}
+                        </td>
+                        <td style={styles.td}>
+                          {headline.link
+                            ? <a href={headline.link} target="_blank" rel="noopener noreferrer" style={styles.link}>{getTitleEn(country) || headline.title}</a>
+                            : (getTitleEn(country) || headline.title)}
+                        </td>
+                        <td style={styles.td}>
+                          {display
+                            ? <span style={isAI ? styles.badgeAI : styles.badge}>{display}</span>
+                            : '—'}
+                        </td>
+                        <td style={styles.tdMuted}>{headline.source || '—'}</td>
+                        <td style={styles.tdMuted}>{formatTime(headline.published)}</td>
+                      </tr>
+                    )
+                  })
+                : displayRows.map(row => (
+                    <tr key={row.country_code} style={styles.row}>
+                      <td style={styles.tdCountry}>
+                        <img
+                          src={`${FLAG_BASE}/${row.country_code.toLowerCase()}.png`}
+                          alt={row.country_code}
+                          style={styles.flag}
+                          onError={e => { e.currentTarget.style.display = 'none' }}
+                        />
+                        {row.country_name}
+                      </td>
+                      <td style={styles.td}>{row.title_en || '—'}</td>
+                      <td style={styles.td}>
+                        {(row.topic || row.label)
+                          ? <span style={styles.badge}>{row.topic || row.label}</span>
+                          : '—'}
+                      </td>
+                    </tr>
+                  ))
+              }
             </tbody>
           </table>
         </div>
@@ -266,6 +401,51 @@ const styles = {
   meta: {
     fontSize: '0.75rem',
     color: 'var(--text-faint)',
+  },
+  btnRun: {
+    marginLeft: 'auto',
+    padding: '5px 14px',
+    borderRadius: '6px',
+    border: '1px solid var(--border)',
+    background: 'none',
+    color: 'var(--text-muted)',
+    fontSize: '0.8rem',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap',
+  },
+  scrapeMsg: {
+    fontSize: '0.75rem',
+    color: 'var(--text-faint)',
+    whiteSpace: 'nowrap',
+  },
+  // ── Slider
+  sliderRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '16px',
+    flexWrap: 'wrap',
+  },
+  slider: {
+    flex: 1,
+    minWidth: '160px',
+    accentColor: 'var(--accent)',
+    cursor: 'pointer',
+  },
+  sliderLabel: {
+    fontSize: '0.78rem',
+    color: 'var(--text-muted)',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '5px',
+    whiteSpace: 'nowrap',
+  },
+  liveDot: {
+    display: 'inline-block',
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    background: '#4caf50',
   },
   // ── AI panel
   aiPanel: {

@@ -14,6 +14,42 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
+_PROVIDERS = ["groq", "gemini", "huggingface", "openrouter"]
+_MAX_HISTORY = 90
+
+
+def _build_snapshot(scraped_results: list[dict], run_ts: str) -> dict:
+    """Build a lean {country_code: {label, topic, title_en}} snapshot for history."""
+    countries = {}
+    for r in scraped_results:
+        if not r.get("headlines"):
+            continue
+        cats = r["headlines"][0].get("categorization", {})
+        label = topic = title_en = None
+        for p in _PROVIDERS:
+            c = cats.get(p) or {}
+            if label is None and c.get("label"):
+                label = c["label"]
+            if topic is None and c.get("topic"):
+                topic = c["topic"]
+            if title_en is None and c.get("title_en"):
+                title_en = c["title_en"]
+        countries[r["country_code"]] = {"label": label, "topic": topic, "title_en": title_en}
+    return {"run_ts": run_ts, "countries": countries}
+
+
+def _fetch_s3_history(bucket: str, key: str) -> list:
+    """Read the existing history array from the current S3 latest.json."""
+    try:
+        import boto3
+        s3 = boto3.client("s3")
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        data = json.loads(obj["Body"].read())
+        return data.get("history", [])
+    except Exception as e:
+        logger.debug("Could not fetch existing history from s3://%s/%s: %s", bucket, key, e)
+        return []
+
 
 def upload_to_s3(filepath: Path, bucket: str, key: str) -> bool:
     """Upload a file to S3. Returns True on success, False on failure."""
@@ -59,6 +95,19 @@ def save_results(
     filename = f"results_{ts}.json"
     filepath = output_dir / filename
 
+    import config as _config
+
+    run_ts = run_metadata.get("run_started_at", datetime.now(timezone.utc).isoformat())
+
+    # Fetch existing history from S3 before overwriting
+    if _config.S3_ENABLED and _config.S3_BUCKET:
+        old_history = _fetch_s3_history(_config.S3_BUCKET, _config.S3_KEY)
+    else:
+        old_history = []
+
+    snapshot = _build_snapshot(scraped_results, run_ts)
+    history = (old_history + [snapshot])[-_MAX_HISTORY:]
+
     payload = {
         "run_metadata": {
             **run_metadata,
@@ -74,6 +123,7 @@ def save_results(
         },
         "countries": scraped_results,
         "clusters": clusters,
+        "history": history,
     }
 
     with open(filepath, "w", encoding="utf-8") as f:
@@ -87,7 +137,6 @@ def save_results(
     logger.info("Updated %s", latest_path)
 
     # Upload to S3 if configured
-    import config as _config
     if _config.S3_ENABLED and _config.S3_BUCKET:
         upload_to_s3(latest_path, _config.S3_BUCKET, _config.S3_KEY)
 

@@ -24,22 +24,6 @@ import aiohttp
 
 logger = logging.getLogger(__name__)
 
-# ---------------------------------------------------------------------------
-# Groq rate limiter — free tier is 30 RPM; enforce 2.5s gap (~24 RPM)
-# ---------------------------------------------------------------------------
-_groq_lock = asyncio.Lock()
-_groq_last_call: float = 0.0
-_GROQ_MIN_INTERVAL = 2.5  # seconds between requests
-
-
-async def _groq_rate_limit() -> None:
-    global _groq_last_call
-    async with _groq_lock:
-        now = asyncio.get_event_loop().time()
-        wait = _GROQ_MIN_INTERVAL - (now - _groq_last_call)
-        if wait > 0:
-            await asyncio.sleep(wait)
-        _groq_last_call = asyncio.get_event_loop().time()
 
 SYSTEM_PROMPT = (
     "You are a concise news analyst. When given a news headline, "
@@ -126,7 +110,6 @@ async def _call_groq(
         "Accept-Encoding": "gzip, deflate",
     }
     for attempt in range(2):  # 1 retry max
-        await _groq_rate_limit()
         async with session.post(url, json=payload, headers=headers, timeout=aiohttp.ClientTimeout(total=25)) as resp:
             if resp.status == 429:
                 if attempt == 0:
@@ -226,6 +209,104 @@ async def _call_openrouter(
         return _parse_label_summary(data["choices"][0]["message"]["content"])
 
 
+async def _call_bedrock(
+    session: aiohttp.ClientSession, headline: str, country_name: str, cfg: dict
+) -> Optional[dict]:
+    """Call Bedrock via signed HTTP request using aiohttp (fully async, no threads)."""
+    import datetime, hashlib, hmac, urllib.parse
+
+    region = os.environ.get("AWS_REGION", "us-east-1")
+    model_id = cfg.get("model", "amazon.nova-lite-v1:0")
+    url = f"https://bedrock-runtime.{region}.amazonaws.com/model/{urllib.parse.quote(model_id, safe='')}/invoke"
+
+    payload = json.dumps({
+        "messages": [{"role": "user", "content": [{"text": _build_user_prompt(headline, country_name)}]}],
+        "system": [{"text": SYSTEM_PROMPT}],
+        "inferenceConfig": {"temperature": 0.2, "maxTokens": 200},
+    })
+
+    # Get credentials from environment (Lambda injects them)
+    access_key = os.environ.get("AWS_ACCESS_KEY_ID", "")
+    secret_key = os.environ.get("AWS_SECRET_ACCESS_KEY", "")
+    session_token = os.environ.get("AWS_SESSION_TOKEN", "")
+
+    if not access_key or not secret_key:
+        logger.warning("No AWS credentials in environment for Bedrock call")
+        return None
+
+    # AWS SigV4 signing
+    now = datetime.datetime.utcnow()
+    amz_date = now.strftime("%Y%m%dT%H%M%SZ")
+    date_stamp = now.strftime("%Y%m%d")
+    service = "bedrock"
+    host = f"bedrock-runtime.{region}.amazonaws.com"
+
+    payload_bytes = payload.encode("utf-8")
+    payload_hash = hashlib.sha256(payload_bytes).hexdigest()
+
+    headers_to_sign = {
+        "content-type": "application/json",
+        "host": host,
+        "x-amz-date": amz_date,
+    }
+    if session_token:
+        headers_to_sign["x-amz-security-token"] = session_token
+
+    signed_headers = ";".join(sorted(headers_to_sign.keys()))
+    canonical_headers = "".join(f"{k}:{v}\n" for k, v in sorted(headers_to_sign.items()))
+    canonical_request = "\n".join([
+        "POST",
+        f"/model/{urllib.parse.quote(model_id, safe='')}/invoke",
+        "",
+        canonical_headers,
+        signed_headers,
+        payload_hash,
+    ])
+
+    credential_scope = f"{date_stamp}/{region}/{service}/aws4_request"
+    string_to_sign = "\n".join([
+        "AWS4-HMAC-SHA256",
+        amz_date,
+        credential_scope,
+        hashlib.sha256(canonical_request.encode()).hexdigest(),
+    ])
+
+    def _sign(key, msg):
+        return hmac.new(key, msg.encode(), hashlib.sha256).digest()
+
+    signing_key = _sign(
+        _sign(_sign(_sign(f"AWS4{secret_key}".encode(), date_stamp), region), service),
+        "aws4_request",
+    )
+    signature = hmac.new(signing_key, string_to_sign.encode(), hashlib.sha256).hexdigest()
+
+    auth_header = (
+        f"AWS4-HMAC-SHA256 Credential={access_key}/{credential_scope}, "
+        f"SignedHeaders={signed_headers}, Signature={signature}"
+    )
+
+    request_headers = {
+        "Authorization": auth_header,
+        "Content-Type": "application/json",
+        "X-Amz-Date": amz_date,
+        "X-Amz-Security-Token": session_token,
+    }
+
+    try:
+        async with session.post(url, data=payload_bytes, headers=request_headers,
+                                timeout=aiohttp.ClientTimeout(total=25)) as resp:
+            if resp.status != 200:
+                body_txt = await resp.text()
+                logger.warning("Bedrock %s for %s: %s", resp.status, country_name, body_txt[:200])
+                return None
+            data = await resp.json()
+            raw = data["output"]["message"]["content"][0]["text"]
+            return _parse_label_summary(raw)
+    except Exception as e:
+        logger.warning("Bedrock error for %s: %s", country_name, e)
+        return None
+
+
 # ---------------------------------------------------------------------------
 # Dispatcher
 # ---------------------------------------------------------------------------
@@ -235,6 +316,7 @@ PROVIDER_FNS = {
     "gemini": _call_gemini,
     "huggingface": _call_huggingface,
     "openrouter": _call_openrouter,
+    "bedrock": _call_bedrock,
 }
 
 
@@ -294,7 +376,7 @@ async def categorize_all(
             asyncio.gather(*[
                 _run_provider(session, name, cfg, title, country_name, semaphore)
                 for name, cfg in providers.items()
-                if cfg.get("enabled") and cfg.get("api_key")
+                if cfg.get("enabled")
             ])
             for _, _, title, country_name in to_categorize
         ]
@@ -318,12 +400,16 @@ def build_providers_from_config(provider_configs: dict) -> dict:
     for name, cfg in provider_configs.items():
         if not cfg.get("enabled", False):
             continue
-        api_key = os.environ.get(cfg.get("api_key_env", ""), "")
-        if not api_key:
-            logger.warning(
-                "Provider '%s' enabled but %s not set — skipping.",
-                name, cfg.get("api_key_env"),
-            )
-            continue
+        api_key_env = cfg.get("api_key_env", "")
+        if api_key_env:
+            api_key = os.environ.get(api_key_env, "")
+            if not api_key:
+                logger.warning(
+                    "Provider '%s' enabled but %s not set — skipping.",
+                    name, api_key_env,
+                )
+                continue
+        else:
+            api_key = ""  # IAM-based providers (e.g. bedrock) need no key
         resolved[name] = {**cfg, "api_key": api_key}
     return resolved

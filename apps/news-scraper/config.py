@@ -66,6 +66,11 @@ LLM_PROVIDERS: dict = {
         "model": os.environ.get("OPENROUTER_MODEL", "meta-llama/llama-3.2-3b-instruct:free"),
         "api_key_env": "OPENROUTER_API_KEY",
     },
+    "bedrock": {
+        "enabled": _bool("BEDROCK_ENABLED", False),
+        "model": os.environ.get("BEDROCK_MODEL", "amazon.nova-lite-v1:0"),
+        "api_key_env": "",  # uses IAM role, no API key needed
+    },
 }
 
 # Max concurrent LLM requests (across all providers combined)

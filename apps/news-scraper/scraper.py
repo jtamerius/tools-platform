@@ -41,18 +41,31 @@ EXCLUDED_DOMAINS = frozenset({
     "univision.com",
     "telemundo.com",
     "cnn.com",
+    "apnews.com",
+    "reuters.com",
+    "skynewsarabia.com",
+    "lemonde.fr",
 })
 
+# Sources excluded everywhere EXCEPT for listed country codes.
+EXCLUDED_DOMAINS_EXCEPT: dict[str, frozenset[str]] = {
+    "nbcnews.com": frozenset({"US"}),
+}
 
-def _is_excluded(source_url: str) -> bool:
-    """Return True if the source URL's domain is in EXCLUDED_DOMAINS."""
+
+def _is_excluded(source_url: str, country_code: str) -> bool:
+    """Return True if the source should be skipped for this country."""
     try:
-        # Strip scheme and www., keep only hostname
         host = source_url.split("//")[-1].split("/")[0].lower()
         host = host.removeprefix("www.")
-        return any(host == d or host.endswith("." + d) for d in EXCLUDED_DOMAINS)
+        if any(host == d or host.endswith("." + d) for d in EXCLUDED_DOMAINS):
+            return True
+        for domain, allowed in EXCLUDED_DOMAINS_EXCEPT.items():
+            if (host == domain or host.endswith("." + domain)) and country_code not in allowed:
+                return True
     except Exception:
-        return False
+        pass
+    return False
 
 
 async def fetch_feed(
@@ -81,7 +94,7 @@ async def fetch_feed(
         except aiohttp.ClientError as e:
             return _empty(country_code, display_name, lang, locale, url, str(e))
 
-    headlines = _parse_rss(content, top_n)
+    headlines = _parse_rss(content, top_n, country_code)
 
     logger.info("%-30s %d headline(s)", display_name, len(headlines))
 
@@ -97,7 +110,7 @@ async def fetch_feed(
     }
 
 
-def _parse_rss(content: bytes, top_n: int) -> list[dict]:
+def _parse_rss(content: bytes, top_n: int, country_code: str = '') -> list[dict]:
     """Parse RSS XML bytes into a list of headline dicts."""
     try:
         root = ET.fromstring(content)
@@ -123,7 +136,7 @@ def _parse_rss(content: bytes, top_n: int) -> list[dict]:
         # Google News wraps source name in <source url="...">Name</source>
         source_el = item.find("source")
         source_url = source_el.get("url", "") if source_el is not None else ""
-        if source_url and _is_excluded(source_url):
+        if source_url and _is_excluded(source_url, country_code):
             logger.debug("Skipping excluded source: %s", source_url)
             continue
 
