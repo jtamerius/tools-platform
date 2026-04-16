@@ -189,6 +189,7 @@ export default function NewsMap({ countryData = {} }) {
       pickable: true,
       filled: true,
       stroked: true,
+      wrapLongitude: true,
       getFillColor: f => {
         const a2 = ISO_NUM_TO_A2[+f.id]
         const d = a2 ? countryData[a2] : null
