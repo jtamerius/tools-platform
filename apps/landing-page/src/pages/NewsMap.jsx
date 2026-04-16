@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { Map, useControl } from 'react-map-gl/maplibre'
-import { MapboxOverlay } from '@deck.gl/mapbox'
+import DeckGL from '@deck.gl/react'
 import { GeoJsonLayer, ArcLayer } from '@deck.gl/layers'
+import { Map } from 'react-map-gl/maplibre'
 
-// ── Map style ─────────────────────────────────────────────────────────────────
 const CARTO_DARK =
   'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json'
 const TOPO_URL =
@@ -11,11 +10,11 @@ const TOPO_URL =
 
 const INITIAL_VIEW = {
   longitude: 10,
-  latitude: 20,
-  zoom: 1.05,
+  latitude: 15,
+  zoom: 1.1,
   pitch: 0,
   bearing: 0,
-  minZoom: 0.5,
+  minZoom: 0.8,
   maxZoom: 8,
 }
 
@@ -37,7 +36,7 @@ export const CATEGORY_COLORS = {
   'Sports':             '#ffca28',
   'Science':            '#5e97f6',
 }
-const DEFAULT_COLOR = '#2a3a4a'
+const DEFAULT_COLOR = '#2e3f52'
 
 // ── ISO numeric → alpha-2 ─────────────────────────────────────────────────────
 const ISO_NUM_TO_A2 = {
@@ -63,12 +62,12 @@ const ISO_NUM_TO_A2 = {
   862:'VE',
 }
 
-// ── Country centroids [lon, lat] ──────────────────────────────────────────────
+// ── Country centroids [lon, lat] for arc endpoints ────────────────────────────
 const CENTROIDS = {
-  DZ:[ 3.0, 28.0], AR:[-64.0,-34.0], AU:[134.0,-25.0], AT:[ 14.5, 47.5],
-  BD:[ 90.4, 23.7], BE:[  4.5, 50.5], BO:[-64.9,-16.3], BR:[-51.9,-14.2],
-  BG:[ 25.5, 42.7], BY:[ 28.0, 53.5], CM:[ 12.4,  5.7], CA:[-96.8, 56.1],
-  LK:[ 80.7,  7.9], CL:[-71.5,-35.7], CN:[104.2, 35.9], TW:[121.0, 23.7],
+  DZ:[ 2.6, 28.2], AR:[-63.6,-37.3], AU:[133.8,-26.9], AT:[ 14.6, 47.7],
+  BD:[ 90.4, 23.7], BE:[  4.5, 50.5], BO:[-64.7,-16.7], BR:[-51.9,-14.2],
+  BG:[ 25.5, 42.7], BY:[ 28.0, 53.5], CM:[ 12.3,  5.7], CA:[-96.8, 60.1],
+  LK:[ 80.7,  7.9], CL:[-71.5,-35.7], CN:[104.2, 35.9], TW:[120.9, 23.7],
   CO:[-74.3,  4.1], CR:[-84.2,  9.7], HR:[ 15.2, 45.1], CU:[-79.5, 21.5],
   CZ:[ 15.5, 49.8], DK:[  9.5, 56.3], DO:[-70.2, 18.7], EC:[-78.1, -1.8],
   SV:[-88.9, 13.8], ET:[ 40.5,  9.1], EE:[ 25.0, 58.6], FI:[ 25.7, 64.6],
@@ -80,14 +79,14 @@ const CENTROIDS = {
   LB:[ 35.9, 33.9], LV:[ 24.9, 56.9], LY:[ 17.2, 27.0], LT:[ 24.0, 55.9],
   LU:[  6.1, 49.8], MY:[109.7,  4.2], MX:[-102.5,23.6], MN:[103.8, 46.9],
   MA:[ -6.0, 32.0], NP:[ 84.2, 28.4], NL:[  5.3, 52.1], NZ:[172.5,-41.5],
-  NI:[-85.0, 12.9], NG:[  8.7,  9.1], NO:[ 10.2, 60.5], PK:[ 69.3, 30.4],
+  NI:[-85.0, 12.9], NG:[  8.7,  9.1], NO:[ 10.2, 65.5], PK:[ 69.3, 30.4],
   PA:[-80.0,  8.5], PY:[-58.4,-23.2], PE:[-75.0, -9.2], PH:[122.9, 12.9],
   PL:[ 19.1, 51.9], PT:[ -8.2, 39.6], PR:[-66.6, 18.2], RO:[ 24.9, 45.9],
   RU:[ 60.0, 60.0], SA:[ 45.1, 24.7], SN:[-14.5, 14.5], RS:[ 21.0, 44.0],
   SG:[103.8,  1.4], SK:[ 19.7, 48.7], VN:[106.3, 16.6], SI:[ 14.8, 46.1],
   ZA:[ 25.1,-29.0], ES:[ -3.7, 40.4], SE:[ 18.6, 62.0], CH:[  8.2, 46.8],
   TH:[101.0, 15.9], AE:[ 54.0, 24.0], TN:[  9.5, 34.0], TR:[ 35.2, 39.1],
-  UG:[ 32.3,  1.4], UA:[ 31.2, 48.4], EG:[ 29.9, 26.8], GB:[ -1.5, 52.5],
+  UG:[ 32.3,  1.4], UA:[ 31.2, 49.4], EG:[ 29.9, 26.8], GB:[ -2.5, 54.0],
   TZ:[ 34.9, -6.4], US:[-98.6, 39.5], UY:[-56.0,-32.5], VE:[-66.6,  8.0],
 }
 
@@ -142,13 +141,6 @@ function buildArcPairs(countryData, activeTopic, hoveredCode) {
   return pairs
 }
 
-// ── MapboxOverlay bridge (must render inside <Map>) ───────────────────────────
-function DeckBridge({ layers }) {
-  const overlay = useControl(() => new MapboxOverlay({ interleaved: false }))
-  overlay.setProps({ layers })
-  return null
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function NewsMap({ countryData = {} }) {
@@ -184,13 +176,11 @@ export default function NewsMap({ countryData = {} }) {
   const hoveredTopic = hoveredCode ? (countryData[hoveredCode]?.arcGroup ?? null) : null
   const activeTopic = activeLegendTopic ?? hoveredTopic
 
-  // Arcs: recompute when activeTopic or hover changes
-  const arcPairs = buildArcPairs(countryData, activeTopic, hoveredCode)
-  const arcHex = activeTopic ? topicColor(activeTopic, countryData) : '#aabbff'
-  const arcRgb = hexToRgb(arcHex)
-
-  // ── Layers — computed fresh each render so closures are always current ──────
+  // ── Layers (inline — no useMemo so closures are always current) ─────────────
   const isOther = activeTopic === '__other__'
+  const arcPairs = buildArcPairs(countryData, activeTopic, hoveredCode)
+  const arcHex = activeTopic ? topicColor(activeTopic, countryData) : '#7bb3ff'
+  const arcRgb = hexToRgb(arcHex)
 
   const layers = geoJson ? [
     new GeoJsonLayer({
@@ -202,20 +192,20 @@ export default function NewsMap({ countryData = {} }) {
       getFillColor: f => {
         const a2 = ISO_NUM_TO_A2[+f.id]
         const d = a2 ? countryData[a2] : null
-        if (!d) return [30, 45, 60, 220]   // uncategorized: dark teal, still visible
+        if (!d) return [35, 52, 70, 200]
         const [r, g, b] = hexToRgb(CATEGORY_COLORS[d.label] ?? DEFAULT_COLOR)
         const inOther = isOther && d.arcGroup && !topTopicSet.has(d.arcGroup)
         const dimmed = activeTopic && (isOther ? !inOther : d.arcGroup !== activeTopic)
-        return [r, g, b, dimmed ? 28 : 200]
+        return [r, g, b, dimmed ? 30 : 210]
       },
       getLineColor: f => {
         const a2 = ISO_NUM_TO_A2[+f.id]
         const d = a2 ? countryData[a2] : null
-        if (!d) return [50, 65, 80, 120]
+        if (!d) return [60, 80, 100, 80]
         const [r, g, b] = hexToRgb(CATEGORY_COLORS[d.label] ?? DEFAULT_COLOR)
-        return [r, g, b, 80]
+        return [r, g, b, 60]
       },
-      lineWidthMinPixels: 0.6,
+      lineWidthMinPixels: 0.5,
       onHover: ({ object, x, y }) => {
         if (!object) { setHoveredCode(null); setTooltip(null); return }
         const a2 = ISO_NUM_TO_A2[+object.id]
@@ -232,28 +222,41 @@ export default function NewsMap({ countryData = {} }) {
       data: arcPairs,
       getSourcePosition: d => d.source,
       getTargetPosition: d => d.target,
-      getSourceColor: [arcRgb[0], arcRgb[1], arcRgb[2], 240],
-      getTargetColor: [arcRgb[0], arcRgb[1], arcRgb[2], 100],
-      getWidth: 2.5,
+      getSourceColor: [arcRgb[0], arcRgb[1], arcRgb[2], 255],
+      getTargetColor: [arcRgb[0], arcRgb[1], arcRgb[2], 120],
+      getWidth: 2,
       greatCircle: true,
-      opacity: 1,
     })] : []),
   ] : []
 
   return (
     <div style={styles.wrap}>
       <div ref={containerRef} style={styles.mapContainer}>
-        <Map
+        <DeckGL
           initialViewState={INITIAL_VIEW}
-          mapStyle={CARTO_DARK}
-          style={{ width: '100%', height: '100%' }}
-          attributionControl={false}
+          controller={{ doubleClickZoom: false }}
+          layers={layers}
+          getCursor={({ isHovering }) => isHovering ? 'pointer' : 'grab'}
+          style={{ position: 'absolute', inset: 0 }}
+          onViewStateChange={() => {
+            // dismiss tooltip on pan/zoom
+            setTooltip(null)
+            setHoveredCode(null)
+          }}
         >
-          <DeckBridge layers={layers} />
-        </Map>
+          <Map
+            reuseMaps
+            mapStyle={CARTO_DARK}
+            attributionControl={false}
+          />
+        </DeckGL>
 
         {tooltip && (
-          <div style={{ ...styles.tooltip, left: tooltip.x + 14, top: tooltip.y + 14 }}>
+          <div style={{
+            ...styles.tooltip,
+            left: Math.min(tooltip.x + 14, (containerRef.current?.clientWidth ?? 800) - 270),
+            top: Math.min(tooltip.y + 14, (containerRef.current?.clientHeight ?? 500) - 120),
+          }}>
             <div style={styles.tooltipTitle}>
               {tooltip.info?.country_name ?? tooltip.code}
               {tooltip.info?.label && (
@@ -287,7 +290,7 @@ export default function NewsMap({ countryData = {} }) {
                   background: active ? color : 'transparent',
                   color: active ? '#fff' : color,
                   border: `1px solid ${color}`,
-                  opacity: activeLegendTopic && !active ? 0.4 : 1,
+                  opacity: activeLegendTopic && !active ? 0.35 : 1,
                 }}
               >
                 {topic}
@@ -310,7 +313,7 @@ export default function NewsMap({ countryData = {} }) {
                   background: active ? '#556' : 'transparent',
                   color: active ? '#fff' : '#889',
                   border: '1px solid #445',
-                  opacity: activeLegendTopic && !active ? 0.4 : 1,
+                  opacity: activeLegendTopic && !active ? 0.35 : 1,
                 }}
               >
                 Other
@@ -319,10 +322,7 @@ export default function NewsMap({ countryData = {} }) {
             )
           })()}
           {activeLegendTopic && (
-            <span
-              onClick={() => setActiveLegendTopic(null)}
-              style={styles.legendClear}
-            >
+            <span onClick={() => setActiveLegendTopic(null)} style={styles.legendClear}>
               ✕ clear
             </span>
           )}
@@ -343,49 +343,51 @@ const styles = {
     position: 'relative',
     width: '100%',
     height: '500px',
-    background: '#050a14',
+    background: '#05090f',
   },
   tooltip: {
     position: 'absolute',
-    background: 'rgba(10,18,32,0.95)',
+    background: 'rgba(8,14,26,0.96)',
     color: '#e8e8e4',
     padding: '8px 12px',
     borderRadius: '6px',
     fontSize: '0.78rem',
-    maxWidth: '260px',
+    width: '250px',
     pointerEvents: 'none',
-    boxShadow: '0 2px 20px rgba(0,0,0,0.8)',
+    boxShadow: '0 4px 24px rgba(0,0,0,0.85)',
     zIndex: 10,
-    lineHeight: 1.4,
-    border: '1px solid rgba(255,255,255,0.08)',
+    lineHeight: 1.45,
+    border: '1px solid rgba(255,255,255,0.07)',
   },
   tooltipTitle: {
     fontWeight: 600,
     display: 'flex',
     alignItems: 'center',
     gap: '6px',
+    flexWrap: 'wrap',
   },
   tooltipBadge: {
     fontSize: '0.72rem',
     fontWeight: 400,
   },
   tooltipTopic: {
-    marginTop: '3px',
+    marginTop: '4px',
     fontSize: '0.75rem',
     opacity: 0.85,
     fontStyle: 'italic',
   },
   tooltipHeadline: {
     marginTop: '4px',
-    fontSize: '0.74rem',
-    opacity: 0.65,
+    fontSize: '0.73rem',
+    opacity: 0.62,
+    lineHeight: 1.35,
   },
   legend: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: '6px',
     padding: '10px 14px',
-    background: '#070d1a',
+    background: '#060c18',
     borderTop: '1px solid #1a2535',
   },
   legendItem: {
