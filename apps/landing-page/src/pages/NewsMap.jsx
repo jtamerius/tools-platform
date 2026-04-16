@@ -1,21 +1,25 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
-import DeckGL from '@deck.gl/react'
-import { GeoJsonLayer, ArcLayer, BitmapLayer } from '@deck.gl/layers'
-import { TileLayer } from '@deck.gl/geo-layers'
-import { Map } from 'react-map-gl/maplibre'
+import { Map, useControl } from 'react-map-gl/maplibre'
+import { MapboxOverlay } from '@deck.gl/mapbox'
+import { GeoJsonLayer, ArcLayer } from '@deck.gl/layers'
 
-// ── Basemap & tile sources ────────────────────────────────────────────────────
+// ── Map style ─────────────────────────────────────────────────────────────────
 const CARTO_DARK =
-  'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json'
+  'https://basemaps.cartocdn.com/gl/dark-matter-nolabels-gl-style/style.json'
 const TOPO_URL =
   'https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json'
-// NASA GIBS Black Marble – annual composite night lights
-const NASA_TILES =
-  'https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/VIIRS_Black_Marble_Avg_Radiance/default/2016-01/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpg'
 
-const INITIAL_VIEW = { longitude: 10, latitude: 20, zoom: 1.4, pitch: 0, bearing: 0 }
+const INITIAL_VIEW = {
+  longitude: 10,
+  latitude: 20,
+  zoom: 1.05,
+  pitch: 0,
+  bearing: 0,
+  minZoom: 0.5,
+  maxZoom: 8,
+}
 
-// ── Category → color (broad taxonomy, for country fills) ─────────────────────
+// ── Category → color ──────────────────────────────────────────────────────────
 export const CATEGORY_COLORS = {
   'Politics':           '#e05c5c',
   'Elections':          '#ff8c42',
@@ -33,9 +37,9 @@ export const CATEGORY_COLORS = {
   'Sports':             '#ffca28',
   'Science':            '#5e97f6',
 }
-const DEFAULT_COLOR = '#334455'
+const DEFAULT_COLOR = '#2a3a4a'
 
-// ── ISO numeric → alpha-2 for all 96 scraped countries ───────────────────────
+// ── ISO numeric → alpha-2 ─────────────────────────────────────────────────────
 const ISO_NUM_TO_A2 = {
    12:'DZ',  32:'AR',  36:'AU',  40:'AT',  50:'BD',
    56:'BE',  68:'BO',  76:'BR', 100:'BG', 112:'BY',
@@ -59,14 +63,14 @@ const ISO_NUM_TO_A2 = {
   862:'VE',
 }
 
-// ── Country centroids [lon, lat] for arc endpoints ───────────────────────────
+// ── Country centroids [lon, lat] ──────────────────────────────────────────────
 const CENTROIDS = {
-  DZ:[ 3.0, 28.0], AR:[-64.0,-34.0], AU:[133.0,-27.0], AT:[ 14.5, 47.5],
+  DZ:[ 3.0, 28.0], AR:[-64.0,-34.0], AU:[134.0,-25.0], AT:[ 14.5, 47.5],
   BD:[ 90.4, 23.7], BE:[  4.5, 50.5], BO:[-64.9,-16.3], BR:[-51.9,-14.2],
   BG:[ 25.5, 42.7], BY:[ 28.0, 53.5], CM:[ 12.4,  5.7], CA:[-96.8, 56.1],
   LK:[ 80.7,  7.9], CL:[-71.5,-35.7], CN:[104.2, 35.9], TW:[121.0, 23.7],
   CO:[-74.3,  4.1], CR:[-84.2,  9.7], HR:[ 15.2, 45.1], CU:[-79.5, 21.5],
-  CZ:[ 15.5, 49.8], DK:[ 10.0, 56.3], DO:[-70.2, 18.7], EC:[-78.1, -1.8],
+  CZ:[ 15.5, 49.8], DK:[  9.5, 56.3], DO:[-70.2, 18.7], EC:[-78.1, -1.8],
   SV:[-88.9, 13.8], ET:[ 40.5,  9.1], EE:[ 25.0, 58.6], FI:[ 25.7, 64.6],
   FR:[  2.2, 46.2], DE:[ 10.5, 51.2], GH:[ -1.0,  7.9], GR:[ 21.8, 39.1],
   GT:[-90.2, 15.8], HN:[-86.6, 15.2], HK:[114.2, 22.3], HU:[ 19.5, 47.2],
@@ -79,11 +83,11 @@ const CENTROIDS = {
   NI:[-85.0, 12.9], NG:[  8.7,  9.1], NO:[ 10.2, 60.5], PK:[ 69.3, 30.4],
   PA:[-80.0,  8.5], PY:[-58.4,-23.2], PE:[-75.0, -9.2], PH:[122.9, 12.9],
   PL:[ 19.1, 51.9], PT:[ -8.2, 39.6], PR:[-66.6, 18.2], RO:[ 24.9, 45.9],
-  RU:[105.3, 61.5], SA:[ 45.1, 24.7], SN:[-14.5, 14.5], RS:[ 21.0, 44.0],
+  RU:[ 60.0, 60.0], SA:[ 45.1, 24.7], SN:[-14.5, 14.5], RS:[ 21.0, 44.0],
   SG:[103.8,  1.4], SK:[ 19.7, 48.7], VN:[106.3, 16.6], SI:[ 14.8, 46.1],
   ZA:[ 25.1,-29.0], ES:[ -3.7, 40.4], SE:[ 18.6, 62.0], CH:[  8.2, 46.8],
   TH:[101.0, 15.9], AE:[ 54.0, 24.0], TN:[  9.5, 34.0], TR:[ 35.2, 39.1],
-  UG:[ 32.3,  1.4], UA:[ 31.2, 48.4], EG:[ 29.9, 26.8], GB:[ -3.4, 55.4],
+  UG:[ 32.3,  1.4], UA:[ 31.2, 48.4], EG:[ 29.9, 26.8], GB:[ -1.5, 52.5],
   TZ:[ 34.9, -6.4], US:[-98.6, 39.5], UY:[-56.0,-32.5], VE:[-66.6,  8.0],
 }
 
@@ -94,7 +98,6 @@ function hexToRgb(hex) {
   return [(n >> 16) & 255, (n >> 8) & 255, n & 255]
 }
 
-// Dominant CATEGORY_COLORS color for a given arcGroup topic
 function topicColor(topic, countryData) {
   const counts = {}
   Object.values(countryData).forEach(d => {
@@ -102,10 +105,9 @@ function topicColor(topic, countryData) {
       counts[d.label] = (counts[d.label] || 0) + 1
   })
   const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0]
-  return CATEGORY_COLORS[top] ?? '#aaa'
+  return CATEGORY_COLORS[top] ?? '#aabbff'
 }
 
-// Build arc pairs as {source, target} [lon, lat] objects for ArcLayer
 function buildArcPairs(countryData, activeTopic, hoveredCode) {
   if (!activeTopic || activeTopic === '__other__') return []
 
@@ -140,6 +142,13 @@ function buildArcPairs(countryData, activeTopic, hoveredCode) {
   return pairs
 }
 
+// ── MapboxOverlay bridge (must render inside <Map>) ───────────────────────────
+function DeckBridge({ layers }) {
+  const overlay = useControl(() => new MapboxOverlay({ interleaved: false }))
+  overlay.setProps({ layers })
+  return null
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function NewsMap({ countryData = {} }) {
@@ -149,7 +158,6 @@ export default function NewsMap({ countryData = {} }) {
   const [activeLegendTopic, setActiveLegendTopic] = useState(null)
   const [tooltip, setTooltip] = useState(null)
 
-  // Load world-atlas TopoJSON once, convert to GeoJSON
   useEffect(() => {
     fetch(TOPO_URL)
       .then(r => r.json())
@@ -157,10 +165,8 @@ export default function NewsMap({ countryData = {} }) {
         const { feature } = await import('topojson-client')
         setGeoJson(feature(topo, topo.objects.countries))
       })
-      .catch(err => console.error('Failed to load map data:', err))
   }, [])
 
-  // Top 4 topics by country count (arcGroup with ≥2 countries)
   const topTopics = useMemo(() => {
     const counts = {}
     Object.values(countryData).forEach(d => {
@@ -175,108 +181,77 @@ export default function NewsMap({ countryData = {} }) {
 
   const topTopicSet = useMemo(() => new Set(topTopics.map(t => t.topic)), [topTopics])
 
-  // Active topic: legend selection takes priority, then hover
   const hoveredTopic = hoveredCode ? (countryData[hoveredCode]?.arcGroup ?? null) : null
   const activeTopic = activeLegendTopic ?? hoveredTopic
 
-  const arcPairs = useMemo(
-    () => buildArcPairs(countryData, activeTopic, hoveredCode),
-    [countryData, activeTopic, hoveredCode]
-  )
-  const arcRgb = useMemo(() => {
-    if (!activeTopic || activeTopic === '__other__') return [170, 170, 170]
-    return hexToRgb(topicColor(activeTopic, countryData))
-  }, [activeTopic, countryData])
+  // Arcs: recompute when activeTopic or hover changes
+  const arcPairs = buildArcPairs(countryData, activeTopic, hoveredCode)
+  const arcHex = activeTopic ? topicColor(activeTopic, countryData) : '#aabbff'
+  const arcRgb = hexToRgb(arcHex)
 
-  // ── deck.gl layers ──────────────────────────────────────────────────────────
-  const layers = useMemo(() => {
-    if (!geoJson) return []
+  // ── Layers — computed fresh each render so closures are always current ──────
+  const isOther = activeTopic === '__other__'
 
-    const isOther = activeTopic === '__other__'
+  const layers = geoJson ? [
+    new GeoJsonLayer({
+      id: 'countries',
+      data: geoJson,
+      pickable: true,
+      filled: true,
+      stroked: true,
+      getFillColor: f => {
+        const a2 = ISO_NUM_TO_A2[+f.id]
+        const d = a2 ? countryData[a2] : null
+        if (!d) return [30, 45, 60, 220]   // uncategorized: dark teal, still visible
+        const [r, g, b] = hexToRgb(CATEGORY_COLORS[d.label] ?? DEFAULT_COLOR)
+        const inOther = isOther && d.arcGroup && !topTopicSet.has(d.arcGroup)
+        const dimmed = activeTopic && (isOther ? !inOther : d.arcGroup !== activeTopic)
+        return [r, g, b, dimmed ? 28 : 200]
+      },
+      getLineColor: f => {
+        const a2 = ISO_NUM_TO_A2[+f.id]
+        const d = a2 ? countryData[a2] : null
+        if (!d) return [50, 65, 80, 120]
+        const [r, g, b] = hexToRgb(CATEGORY_COLORS[d.label] ?? DEFAULT_COLOR)
+        return [r, g, b, 80]
+      },
+      lineWidthMinPixels: 0.6,
+      onHover: ({ object, x, y }) => {
+        if (!object) { setHoveredCode(null); setTooltip(null); return }
+        const a2 = ISO_NUM_TO_A2[+object.id]
+        setHoveredCode(a2 ?? null)
+        setTooltip(a2 ? { x, y, code: a2, info: countryData[a2] } : null)
+      },
+      updateTriggers: {
+        getFillColor: [countryData, activeTopic, topTopicSet],
+        getLineColor: [countryData],
+      },
+    }),
+    ...(arcPairs.length > 0 ? [new ArcLayer({
+      id: 'arcs',
+      data: arcPairs,
+      getSourcePosition: d => d.source,
+      getTargetPosition: d => d.target,
+      getSourceColor: [arcRgb[0], arcRgb[1], arcRgb[2], 240],
+      getTargetColor: [arcRgb[0], arcRgb[1], arcRgb[2], 100],
+      getWidth: 2.5,
+      greatCircle: true,
+      opacity: 1,
+    })] : []),
+  ] : []
 
-    return [
-      // 1. NASA Black Marble night lights (behind country fills)
-      new TileLayer({
-        id: 'nasa',
-        data: NASA_TILES,
-        minZoom: 0,
-        maxZoom: 8,
-        tileSize: 256,
-        opacity: 0.5,
-        renderSubLayers: props => {
-          const { west, south, east, north } = props.tile.bbox
-          return new BitmapLayer(props, {
-            data: null,
-            image: props.data,
-            bounds: [west, south, east, north],
-          })
-        },
-      }),
-
-      // 2. Country fills colored by broad taxonomy label
-      new GeoJsonLayer({
-        id: 'countries',
-        data: geoJson,
-        pickable: true,
-        filled: true,
-        stroked: true,
-        getFillColor: f => {
-          const a2 = ISO_NUM_TO_A2[+f.id]
-          const d = a2 ? countryData[a2] : null
-          const [r, g, b] = hexToRgb(
-            d?.label ? (CATEGORY_COLORS[d.label] ?? DEFAULT_COLOR) : DEFAULT_COLOR
-          )
-          const inOther = isOther && d?.arcGroup && !topTopicSet.has(d.arcGroup)
-          const dimmed = activeTopic && (isOther ? !inOther : d?.arcGroup !== activeTopic)
-          return [r, g, b, dimmed ? 30 : (d ? 160 : 40)]
-        },
-        getLineColor: [26, 32, 48, 180],
-        lineWidthMinPixels: 0.5,
-        onHover: ({ object, x, y }) => {
-          if (!object) {
-            setHoveredCode(null)
-            setTooltip(null)
-            return
-          }
-          const a2 = ISO_NUM_TO_A2[+object.id]
-          setHoveredCode(a2 ?? null)
-          setTooltip(a2 ? { x, y, code: a2, info: countryData[a2] } : null)
-        },
-        updateTriggers: {
-          getFillColor: [countryData, activeTopic, topTopicSet],
-        },
-      }),
-
-      // 3. Topic arcs
-      new ArcLayer({
-        id: 'arcs',
-        data: arcPairs,
-        getSourcePosition: d => d.source,
-        getTargetPosition: d => d.target,
-        getSourceColor: [...arcRgb, 200],
-        getTargetColor: [...arcRgb, 200],
-        getWidth: 1.5,
-        opacity: 0.7,
-      }),
-    ]
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [geoJson, countryData, activeTopic, topTopicSet, arcPairs, arcRgb])
-
-  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div style={styles.wrap}>
       <div ref={containerRef} style={styles.mapContainer}>
-        <DeckGL
+        <Map
           initialViewState={INITIAL_VIEW}
-          controller={true}
-          layers={layers}
-          getCursor={({ isHovering }) => isHovering ? 'pointer' : 'grab'}
-          style={{ position: 'absolute', inset: 0 }}
+          mapStyle={CARTO_DARK}
+          style={{ width: '100%', height: '100%' }}
+          attributionControl={false}
         >
-          <Map reuseMaps mapStyle={CARTO_DARK} />
-        </DeckGL>
+          <DeckBridge layers={layers} />
+        </Map>
 
-        {/* Tooltip */}
         {tooltip && (
           <div style={{ ...styles.tooltip, left: tooltip.x + 14, top: tooltip.y + 14 }}>
             <div style={styles.tooltipTitle}>
@@ -320,7 +295,6 @@ export default function NewsMap({ countryData = {} }) {
               </span>
             )
           })}
-          {/* Other — highlights countries outside top 4 topics */}
           {(() => {
             const otherCount = Object.values(countryData).filter(
               d => d?.arcGroup && !topTopicSet.has(d.arcGroup)
@@ -367,21 +341,23 @@ const styles = {
   },
   mapContainer: {
     position: 'relative',
-    height: '480px',
+    width: '100%',
+    height: '500px',
     background: '#050a14',
   },
   tooltip: {
     position: 'absolute',
-    background: '#0d1622',
+    background: 'rgba(10,18,32,0.95)',
     color: '#e8e8e4',
     padding: '8px 12px',
     borderRadius: '6px',
     fontSize: '0.78rem',
-    maxWidth: '240px',
+    maxWidth: '260px',
     pointerEvents: 'none',
-    boxShadow: '0 2px 16px rgba(0,0,0,0.7)',
+    boxShadow: '0 2px 20px rgba(0,0,0,0.8)',
     zIndex: 10,
     lineHeight: 1.4,
+    border: '1px solid rgba(255,255,255,0.08)',
   },
   tooltipTitle: {
     fontWeight: 600,
@@ -402,7 +378,7 @@ const styles = {
   tooltipHeadline: {
     marginTop: '4px',
     fontSize: '0.74rem',
-    opacity: 0.7,
+    opacity: 0.65,
   },
   legend: {
     display: 'flex',
@@ -427,7 +403,6 @@ const styles = {
   legendCount: {
     fontSize: '0.65rem',
     opacity: 0.7,
-    fontVariantNumeric: 'tabular-nums',
   },
   legendClear: {
     padding: '3px 9px',
