@@ -1,0 +1,35 @@
+.status-badge {
+  display: inline-block;
+  padding: 0.3rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
+.status-badge.current {
+  background: #ecfdf3;
+  color: #067647;
+}
+
+.status-badge.late {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.status-badge.delinquent {
+  background: #fef3f2;
+  color: #b42318;
+}
+
+.status-badge.paid-off {
+  background: var(--bg);
+  color: var(--text-muted);
+}
+
+.status-badge.unknown {
+  background: var(--bg);
+  color: var(--text-muted);
+}

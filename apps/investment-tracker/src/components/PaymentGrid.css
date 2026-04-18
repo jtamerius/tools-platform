@@ -1,0 +1,228 @@
+.payment-grid-wrapper {
+  margin-bottom: 2rem;
+}
+
+.payment-grid-wrapper h2 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.01em;
+}
+
+.grid-legend {
+  display: flex;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+
+.legend-paid {
+  color: #067647;
+}
+
+.legend-missing {
+  color: #b42318;
+}
+
+.legend-na {
+  color: var(--text-muted);
+}
+
+.grid-loading {
+  color: var(--text-muted);
+  padding: 2rem;
+  font-size: 0.875rem;
+}
+
+.payment-grid-scroll {
+  overflow-x: auto;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.payment-grid {
+  border-collapse: collapse;
+  min-width: 100%;
+  font-size: 0.8rem;
+}
+
+.payment-grid th,
+.payment-grid td {
+  padding: 0.45rem 0.5rem;
+  text-align: center;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.payment-grid thead th {
+  background: var(--bg);
+  font-weight: 500;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sticky-col {
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 2;
+  text-align: left !important;
+  min-width: 150px;
+  border-right: 1px solid var(--border);
+}
+
+thead .sticky-col {
+  background: var(--bg);
+  z-index: 3;
+}
+
+.account-cell {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.account-cell:hover {
+  background: var(--accent-light);
+}
+
+.cell-acct {
+  display: block;
+  font-weight: 500;
+  font-size: 0.8rem;
+  color: var(--text);
+}
+
+.cell-num {
+  display: block;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+
+.grid-cell {
+  font-size: 0.85rem;
+  font-weight: 600;
+  width: 48px;
+  min-width: 48px;
+}
+
+.cell-paid {
+  color: #067647;
+  background: #ecfdf3;
+}
+
+.cell-missing {
+  color: #b42318;
+  background: #fef3f2;
+}
+
+.cell-na {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.grid-cell {
+  cursor: pointer;
+}
+
+.grid-cell.has-note {
+  position: relative;
+}
+
+.grid-cell.has-note::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.grid-cell.has-override {
+  font-style: italic;
+}
+
+/* ── Cell Popover ── */
+.cell-popover {
+  position: fixed;
+  z-index: 100;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(16,24,40,0.12);
+  padding: 0.75rem;
+  width: 210px;
+}
+
+.pop-status-row {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.pop-status-btn {
+  flex: 1;
+  padding: 0.35rem 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  transition: all 0.15s;
+}
+
+.pop-status-btn:hover {
+  background: var(--bg);
+}
+
+.pop-status-btn.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.pop-note {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.5rem;
+  font-size: 0.8rem;
+  font-family: inherit;
+  resize: vertical;
+  color: var(--text);
+  margin-bottom: 0.4rem;
+}
+
+.pop-note:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.pop-save {
+  width: 100%;
+  padding: 0.35rem;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.pop-save:hover {
+  opacity: 0.9;
+}

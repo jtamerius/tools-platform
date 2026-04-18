@@ -1,0 +1,67 @@
+.account-details h3 {
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  gap: 1rem;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-label {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 0.15rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+
+.mono-small {
+  font-size: 0.75rem;
+  word-break: break-all;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--text-muted);
+}
+
+.account-details table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.account-details td {
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.account-details td:first-child {
+  font-weight: 500;
+  color: var(--text);
+}
+
+.account-details tr:last-child td {
+  border-bottom: none;
+}
+
+.account-details td:last-child {
+  text-align: right;
+}
