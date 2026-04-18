@@ -100,6 +100,18 @@ export function getGroupsFromToken(session) {
 }
 
 /**
+ * Returns the current ID token JWT string, or null if there is no valid session.
+ * Triggers a silent refresh if the cached token is expired.
+ * @param {CognitoUserPool} userPool
+ * @returns {Promise<string | null>}
+ */
+export async function getIdTokenJwt(userPool) {
+  const session = await getCurrentSession(userPool);
+  if (!session) return null;
+  return session.getIdToken().getJwtToken();
+}
+
+/**
  * Extracts basic user attributes (email, sub) from the ID token payload.
  * @param {import('amazon-cognito-identity-js').CognitoUserSession} session
  * @returns {{ email: string, sub: string }}

@@ -9,6 +9,7 @@ import { AmplifyStack } from '../lib/stacks/amplify-stack';
 import { LandingPageStack } from '../lib/stacks/landing-page-stack';
 import { NewsScraperStack } from '../lib/stacks/news-scraper-stack';
 import { MaritimePipelineStack } from '../lib/stacks/maritime-pipeline-stack';
+import { InvestmentTrackerStack } from '../lib/stacks/investment-tracker-stack';
 
 const app = new cdk.App();
 
@@ -67,6 +68,15 @@ const maritimeAmplify = new AmplifyStack(app, `tools-shared-amplify-maritime-${e
   env: awsEnv,
 });
 
+const investmentTrackerAmplify = new AmplifyStack(app, `tools-shared-amplify-invest-tracker-${envName}`, {
+  cfg,
+  appName: 'investment-tracker',
+  subdomain: 'investments',
+  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
+  exportPrefix: 'tools-shared-amplify-invest-tracker',
+  env: awsEnv,
+});
+
 // ── Shared: Monitoring ───────────────────────────────────────────────────────
 new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
   cfg,
@@ -75,6 +85,7 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
     weatherAmplify.appId,
     financeAmplify.appId,
     maritimeAmplify.appId,
+    investmentTrackerAmplify.appId,
   ],
   env: awsEnv,
 });
@@ -91,3 +102,10 @@ new NewsScraperStack(app, `tools-app-news-scraper-${envName}`, { cfg, env: awsEn
 
 // ── App: maritime-trajectory pipeline (S3, SageMaker, SFN, Lambda API, APIGW) ─
 new MaritimePipelineStack(app, `tools-app-maritime-pipeline-${envName}`, { cfg, env: awsEnv });
+
+// ── App: investment-tracker (DynamoDB + S3 + Lambda API + SES inbound) ───────
+new InvestmentTrackerStack(app, `tools-app-investment-tracker-${envName}`, {
+  cfg,
+  cognitoStack: cognito,
+  env: awsEnv,
+});

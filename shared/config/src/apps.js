@@ -53,6 +53,15 @@ export const APPS = [
     requiredGroup: 'member',
   },
   {
+    id: 'investment-tracker',
+    name: 'Investment Tracker',
+    description: 'Track monthly seller-statement payments and estimated investment values.',
+    url: isProd ? 'https://investments.jtamerius.com' : 'https://staging.d1kqq0ntalvbmo.amplifyapp.com',
+    subdomain: 'investments',
+    isPublic: false,
+    requiredGroup: 'admin',
+  },
+  {
     id: 'news',
     name: 'Global News',
     description: 'Top headlines from 96 countries, categorized by AI',

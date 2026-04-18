@@ -1,0 +1,20 @@
+{
+  "name": "@tools/investment-tracker-api",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Lambda-backed Express API for the Investment Tracker (DynamoDB + S3).",
+  "main": "src/handler.js",
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist && cp -r src package.json dist/ && cd dist && npm install --omit=dev --legacy-peer-deps && cd .. && (cd dist && zip -rq ../lambda.zip .)"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.658.0",
+    "@aws-sdk/client-lambda": "^3.658.0",
+    "@aws-sdk/client-s3": "^3.658.0",
+    "@aws-sdk/lib-dynamodb": "^3.658.0",
+    "@vendia/serverless-express": "^4.12.6",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
+  }
+}

@@ -1,47 +1,57 @@
-const BASE = 'http://localhost:3001/api';
+import { createUserPool, getIdTokenJwt } from '@tools/auth';
 
-export async function fetchAccounts() {
-  const res = await fetch(`${BASE}/accounts`);
+const BASE = (import.meta.env.VITE_API_URL ?? 'http://localhost:3001').replace(/\/$/, '') + '/api';
+
+const USER_POOL_ID = import.meta.env.VITE_COGNITO_USER_POOL_ID ?? '';
+const CLIENT_ID = import.meta.env.VITE_COGNITO_CLIENT_ID ?? '';
+let poolRef = null;
+function getPool() {
+  if (!poolRef && USER_POOL_ID && CLIENT_ID) {
+    poolRef = createUserPool(USER_POOL_ID, CLIENT_ID);
+  }
+  return poolRef;
+}
+
+async function authHeaders() {
+  const pool = getPool();
+  if (!pool) return {};
+  const jwt = await getIdTokenJwt(pool);
+  return jwt ? { Authorization: `Bearer ${jwt}` } : {};
+}
+
+async function request(path, { method = 'GET', body, headers = {}, isForm = false } = {}) {
+  const auth = await authHeaders();
+  const init = {
+    method,
+    headers: {
+      ...(body && !isForm ? { 'Content-Type': 'application/json' } : {}),
+      ...auth,
+      ...headers,
+    },
+  };
+  if (body) init.body = isForm ? body : JSON.stringify(body);
+  const res = await fetch(`${BASE}${path}`, init);
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Server returned ${res.status}${text ? `: ${text}` : ''}`);
+  }
   return res.json();
 }
 
-export async function fetchAccount(accountNumber) {
-  const res = await fetch(`${BASE}/accounts/${accountNumber}`);
-  return res.json();
-}
+export const fetchAccounts = () => request('/accounts');
+export const fetchAccount = (acct) => request(`/accounts/${acct}`);
+export const fetchPaymentGrid = () => request('/payment-grid');
 
-export async function fetchPaymentGrid() {
-  const res = await fetch(`${BASE}/payment-grid`);
-  return res.json();
-}
+export const setAccountClosed = (acct, closed) =>
+  request(`/accounts/${acct}/status`, { method: 'PUT', body: { closed } });
 
-export async function setAccountClosed(accountNumber, closed) {
-  const res = await fetch(`${BASE}/accounts/${accountNumber}/status`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ closed }),
-  });
-  return res.json();
-}
+export const setCellOverride = (acct, year, month, status, note) =>
+  request(`/cells/${acct}/${year}/${month}`, { method: 'PUT', body: { status, note } });
 
-export async function setCellOverride(accountNumber, year, month, status, note) {
-  const res = await fetch(`${BASE}/cells/${accountNumber}/${year}/${month}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ status, note }),
-  });
-  return res.json();
-}
-
-export async function fetchCellOverrides(accountNumber) {
-  const res = await fetch(`${BASE}/cells/${accountNumber}`);
-  return res.json();
-}
+export const fetchCellOverrides = (acct) => request(`/cells/${acct}`);
 
 export async function uploadFiles(files) {
   const fd = new FormData();
   for (const f of files) fd.append('files', f);
-  const res = await fetch(`${BASE}/upload`, { method: 'POST', body: fd });
-  if (!res.ok) throw new Error(`Server returned ${res.status}`);
-  return res.json();
+  return request('/upload', { method: 'POST', body: fd, isForm: true });
 }
