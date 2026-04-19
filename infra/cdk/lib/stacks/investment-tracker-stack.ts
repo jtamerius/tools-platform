@@ -150,9 +150,16 @@ export class InvestmentTrackerStack extends cdk.Stack {
           ? `${appSubdomain}.${cfg.domainRoot}`
           : `${appSubdomain}-${e}.${cfg.domainRoot}`,
       },
+      // Point CDK at the API app's lock file so nodeModules resolves the right
+      // package versions in CI where apps/investment-tracker-api/node_modules
+      // doesn't exist.
+      depsLockFilePath: path.join(__dirname, '../../../../apps/investment-tracker-api/package-lock.json'),
       bundling: {
-        externalModules: [], // bundle everything including @aws-sdk/*
-        minify: true,
+        // @aws-sdk/* is available in the Lambda Node.js 20 runtime; everything
+        // else is installed by CDK into the bundle via nodeModules.
+        externalModules: ['@aws-sdk/*'],
+        nodeModules: ['express', 'cors', 'multer', '@vendia/serverless-express'],
+        minify: false,
         sourceMap: false,
         target: 'node20',
       },
