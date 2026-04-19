@@ -112,6 +112,8 @@ jobs:
               - 'apps/investment-tracker-parser/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
+              - 'infra/cdk/package.json'
+              - 'infra/cdk/package-lock.json'
             news-scraper:
               - 'apps/news-scraper/**'
               - 'infra/cdk/lib/stacks/news-scraper-stack.ts'
