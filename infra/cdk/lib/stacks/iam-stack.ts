@@ -104,6 +104,7 @@ export class IamStack extends cdk.Stack {
       resources: [
         `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/tools/${e}/*`,
         `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/finance-tracker`,
+        `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/cdk-bootstrap/hnb659fds/version`,
       ],
     }));
 
