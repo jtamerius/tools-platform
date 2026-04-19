@@ -13,11 +13,9 @@ import * as sesActions from 'aws-cdk-lib/aws-ses-actions';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import { ToolsEnvConfig } from '../config';
-import { CognitoStack } from './cognito-stack';
 
 export interface InvestmentTrackerStackProps extends cdk.StackProps {
   cfg: ToolsEnvConfig;
-  cognitoStack: CognitoStack;
   /** Optional CORS origin override (e.g. 'https://investments.jtamerius.com'). */
   frontendOrigin?: string;
 }
@@ -27,7 +25,9 @@ export class InvestmentTrackerStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: InvestmentTrackerStackProps) {
     super(scope, id, props);
-    const { cfg, cognitoStack, frontendOrigin } = props;
+    const { cfg, frontendOrigin } = props;
+    const cognitoUserPoolId = ssm.StringParameter.valueFromLookup(this, `/tools/${cfg.env}/cognito/user-pool-id`);
+    const cognitoUserPoolClientId = ssm.StringParameter.valueFromLookup(this, `/tools/${cfg.env}/cognito/client-id`);
     const e = cfg.env;
     const isProd = e === 'production';
 
@@ -191,8 +191,8 @@ export class InvestmentTrackerStack extends cdk.Stack {
       identitySource: ['$request.header.Authorization'],
       name: 'CognitoJwt',
       jwtConfiguration: {
-        audience: [cognitoStack.userPoolClient.userPoolClientId],
-        issuer: `https://cognito-idp.${cfg.region}.amazonaws.com/${cognitoStack.userPool.userPoolId}`,
+        audience: [cognitoUserPoolClientId],
+        issuer: `https://cognito-idp.${cfg.region}.amazonaws.com/${cognitoUserPoolId}`,
       },
     });
 

@@ -110,6 +110,5 @@ new MaritimePipelineStack(app, `tools-app-maritime-pipeline-${envName}`, { cfg, 
 // ── App: investment-tracker (DynamoDB + S3 + Lambda API + SES inbound) ───────
 new InvestmentTrackerStack(app, `tools-app-investment-tracker-${envName}`, {
   cfg,
-  cognitoStack: cognito,
   env: awsEnv,
 });
