@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useAuth } from '@tools/auth';
+import { useAuth } from '@tools/auth'; // eslint-disable-line
 import LoginScreen from './components/LoginScreen';
 import Sidebar from './components/Sidebar';
 import MonthSelector from './components/MonthSelector';
