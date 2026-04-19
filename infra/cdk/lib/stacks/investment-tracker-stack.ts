@@ -150,10 +150,10 @@ export class InvestmentTrackerStack extends cdk.Stack {
           ? `${appSubdomain}.${cfg.domainRoot}`
           : `${appSubdomain}-${e}.${cfg.domainRoot}`,
       },
-      // Point CDK at the API app's lock file so nodeModules resolves the right
-      // package versions in CI where apps/investment-tracker-api/node_modules
-      // doesn't exist.
-      depsLockFilePath: path.join(__dirname, '../../../../apps/investment-tracker-api/package-lock.json'),
+      // Point CDK at infra/cdk/package-lock.json so projectRoot = infra/cdk/,
+      // where esbuild is installed by npm ci. Using the API app's lock file
+      // makes CDK run esbuild from apps/investment-tracker-api/ where it isn't.
+      depsLockFilePath: path.join(__dirname, '../../package-lock.json'),
       bundling: {
         // @aws-sdk/* is available in the Lambda Node.js 20 runtime; everything
         // else is installed by CDK into the bundle via nodeModules.

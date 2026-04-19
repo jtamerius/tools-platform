@@ -1,4 +1,4 @@
-const isProd = import.meta.env.VITE_ENV === 'production' // eslint-disable-line
+const isProd = import.meta.env.VITE_ENV === 'production'
 
 /**
  * Central registry of all platform apps.

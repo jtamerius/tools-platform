@@ -10,7 +10,11 @@
   },
   "dependencies": {
     "aws-cdk-lib": "^2.180.0",
-    "constructs": "^10.0.0"
+    "constructs": "^10.0.0",
+    "@vendia/serverless-express": "^4.12.6",
+    "cors": "^2.8.5",
+    "express": "^4.21.0",
+    "multer": "^1.4.5-lts.1"
   },
   "devDependencies": {
     "aws-cdk": "^2.180.0",
