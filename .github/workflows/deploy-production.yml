@@ -725,10 +725,7 @@ jobs:
       - name: Package and deploy to Amplify
         id: deploy
         run: |
-          AMPLIFY_APP_ID=$(aws cloudformation describe-stacks \
-            --stack-name tools-shared-amplify-invest-tracker-production \
-            --query 'Stacks[0].Outputs[?OutputKey==`AppId`].OutputValue' \
-            --output text --no-cli-pager)
+          AMPLIFY_APP_ID=dkgy8mqrxm0zd
 
           cd apps/investment-tracker/dist
           zip -r ../dist.zip .

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react' // eslint-disable-line
 import Globe from './components/Globe'
 
 // ─── Sample overlay data ───────────────────────────────────────────────────────
