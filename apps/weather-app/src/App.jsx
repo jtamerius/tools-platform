@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState } from 'react' // eslint-disable-line
 import { useAuth } from '@tools/auth'
 import Nav from './components/Nav'
 import SignInModal from './components/SignInModal'

@@ -407,6 +407,16 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
+      - name: Fetch build env vars from SSM
+        run: |
+          echo "VITE_COGNITO_USER_POOL_ID=$(aws ssm get-parameter \
+            --name /tools/production/cognito/user-pool-id \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_COGNITO_CLIENT_ID=$(aws ssm get-parameter \
+            --name /tools/production/cognito/client-id \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_ENV=production" >> "$GITHUB_ENV"
+
       - name: Install and build
         working-directory: apps/weather-app
         run: |

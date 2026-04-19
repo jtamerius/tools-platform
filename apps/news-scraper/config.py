@@ -1,6 +1,7 @@
 """
 Central configuration for the news scraper.
 
+
 All values can be overridden via environment variables (loaded from .env).
 """
 
