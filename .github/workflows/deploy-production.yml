@@ -39,6 +39,9 @@ jobs:
       news-scraper: ${{ steps.filter.outputs.news-scraper }}
       weather-collector: ${{ steps.filter.outputs.weather-collector }}
       finance-tracker: ${{ steps.filter.outputs.finance-tracker }}
+      investment-tracker: ${{ steps.filter.outputs.investment-tracker }}
+      infra-amplify-invest-tracker: ${{ steps.filter.outputs.infra-amplify-invest-tracker }}
+      infra-investment-tracker: ${{ steps.filter.outputs.infra-investment-tracker }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -93,6 +96,20 @@ jobs:
               - 'infra/cdk/bin/app.ts'
             infra-landing-page-app:
               - 'infra/cdk/lib/stacks/landing-page-stack.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            investment-tracker:
+              - 'apps/investment-tracker/**'
+              - 'shared/**'
+            infra-amplify-invest-tracker:
+              - 'infra/cdk/lib/stacks/amplify-stack.ts'
+              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-investment-tracker:
+              - 'infra/cdk/lib/stacks/investment-tracker-stack.ts'
+              - 'apps/investment-tracker-api/**'
+              - 'apps/investment-tracker-parser/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
             news-scraper:
@@ -585,6 +602,158 @@ jobs:
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
           APP_ID="d31dppeu1ai6hv"
+          BRANCH="main"
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(aws amplify get-job \
+              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text --no-cli-pager)
+            echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
+            esac
+          done
+          echo "Timed out."; exit 1
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy Amplify hosting stack for investment-tracker
+  # -----------------------------------------------------------------------
+  deploy-amplify-invest-tracker-production:
+    name: Deploy Amplify (investment-tracker) — Production
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-amplify-invest-tracker == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-invest-tracker-production -c env=production --require-approval never --no-cli-pager
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy investment-tracker backend infra (DynamoDB, Lambda, API GW, SES)
+  # -----------------------------------------------------------------------
+  deploy-investment-tracker-app-production:
+    name: Deploy investment-tracker App Infra — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-cognito-production
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.infra-investment-tracker == 'true' &&
+      (needs.deploy-cognito-production.result == 'success' ||
+       needs.deploy-cognito-production.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: cd infra/cdk && npm ci
+      - run: cd infra/cdk && npx cdk deploy tools-app-investment-tracker-production -c env=production --require-approval never --no-cli-pager
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy investment-tracker frontend via Amplify
+  # -----------------------------------------------------------------------
+  deploy-investment-tracker-frontend-production:
+    name: Deploy investment-tracker Frontend — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-investment-tracker-app-production
+      - deploy-amplify-invest-tracker-production
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.investment-tracker == 'true' &&
+      (needs.deploy-investment-tracker-app-production.result == 'success' ||
+       needs.deploy-investment-tracker-app-production.result == 'skipped') &&
+      (needs.deploy-amplify-invest-tracker-production.result == 'success' ||
+       needs.deploy-amplify-invest-tracker-production.result == 'skipped')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Fetch build env vars from SSM
+        run: |
+          echo "VITE_COGNITO_USER_POOL_ID=$(aws ssm get-parameter \
+            --name /tools/production/cognito/user-pool-id \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_COGNITO_CLIENT_ID=$(aws ssm get-parameter \
+            --name /tools/production/cognito/client-id \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_API_URL=$(aws ssm get-parameter \
+            --name /tools/production/investment-tracker/api-url \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_ENV=production" >> "$GITHUB_ENV"
+
+      - name: Install and build
+        working-directory: apps/investment-tracker
+        run: |
+          npm ci
+          npm run build
+
+      - name: Package and deploy to Amplify
+        id: deploy
+        run: |
+          AMPLIFY_APP_ID=$(aws cloudformation describe-stacks \
+            --stack-name tools-shared-amplify-invest-tracker-production \
+            --query 'Stacks[0].Outputs[?OutputKey==`AppId`].OutputValue' \
+            --output text --no-cli-pager)
+
+          cd apps/investment-tracker/dist
+          zip -r ../dist.zip .
+          cd ..
+
+          RESULT=$(aws amplify create-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name main --output json --no-cli-pager)
+
+          JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
+          ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
+
+          curl --fail -T dist.zip "$ZIP_URL"
+
+          aws amplify start-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name main --job-id "$JOB_ID" --no-cli-pager
+
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "amplify_app_id=$AMPLIFY_APP_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for deployment to complete
+        run: |
+          JOB_ID="${{ steps.deploy.outputs.job_id }}"
+          APP_ID="${{ steps.deploy.outputs.amplify_app_id }}"
           BRANCH="main"
           MAX_ATTEMPTS=60
           ATTEMPT=0

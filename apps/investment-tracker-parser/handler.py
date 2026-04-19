@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import stat
 import tempfile
 from decimal import Decimal
 from email import policy
@@ -146,7 +147,8 @@ def _write_statement(user_id: str, statement: dict, source_key: str) -> None:
         },
     }
     payments_tbl.put_item(Item=_to_decimal(payment_item))
-    log.info("Wrote account=%s payment=%s for user=%s", acct, sort_key, user_id)
+    masked_acct = f"{acct[:3]}***" if len(acct) > 3 else "***"
+    log.info("Wrote payment for account %s user=%s", masked_acct, user_id)
 
 
 def handler(event, _context):
@@ -176,6 +178,7 @@ def handler(event, _context):
         ) as tmp:
             tmp.write(body)
             tmp_path = Path(tmp.name)
+        os.chmod(tmp_path, stat.S_IRUSR | stat.S_IWUSR)
 
         try:
             results = parse_input_path(tmp_path)

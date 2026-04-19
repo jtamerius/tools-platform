@@ -22,7 +22,12 @@ const cfg = configs[envName];
 const awsEnv = { account: cfg.account, region: cfg.region };
 
 // ── Shared: IAM (manual deploy only — never via GHA) ────────────────────────
-const iam = new IamStack(app, `tools-shared-iam-${envName}`, { cfg, env: awsEnv });
+new IamStack(app, `tools-shared-iam-${envName}`, { cfg, env: awsEnv });
+
+// Resolve the Amplify service role ARN from the well-known role name rather
+// than via a cross-stack export. This avoids a hard dependency on the IAM
+// stack being redeployed before any Amplify stack can be created.
+const amplifyServiceRoleArn = `arn:aws:iam::${cfg.account}:role/tools-amplify-service-${envName}`;
 
 // ── Shared: Cognito ──────────────────────────────────────────────────────────
 const cognito = new CognitoStack(app, `tools-shared-cognito-${envName}`, { cfg, env: awsEnv });
@@ -35,7 +40,7 @@ const landingAmplify = new AmplifyStack(app, `tools-shared-amplify-${envName}`, 
   cfg,
   appName: 'landing-page',
   subdomain: 'tools',
-  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
+  amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify',
   env: awsEnv,
 });
@@ -44,7 +49,7 @@ const weatherAmplify = new AmplifyStack(app, `tools-shared-amplify-weather-${env
   cfg,
   appName: 'weather-app',
   subdomain: 'weather',
-  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
+  amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify-weather',
   env: awsEnv,
 });
@@ -53,17 +58,16 @@ const financeAmplify = new AmplifyStack(app, `tools-shared-amplify-finance-${env
   cfg,
   appName: 'finance-app',
   subdomain: 'finance',
-  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
+  amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify-finance',
   env: awsEnv,
 });
-
 
 const maritimeAmplify = new AmplifyStack(app, `tools-shared-amplify-maritime-${envName}`, {
   cfg,
   appName: 'maritime-trajectory',
   subdomain: 'maritime',
-  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
+  amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify-maritime',
   env: awsEnv,
 });
@@ -72,7 +76,7 @@ const investmentTrackerAmplify = new AmplifyStack(app, `tools-shared-amplify-inv
   cfg,
   appName: 'investment-tracker',
   subdomain: 'investments',
-  amplifyServiceRoleArn: iam.amplifyServiceRole.roleArn,
+  amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify-invest-tracker',
   env: awsEnv,
 });

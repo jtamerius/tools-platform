@@ -38,24 +38,6 @@ app.use((req, res, next) => {
     return next();
   }
 
-  // Fallback: decode the JWT from the Authorization header directly.
-  // Safe because API Gateway's JWT authorizer already verified the signature
-  // before invoking Lambda — we are re-reading already-validated claims.
-  const authHeader = req.headers.authorization || '';
-  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
-  if (token) {
-    try {
-      const payload = JSON.parse(
-        Buffer.from(token.split('.')[1], 'base64url').toString()
-      );
-      if (payload?.sub) {
-        req.userId = payload.sub;
-        req.userEmail = payload.email ?? '';
-        return next();
-      }
-    } catch {}
-  }
-
   return res.status(401).json({ error: 'Unauthenticated' });
 });
 
@@ -76,7 +58,7 @@ app.get('/api/me', async (req, res) => {
     });
   } catch (err) {
     console.error('GET /api/me failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -142,7 +124,7 @@ app.get('/api/accounts', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('GET /api/accounts failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -169,7 +151,7 @@ app.get('/api/accounts/:accountNumber', async (req, res) => {
     });
   } catch (err) {
     console.error(`GET /api/accounts/${req.params.accountNumber} failed`, err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -261,7 +243,7 @@ app.get('/api/payment-grid', async (req, res) => {
     res.json({ months, rows });
   } catch (err) {
     console.error('GET /api/payment-grid failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -276,7 +258,7 @@ app.put('/api/accounts/:accountNumber/status', async (req, res) => {
     res.json({ account_number: req.params.accountNumber, closed });
   } catch (err) {
     console.error('PUT /api/accounts/.../status failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -286,7 +268,7 @@ app.delete('/api/accounts/:accountNumber/status', async (req, res) => {
     res.json({ account_number: req.params.accountNumber, override: 'removed' });
   } catch (err) {
     console.error('DELETE /api/accounts/.../status failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -301,7 +283,7 @@ app.put('/api/accounts/:accountNumber/principal', async (req, res) => {
     res.json({ account_number: req.params.accountNumber, principal_override: value });
   } catch (err) {
     console.error('PUT /api/accounts/.../principal failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -311,7 +293,7 @@ app.delete('/api/accounts/:accountNumber/principal', async (req, res) => {
     res.json({ account_number: req.params.accountNumber, principal_override: null });
   } catch (err) {
     console.error('DELETE /api/accounts/.../principal failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -322,7 +304,7 @@ app.delete('/api/accounts/:accountNumber', async (req, res) => {
     res.json({ deleted: true, account_number: req.params.accountNumber });
   } catch (err) {
     console.error('DELETE /api/accounts/... failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -334,7 +316,7 @@ app.delete('/api/accounts/:accountNumber/payments/:sortKey', async (req, res) =>
     res.json({ deleted: true, account_number: req.params.accountNumber, sort_key: sortKey });
   } catch (err) {
     console.error('DELETE /api/accounts/.../payments/... failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -345,9 +327,17 @@ app.put('/api/cells/:accountNumber/:year/:month', async (req, res) => {
   if (!valid.includes(status)) {
     return res.status(400).json({ error: 'status must be paid, missing, na, or null' });
   }
-  const acctKey = `${req.userId}#${req.params.accountNumber}`;
-  const yearMonth = `${req.params.year}-${req.params.month}`;
+  const year = parseInt(req.params.year, 10);
+  const month = parseInt(req.params.month, 10);
+  if (!Number.isInteger(year) || !Number.isInteger(month) || year < 1900 || year > 2100 || month < 0 || month > 11) {
+    return res.status(400).json({ error: 'Invalid year or month' });
+  }
   const trimmedNote = (note || '').trim();
+  if (trimmedNote.length > 1000) {
+    return res.status(400).json({ error: 'Note exceeds 1000 character limit' });
+  }
+  const acctKey = `${req.userId}#${req.params.accountNumber}`;
+  const yearMonth = `${year}-${month}`;
   try {
     if (!status && !trimmedNote) {
       await deleteCellOverride(req.userId, req.params.accountNumber, yearMonth);
@@ -364,7 +354,7 @@ app.put('/api/cells/:accountNumber/:year/:month', async (req, res) => {
     res.json({ key: `${req.params.accountNumber}:${yearMonth}`, ...item });
   } catch (err) {
     console.error('PUT /api/cells/... failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -380,14 +370,24 @@ app.get('/api/cells/:accountNumber', async (req, res) => {
     res.json(result);
   } catch (err) {
     console.error('GET /api/cells/... failed', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+const path = require('path');
+const ALLOWED_UPLOAD_EXTS = new Set(['.eml', '.mbox', '.emlx']);
 
 // ── POST /api/upload — push files to S3; parser Lambda picks them up ──
 app.post('/api/upload', upload.array('files'), async (req, res) => {
   const files = req.files || [];
   if (files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
+
+  for (const f of files) {
+    const ext = path.extname(f.originalname).toLowerCase();
+    if (!ALLOWED_UPLOAD_EXTS.has(ext)) {
+      return res.status(400).json({ error: `Unsupported file type: ${f.originalname}. Only .eml and .mbox files are accepted.` });
+    }
+  }
 
   const results = [];
   const ts = Date.now();
@@ -405,7 +405,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
       results.push({ name: f.originalname, ok: true, key });
     } catch (err) {
       console.error('S3 upload failed', err);
-      results.push({ name: f.originalname, ok: false, error: err.message });
+      results.push({ name: f.originalname, ok: false, error: 'Upload failed' });
     }
   }
   res.json({ uploaded: results.length, results });

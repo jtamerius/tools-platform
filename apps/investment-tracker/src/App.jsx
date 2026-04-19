@@ -30,6 +30,7 @@ export default function App() {
   const [editingInvestment, setEditingInvestment] = useState(false);
   const [investmentInput, setInvestmentInput] = useState('');
   const [deleteError, setDeleteError] = useState(null);
+  const [confirmDeletePayment, setConfirmDeletePayment] = useState(false);
 
   useEffect(() => {
     if (!user) return;
