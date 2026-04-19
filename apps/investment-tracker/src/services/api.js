@@ -55,3 +55,16 @@ export async function uploadFiles(files) {
   for (const f of files) fd.append('files', f);
   return request('/upload', { method: 'POST', body: fd, isForm: true });
 }
+
+export const fetchMe = () => request('/me');
+
+export const deletePayment = (acct, sortKey) =>
+  request(`/accounts/${acct}/payments/${encodeURIComponent(sortKey)}`, { method: 'DELETE' });
+
+export const deleteAccount = (acct) =>
+  request(`/accounts/${acct}`, { method: 'DELETE' });
+
+export const setPrincipalOverride = (acct, value) =>
+  request(`/accounts/${acct}/principal`, { method: 'PUT', body: { value } });
+export const deletePrincipalOverride = (acct) =>
+  request(`/accounts/${acct}/principal`, { method: 'DELETE' });

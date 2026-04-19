@@ -23,7 +23,7 @@ export class CognitoStack extends cdk.Stack {
       selfSignUpEnabled: true,
       userInvitation: {
         emailSubject: 'Your tools platform invitation',
-        emailBody: 'You have been invited to the tools platform. Your username is {username} and your temporary password is {####}. Please sign in at https://tools.jtamerius.com and set a new password.',
+        emailBody: `You have been invited to the tools platform. Your username is {username} and your temporary password is {####}. Please sign in at ${e === 'production' ? 'https://investments.jtamerius.com' : 'https://staging.d1kqq0ntalvbmo.amplifyapp.com'} and set a new password.`,
       },
       userVerification: {
         emailSubject: 'Verify your email – tools.jtamerius.com',

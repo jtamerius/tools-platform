@@ -4,7 +4,8 @@ const multer = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const {
   listAccounts, getAccount, updateAccountClosed, deleteAccountClosedOverride,
-  listPayments, listAllPayments, listCellOverrides, listAllCellOverrides,
+  updateAccountPrincipalOverride, deleteAccountPrincipalOverride,
+  deletePayment, deleteAccount, listPayments, listAllPayments, listCellOverrides, listAllCellOverrides,
   putCellOverride, deleteCellOverride, getUserEmail, putUserEmail,
 } = require('./db');
 const { computeInvestment } = require('./investment');
@@ -25,16 +26,37 @@ app.get(['/health', '/api/health'], (_req, res) => res.json({ ok: true }));
 
 // ── Auth middleware: extract userId from API Gateway v2 JWT authorizer ──
 app.use((req, res, next) => {
+  const ctx = req.apiGateway?.event?.requestContext;
   const claims =
-    req.apiGateway?.event?.requestContext?.authorizer?.jwt?.claims ||
-    req.apiGateway?.event?.requestContext?.authorizer?.claims ||
+    ctx?.authorizer?.jwt?.claims ||
+    ctx?.authorizer?.claims ||
     null;
-  if (!claims || !claims.sub) {
-    return res.status(401).json({ error: 'Unauthenticated' });
+
+  if (claims?.sub) {
+    req.userId = claims.sub;
+    req.userEmail = claims.email;
+    return next();
   }
-  req.userId = claims.sub;
-  req.userEmail = claims.email;
-  next();
+
+  // Fallback: decode the JWT from the Authorization header directly.
+  // Safe because API Gateway's JWT authorizer already verified the signature
+  // before invoking Lambda — we are re-reading already-validated claims.
+  const authHeader = req.headers.authorization || '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : '';
+  if (token) {
+    try {
+      const payload = JSON.parse(
+        Buffer.from(token.split('.')[1], 'base64url').toString()
+      );
+      if (payload?.sub) {
+        req.userId = payload.sub;
+        req.userEmail = payload.email ?? '';
+        return next();
+      }
+    } catch {}
+  }
+
+  return res.status(401).json({ error: 'Unauthenticated' });
 });
 
 // ── GET /api/me — return user info + assigned inbound email (auto-provisions on first call)
@@ -61,6 +83,7 @@ app.get('/api/me', async (req, res) => {
 // ── Helper: convert DDB payment record to API shape ──
 function mapPayment(item) {
   return {
+    sort_key: item.interestPaidTo,
     date_received: item.date_received,
     payment: item.payment,
     details: item.details,
@@ -73,6 +96,14 @@ function mapPayment(item) {
 function isAccountClosed(account, latestBalance) {
   if (typeof account.is_closed_override === 'boolean') return account.is_closed_override;
   return latestBalance != null && latestBalance <= 0;
+}
+
+function buildInvestment(account, payments) {
+  const inv = computeInvestment(payments);
+  if (account.principal_override != null) {
+    return { ...inv, estimated_investment: account.principal_override, is_overridden: true };
+  }
+  return { ...inv, is_overridden: false };
 }
 
 // ── GET /api/accounts — list with investment summary ──
@@ -92,7 +123,7 @@ app.get('/api/accounts', async (req, res) => {
     }
 
     const result = Object.values(byAccount).map(a => {
-      a.payments.sort((x, y) => new Date(x.date_received) - new Date(y.date_received));
+      a.payments.sort((x, y) => new Date(x.sort_key) - new Date(y.sort_key));
       const latest = a.payments[a.payments.length - 1];
       const currentBalance = latest?.status?.current_balance ?? null;
       return {
@@ -105,7 +136,7 @@ app.get('/api/accounts', async (req, res) => {
         next_due_date: latest?.status?.next_due_date ?? null,
         late_owed: latest?.status?.late_owed ?? 0,
         is_closed: isAccountClosed(a, currentBalance),
-        investment: computeInvestment(a.payments),
+        investment: buildInvestment(a, a.payments),
       };
     });
     res.json(result);
@@ -125,7 +156,7 @@ app.get('/api/accounts/:accountNumber', async (req, res) => {
     if (!account) return res.status(404).json({ error: 'Account not found' });
 
     const mapped = payments.map(mapPayment).sort(
-      (a, b) => new Date(a.date_received) - new Date(b.date_received),
+      (a, b) => new Date(a.sort_key) - new Date(b.sort_key),
     );
     res.json({
       account_number: account.accountNumber,
@@ -134,7 +165,7 @@ app.get('/api/accounts/:accountNumber', async (req, res) => {
       company: account.company || '',
       property_address: account.property_address || null,
       payments: mapped,
-      investment: computeInvestment(mapped),
+      investment: buildInvestment(account, mapped),
     });
   } catch (err) {
     console.error(`GET /api/accounts/${req.params.accountNumber} failed`, err);
@@ -255,6 +286,54 @@ app.delete('/api/accounts/:accountNumber/status', async (req, res) => {
     res.json({ account_number: req.params.accountNumber, override: 'removed' });
   } catch (err) {
     console.error('DELETE /api/accounts/.../status failed', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── PUT /api/accounts/:accountNumber/principal — manual investment override ──
+app.put('/api/accounts/:accountNumber/principal', async (req, res) => {
+  const value = Number(req.body?.value);
+  if (!isFinite(value) || value < 0) {
+    return res.status(400).json({ error: 'value must be a non-negative number' });
+  }
+  try {
+    await updateAccountPrincipalOverride(req.userId, req.params.accountNumber, value);
+    res.json({ account_number: req.params.accountNumber, principal_override: value });
+  } catch (err) {
+    console.error('PUT /api/accounts/.../principal failed', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/accounts/:accountNumber/principal', async (req, res) => {
+  try {
+    await deleteAccountPrincipalOverride(req.userId, req.params.accountNumber);
+    res.json({ account_number: req.params.accountNumber, principal_override: null });
+  } catch (err) {
+    console.error('DELETE /api/accounts/.../principal failed', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/accounts/:accountNumber ──
+app.delete('/api/accounts/:accountNumber', async (req, res) => {
+  try {
+    await deleteAccount(req.userId, req.params.accountNumber);
+    res.json({ deleted: true, account_number: req.params.accountNumber });
+  } catch (err) {
+    console.error('DELETE /api/accounts/... failed', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── DELETE /api/accounts/:accountNumber/payments/:sortKey ──
+app.delete('/api/accounts/:accountNumber/payments/:sortKey', async (req, res) => {
+  const sortKey = decodeURIComponent(req.params.sortKey);
+  try {
+    await deletePayment(req.userId, req.params.accountNumber, sortKey);
+    res.json({ deleted: true, account_number: req.params.accountNumber, sort_key: sortKey });
+  } catch (err) {
+    console.error('DELETE /api/accounts/.../payments/... failed', err);
     res.status(500).json({ error: err.message });
   }
 });

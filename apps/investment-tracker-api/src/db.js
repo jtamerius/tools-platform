@@ -59,6 +59,68 @@ async function deleteAccountClosedOverride(userId, accountNumber) {
   }));
 }
 
+async function updateAccountPrincipalOverride(userId, accountNumber, value) {
+  await doc.send(new UpdateCommand({
+    TableName: TABLES.accounts,
+    Key: { userId, accountNumber },
+    UpdateExpression: 'SET principal_override = :v, updated_at = :u',
+    ExpressionAttributeValues: { ':v': value, ':u': new Date().toISOString() },
+  }));
+}
+
+async function deleteAccountPrincipalOverride(userId, accountNumber) {
+  await doc.send(new UpdateCommand({
+    TableName: TABLES.accounts,
+    Key: { userId, accountNumber },
+    UpdateExpression: 'REMOVE principal_override',
+  }));
+}
+
+async function deletePayment(userId, accountNumber, interestPaidTo) {
+  await doc.send(new DeleteCommand({
+    TableName: TABLES.payments,
+    Key: { acctKey: pk(userId, accountNumber), interestPaidTo },
+  }));
+}
+
+async function deleteAccount(userId, accountNumber) {
+  const acctKey = pk(userId, accountNumber);
+
+  // Delete all payments
+  const payments = await doc.send(new QueryCommand({
+    TableName: TABLES.payments,
+    KeyConditionExpression: 'acctKey = :k',
+    ExpressionAttributeValues: { ':k': acctKey },
+    ProjectionExpression: 'interestPaidTo',
+  }));
+  for (const item of payments.Items || []) {
+    await doc.send(new DeleteCommand({
+      TableName: TABLES.payments,
+      Key: { acctKey, interestPaidTo: item.interestPaidTo },
+    }));
+  }
+
+  // Delete all cell overrides
+  const overrides = await doc.send(new QueryCommand({
+    TableName: TABLES.cellOverrides,
+    KeyConditionExpression: 'acctKey = :k',
+    ExpressionAttributeValues: { ':k': acctKey },
+    ProjectionExpression: 'yearMonth',
+  }));
+  for (const item of overrides.Items || []) {
+    await doc.send(new DeleteCommand({
+      TableName: TABLES.cellOverrides,
+      Key: { acctKey, yearMonth: item.yearMonth },
+    }));
+  }
+
+  // Delete the account record
+  await doc.send(new DeleteCommand({
+    TableName: TABLES.accounts,
+    Key: { userId, accountNumber },
+  }));
+}
+
 async function listPayments(userId, accountNumber) {
   const r = await doc.send(new QueryCommand({
     TableName: TABLES.payments,
@@ -145,6 +207,10 @@ module.exports = {
   putAccount,
   updateAccountClosed,
   deleteAccountClosedOverride,
+  updateAccountPrincipalOverride,
+  deleteAccountPrincipalOverride,
+  deletePayment,
+  deleteAccount,
   listPayments,
   listAllPayments,
   putPayment,

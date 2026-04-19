@@ -8,7 +8,7 @@ import AccountDetails from './components/AccountDetails';
 import StatusBadge from './components/StatusBadge';
 import PaymentGrid from './components/PaymentGrid';
 import BatchUpload from './components/BatchUpload';
-import { fetchAccounts, fetchAccount, setAccountClosed, fetchCellOverrides } from './services/api';
+import { fetchAccounts, fetchAccount, setAccountClosed, fetchCellOverrides, fetchMe, setPrincipalOverride, deletePrincipalOverride, deletePayment, deleteAccount } from './services/api';
 import './App.css';
 
 const AUTH_CONFIG = {
@@ -17,25 +17,34 @@ const AUTH_CONFIG = {
 };
 
 export default function App() {
-  const { user, isLoading: authLoading, signIn, signOut } = useAuth(AUTH_CONFIG);
+  const { user, isLoading: authLoading, signIn, signOut, completeNewPasswordChallenge } = useAuth(AUTH_CONFIG);
   const [accounts, setAccounts] = useState([]);
+  const [inboundEmail, setInboundEmail] = useState(null);
   const [selectedAcct, setSelectedAcct] = useState(null);
   const [accountDetail, setAccountDetail] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [view, setView] = useState('grid'); // 'grid' or 'detail'
   const [showClosed, setShowClosed] = useState(false);
   const [cellNotes, setCellNotes] = useState({});
+  const [editingInvestment, setEditingInvestment] = useState(false);
+  const [investmentInput, setInvestmentInput] = useState('');
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
-    fetchAccounts().then(data => {
+    if (!user) return;
+    setLoading(true);
+    Promise.all([
+      fetchAccounts(),
+      fetchMe().then(d => setInboundEmail(d.inbound_email)).catch(() => {}),
+    ]).then(([data]) => {
       setAccounts(data);
       const open = data.filter(a => !a.is_closed);
       if (open.length > 0) setSelectedAcct(open[0].account_number);
       else if (data.length > 0) setSelectedAcct(data[0].account_number);
       setLoading(false);
-    });
-  }, []);
+    }).catch(() => setLoading(false));
+  }, [user]);
 
   useEffect(() => {
     if (!selectedAcct) return;
@@ -44,13 +53,16 @@ export default function App() {
       setSelectedMonth(null);
     });
     fetchCellOverrides(selectedAcct).then(setCellNotes);
+    setEditingInvestment(false);
+    setDeleteError(null);
   }, [selectedAcct]);
 
   const months =
     accountDetail?.payments?.map(p => {
-      const d = new Date(p.date_received);
+      const key = p.sort_key;
+      const d = new Date(key);
       return {
-        key: p.date_received,
+        key,
         label: d.toLocaleDateString('en-US', {
           year: 'numeric',
           month: 'long',
@@ -60,7 +72,7 @@ export default function App() {
     }) || [];
 
   const currentPayment = selectedMonth
-    ? accountDetail?.payments?.find(p => p.date_received === selectedMonth)
+    ? accountDetail?.payments?.find(p => p.sort_key === selectedMonth)
     : accountDetail?.payments?.[accountDetail.payments.length - 1];
 
   // Find note for current payment
@@ -89,12 +101,55 @@ export default function App() {
     await refreshAccounts();
   };
 
+  const handleSavePrincipal = async () => {
+    const value = parseFloat(investmentInput.replace(/[^0-9.]/g, ''));
+    if (!isFinite(value) || !selectedAcct) return;
+    await setPrincipalOverride(selectedAcct, value);
+    const updated = await fetchAccount(selectedAcct);
+    setAccountDetail(updated);
+    setEditingInvestment(false);
+  };
+
+  const handleDeletePayment = async () => {
+    if (!currentPayment || !selectedAcct) return;
+    try {
+      await deletePayment(selectedAcct, currentPayment.sort_key);
+      const updated = await fetchAccount(selectedAcct);
+      setAccountDetail(updated);
+      setSelectedMonth(null);
+      await refreshAccounts();
+    } catch (err) {
+      setDeleteError(err.message);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!selectedAcct) return;
+    try {
+      await deleteAccount(selectedAcct);
+      setSelectedAcct(null);
+      setAccountDetail(null);
+      setView('grid');
+      await refreshAccounts();
+    } catch (err) {
+      setDeleteError(err.message);
+    }
+  };
+
+  const handleClearPrincipal = async () => {
+    if (!selectedAcct) return;
+    await deletePrincipalOverride(selectedAcct);
+    const updated = await fetchAccount(selectedAcct);
+    setAccountDetail(updated);
+    setEditingInvestment(false);
+  };
+
   if (authLoading) {
     return <div className="loading"><p>Loading…</p></div>;
   }
 
   if (!user) {
-    return <LoginScreen onSignIn={signIn} />;
+    return <LoginScreen onSignIn={signIn} onCompleteNewPassword={completeNewPasswordChallenge} />;
   }
 
   if (loading) {
@@ -162,14 +217,41 @@ export default function App() {
                 )}
               </div>
               <div className="main-header-actions">
-                <div className="header-investment">
-                  <span className="inv-amount">
-                    ${(Math.round((accountDetail.investment?.estimated_investment ?? 0) / 1000) * 1000).toLocaleString()}
-                  </span>
-                  <span className="inv-label">
-                    My Investment · {accountDetail.investment?.ownership_pct ?? 0}%
-                  </span>
-                </div>
+                {editingInvestment ? (
+                  <div className="inv-edit">
+                    <span className="inv-edit-label">My Investment ($)</span>
+                    <input
+                      className="inv-edit-input"
+                      type="number"
+                      min="0"
+                      value={investmentInput}
+                      onChange={e => setInvestmentInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') handleSavePrincipal(); if (e.key === 'Escape') setEditingInvestment(false); }}
+                      autoFocus
+                    />
+                    <div className="inv-edit-btns">
+                      <button onClick={handleSavePrincipal}>Save</button>
+                      <button onClick={() => setEditingInvestment(false)}>Cancel</button>
+                      {accountDetail.investment?.is_overridden && (
+                        <button className="inv-reset-btn" onClick={handleClearPrincipal}>Reset to calculated</button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    className="header-investment"
+                    title="Click to set a manual value"
+                    onClick={() => { setInvestmentInput(String(accountDetail.investment?.estimated_investment ?? 0)); setEditingInvestment(true); }}
+                  >
+                    <span className="inv-amount">
+                      ${(Math.round((accountDetail.investment?.estimated_investment ?? 0) / 1000) * 1000).toLocaleString()}
+                      {accountDetail.investment?.is_overridden && <span className="inv-override-dot" title="Manual override">✎</span>}
+                    </span>
+                    <span className="inv-label">
+                      My Investment · {accountDetail.investment?.ownership_pct ?? 0}%
+                    </span>
+                  </div>
+                )}
                 <StatusBadge payment={currentPayment} />
                 <button
                   className={`close-acct-btn ${currentAcctInfo?.is_closed ? 'reopen' : 'close'}`}
@@ -177,6 +259,7 @@ export default function App() {
                 >
                   {currentAcctInfo?.is_closed ? 'Reopen' : 'Close'}
                 </button>
+                <button className="delete-acct-btn" onClick={handleDeleteAccount}>Delete</button>
               </div>
             </header>
 
@@ -200,13 +283,23 @@ export default function App() {
                   payment={currentPayment}
                   account={accountDetail}
                 />
+                <div className="payment-delete-row">
+                  {confirmDeletePayment ? (
+                    <>
+                      <button className="delete-payment-btn confirm" onClick={handleDeletePayment}>Sure?</button>
+                      <button className="delete-payment-btn" onClick={() => setConfirmDeletePayment(false)}>Cancel</button>
+                    </>
+                  ) : (
+                    <button className="delete-payment-btn" onClick={() => setConfirmDeletePayment(true)}>Delete this payment</button>
+                  )}
+                </div>
               </>
             )}
           </>
         )}
 
         {view === 'upload' && (
-          <BatchUpload onUploadComplete={() => {
+          <BatchUpload inboundEmail={inboundEmail} onUploadComplete={() => {
             fetchAccounts().then(setAccounts);
           }} />
         )}

@@ -2,12 +2,21 @@ import { useRef, useState, useCallback } from 'react';
 import { uploadFiles } from '../services/api';
 import './BatchUpload.css';
 
-export default function BatchUpload({ onUploadComplete }) {
+export default function BatchUpload({ onUploadComplete, inboundEmail }) {
   const [files, setFiles] = useState([]);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [results, setResults] = useState(null);
+  const [copied, setCopied] = useState(false);
   const inputRef = useRef();
+
+  const copyEmail = () => {
+    if (!inboundEmail) return;
+    navigator.clipboard.writeText(inboundEmail).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
 
   const addFiles = useCallback((incoming) => {
     setFiles((prev) => [...prev, ...Array.from(incoming)]);
@@ -35,6 +44,15 @@ export default function BatchUpload({ onUploadComplete }) {
 
   return (
     <div className="upload-wrap">
+      {inboundEmail && (
+        <div className="inbound-email">
+          <span className="inbound-label">Forward statements to:</span>
+          <code className="inbound-addr">{inboundEmail}</code>
+          <button className="copy-btn" onClick={copyEmail}>
+            {copied ? 'Copied!' : 'Copy'}
+          </button>
+        </div>
+      )}
       <div
         className={`drop-zone${dragging ? ' drag-over' : ''}`}
         onDrop={handleDrop}

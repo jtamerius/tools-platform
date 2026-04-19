@@ -120,7 +120,6 @@ export function useAuth({ userPoolId, clientId }) {
   const signIn = useCallback(
     async (email, password) => {
       setError(null);
-      setIsLoading(true);
       try {
         const pool = userPoolRef.current;
         if (!pool) throw new Error('Cognito is not configured. Check VITE_COGNITO_USER_POOL_ID and VITE_COGNITO_CLIENT_ID.');
@@ -130,8 +129,6 @@ export function useAuth({ userPoolId, clientId }) {
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);
         throw wrapped;
-      } finally {
-        setIsLoading(false);
       }
     },
     [hydrateFromSession]
@@ -146,7 +143,6 @@ export function useAuth({ userPoolId, clientId }) {
   const completeNewPasswordChallenge = useCallback(
     async (cognitoUser, newPassword) => {
       setError(null);
-      setIsLoading(true);
       try {
         const { session } = await cognitoCompleteNewPassword(cognitoUser, newPassword);
         hydrateFromSession(session);
@@ -154,8 +150,6 @@ export function useAuth({ userPoolId, clientId }) {
         const wrapped = err instanceof Error ? err : new Error(String(err));
         setError(wrapped);
         throw wrapped;
-      } finally {
-        setIsLoading(false);
       }
     },
     [hydrateFromSession]

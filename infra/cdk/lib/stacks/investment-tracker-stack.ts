@@ -159,7 +159,7 @@ export class InvestmentTrackerStack extends cdk.Stack {
       logRetention: logs.RetentionDays.ONE_MONTH,
     });
     accountsTable.grantReadWriteData(apiFn);
-    paymentsTable.grantReadData(apiFn);
+    paymentsTable.grantReadWriteData(apiFn);
     cellOverridesTable.grantReadWriteData(apiFn);
     userEmailsTable.grantReadWriteData(apiFn);
     emailBucket.grantPut(apiFn);
@@ -240,26 +240,26 @@ export class InvestmentTrackerStack extends cdk.Stack {
       description: `Investment tracker API URL (${e})`,
     });
 
-    // ── SES Receipt Rule (production only) ───────────────────────────────────
-    // SES receiving is only wired up in production. In staging the user can
-    // still upload files via the API Upload tab.
-    if (isProd) {
-      const ruleSet = new ses.ReceiptRuleSet(this, 'SesRuleSet', {
-        receiptRuleSetName: `tools-invest-tracker-${e}`,
-      });
+    // ── SES Receipt Rule ─────────────────────────────────────────────────────
+    const ruleSet = new ses.ReceiptRuleSet(this, 'SesRuleSet', {
+      receiptRuleSetName: `tools-invest-tracker-${e}`,
+    });
 
-      ruleSet.addRule('InboundToBucket', {
-        recipients: [`${appSubdomain}.${cfg.domainRoot}`],
-        enabled: true,
-        scanEnabled: true,
-        actions: [
-          new sesActions.S3({
-            bucket: emailBucket,
-            objectKeyPrefix: 'ses-inbound/',
-          }),
-        ],
-      });
-    }
+    const emailRecipient = isProd
+      ? `${appSubdomain}.${cfg.domainRoot}`
+      : `${appSubdomain}-${e}.${cfg.domainRoot}`;
+
+    ruleSet.addRule('InboundToBucket', {
+      recipients: [emailRecipient],
+      enabled: true,
+      scanEnabled: true,
+      actions: [
+        new sesActions.S3({
+          bucket: emailBucket,
+          objectKeyPrefix: 'ses-inbound/',
+        }),
+      ],
+    });
 
     // ── Outputs ──────────────────────────────────────────────────────────────
     new cdk.CfnOutput(this, 'ApiUrl', {

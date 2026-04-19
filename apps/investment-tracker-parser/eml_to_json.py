@@ -148,24 +148,39 @@ def _parse_money(value: str | None) -> float | None:
     return float(m.group(1).replace(",", ""))
 
 
-def _extract_disbursements(html: str) -> list[dict[str, Any]]:
+def _split_statements_from_text(text: str) -> list[str]:
+    """Split a block of text into per-statement chunks at each 'Account No' boundary.
+
+    When multiple statements are forwarded in one email the full converted text
+    contains several contiguous statements.  Each one starts with 'Account No'
+    so we use that as the split point.
+    """
+    positions = [m.start() for m in re.finditer(r'(?i)account\s+no\b', text)]
+    if len(positions) <= 1:
+        return [text]
+    chunks = []
+    for i, pos in enumerate(positions):
+        end = positions[i + 1] if i + 1 < len(positions) else len(text)
+        chunks.append(text[pos:end])
+    return chunks
+
+
+def _extract_disbursements(text: str) -> list[dict[str, Any]]:
+    # Work on plain text: scan for the section between "Disbursements" and
+    # "Contact Information" (or end-of-string), then parse each line that
+    # contains a dollar amount. This is format-agnostic — no HTML structure assumed.
     section_match = re.search(
-        r"Disbursements(.*?)Contact Information",
-        html,
+        r"Disbursements\s*(.*?)(?:Contact Information|$)",
+        text,
         flags=re.IGNORECASE | re.DOTALL,
     )
     if not section_match:
         return []
 
-    section = section_match.group(1)
-    raw_lines = re.findall(r"<p[^>]*>\s*<span[^>]*>(.*?)</span>\s*</p>", section, flags=re.IGNORECASE | re.DOTALL)
-
     items: list[dict[str, Any]] = []
-    for raw_line in raw_lines:
-        line = unescape(raw_line)
-        line = line.replace("\xa0", " ")
-        line = re.sub(r"\s+", " ", line).strip()
-        if "$" not in line:
+    for line in section_match.group(1).splitlines():
+        line = line.strip()
+        if not line or "$" not in line:
             continue
 
         amount_match = re.search(r"\$([0-9][0-9,]*\.\d{2})", line)
@@ -174,18 +189,11 @@ def _extract_disbursements(html: str) -> list[dict[str, Any]]:
 
         amount = float(amount_match.group(1).replace(",", ""))
         desc = line[: amount_match.start()].strip(" -:\t.")
-        desc = re.sub(r"[•·_]+", " ", desc)
-        desc = re.sub(r"[^A-Za-z0-9()\-./ ]", "", desc)
         desc = re.sub(r"\s+", " ", desc).strip()
         if not desc:
             desc = "Unlabeled disbursement"
 
-        items.append(
-            {
-                "description": desc,
-                "amount": amount,
-            }
-        )
+        items.append({"description": desc, "amount": amount})
     return items
 
 
@@ -273,10 +281,7 @@ def parse_statement_eml(eml_path: Path) -> StatementParseResult:
     )
 
 
-def _parse_statement_from_html(html: str, text: str, source_label: str) -> StatementParseResult:
-    text = _html_to_text(html)
-
-    # Header title/company lines are near the top.
+def _parse_statement_text(text: str, source_label: str) -> StatementParseResult:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     company = lines[0] if lines else None
     statement_title = "Seller Statement" if "Seller Statement" in text else None
@@ -328,10 +333,14 @@ def _parse_statement_from_html(html: str, text: str, source_label: str) -> State
         },
         "current_payment_details": payment_details,
         "current_account_status": account_status,
-        "disbursements": _extract_disbursements(html),
+        "disbursements": _extract_disbursements(text),
     }
 
     return StatementParseResult(data=result, raw_text=text)
+
+
+def _parse_statement_from_html(html: str, text: str, source_label: str) -> StatementParseResult:
+    return _parse_statement_text(_html_to_text(html), source_label)
 
 
 def parse_input_path(input_path: Path) -> list[StatementParseResult]:
@@ -340,7 +349,8 @@ def parse_input_path(input_path: Path) -> list[StatementParseResult]:
     for _, msg, source_label in messages:
         html = _read_message_html(msg, source_label=source_label)
         text = _html_to_text(html)
-        results.append(_parse_statement_from_html(html=html, text=text, source_label=source_label))
+        for chunk in _split_statements_from_text(text):
+            results.append(_parse_statement_text(text=chunk, source_label=source_label))
     return results
 
 
@@ -377,25 +387,27 @@ def main() -> None:
     writes = 0
     for input_path in input_files:
         messages = _iter_messages_for_input(input_path)
-        message_count = len(messages)
         for message_index, msg, source_label in messages:
             html = _read_message_html(msg, source_label=source_label)
             text = _html_to_text(html)
-            parsed = _parse_statement_from_html(html=html, text=text, source_label=source_label)
-
-            output_path = _output_path_for_message(
-                input_path=input_path,
-                output_dir=output_dir,
-                message_index=message_index,
-                message_count=message_count,
-            )
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            with output_path.open("w", encoding="utf-8") as f:
-                json.dump(parsed.data, f, indent=2 if args.pretty else None, ensure_ascii=False)
-                f.write("\n")
-
-            writes += 1
-            print(f"Wrote {output_path}")
+            chunks = _split_statements_from_text(text)
+            for chunk_index, chunk in enumerate(chunks, start=1):
+                parsed = _parse_statement_text(text=chunk, source_label=source_label)
+                stem = input_path.stem
+                if len(messages) > 1:
+                    stem = f"{stem}_msg_{message_index:04d}"
+                if len(chunks) > 1:
+                    stem = f"{stem}_stmt_{chunk_index:04d}"
+                if output_dir is None:
+                    output_path = input_path.with_name(f"{stem}.json")
+                else:
+                    output_path = output_dir / f"{stem}.json"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                with output_path.open("w", encoding="utf-8") as f:
+                    json.dump(parsed.data, f, indent=2 if args.pretty else None, ensure_ascii=False)
+                    f.write("\n")
+                writes += 1
+                print(f"Wrote {output_path}")
 
     print(f"Done: wrote {writes} JSON file(s) from {len(input_files)} input file(s).")
 
