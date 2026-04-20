@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@tools/auth';
 import LoginScreen from './components/LoginScreen';
+import Nav from './components/Nav';
 import Sidebar from './components/Sidebar';
 import MonthSelector from './components/MonthSelector';
 import PaymentTable from './components/PaymentTable';
@@ -162,6 +163,8 @@ export default function App() {
   }
 
   return (
+    <>
+    <Nav />
     <div className="app">
       <Sidebar
         accounts={accounts}
@@ -306,5 +309,6 @@ export default function App() {
         )}
       </main>
     </div>
+    </>
   );
 }
