@@ -8,7 +8,6 @@ import { MonitoringStack } from '../lib/stacks/monitoring-stack';
 import { AmplifyStack } from '../lib/stacks/amplify-stack';
 import { LandingPageStack } from '../lib/stacks/landing-page-stack';
 import { NewsScraperStack } from '../lib/stacks/news-scraper-stack';
-import { MaritimePipelineStack } from '../lib/stacks/maritime-pipeline-stack';
 import { InvestmentTrackerStack } from '../lib/stacks/investment-tracker-stack';
 
 const app = new cdk.App();
@@ -63,15 +62,6 @@ const financeAmplify = new AmplifyStack(app, `tools-shared-amplify-finance-${env
   env: awsEnv,
 });
 
-const maritimeAmplify = new AmplifyStack(app, `tools-shared-amplify-maritime-${envName}`, {
-  cfg,
-  appName: 'maritime-trajectory',
-  subdomain: 'maritime',
-  amplifyServiceRoleArn,
-  exportPrefix: 'tools-shared-amplify-maritime',
-  env: awsEnv,
-});
-
 const investmentTrackerAmplify = new AmplifyStack(app, `tools-shared-amplify-invest-tracker-${envName}`, {
   cfg,
   appName: 'investment-tracker',
@@ -88,7 +78,6 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
     landingAmplify.appId,
     weatherAmplify.appId,
     financeAmplify.appId,
-    maritimeAmplify.appId,
     investmentTrackerAmplify.appId,
   ],
   env: awsEnv,

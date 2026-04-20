@@ -1,6 +1,6 @@
 import IframeViewer from '../components/IframeViewer'
 
-const FINANCE_URL = 'https://jtamerius.com/finance/'
+const FINANCE_URL = 'https://www.jtamerius.com/finance/'
 
 export default function FinancePage({ user, groups, isLoading, onSignIn }) {
   if (isLoading) {
