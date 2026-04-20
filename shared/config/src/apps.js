@@ -16,15 +16,6 @@ const isProd = import.meta.env.VITE_ENV === 'production'
  */
 export const APPS = [
   {
-    id: 'landing-page',
-    name: 'Home',
-    description: 'Internal tools landing page',
-    url: isProd ? 'https://tools.jtamerius.com' : 'https://staging.dfgc4jtftrltl.amplifyapp.com',
-    subdomain: 'tools',
-    isPublic: true,
-    requiredGroup: null,
-  },
-  {
     id: 'weather-app',
     name: 'Ensemble Weather',
     description: 'Multi-model ensemble forecasts for the Southwest US',
