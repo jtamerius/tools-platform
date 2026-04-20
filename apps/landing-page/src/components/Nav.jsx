@@ -6,14 +6,11 @@ const EXTRA_LINKS = [
   { label: 'News', href: '#/news' },
 ]
 
-export default function AppNav({ user, onSignIn, onSignOut }) {
+export default function AppNav() {
   return (
     <Nav
       currentAppId="landing-page"
       extraLinks={EXTRA_LINKS}
-      user={user}
-      onSignIn={onSignIn}
-      onSignOut={onSignOut}
     />
   )
 }
