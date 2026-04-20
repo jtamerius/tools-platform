@@ -3,7 +3,7 @@ import { APPS } from '@tools/config'
 
 const LANDING_URL = import.meta.env.VITE_ENV === 'production'
   ? 'https://tools.jtamerius.com'
-  : 'https://staging.d223wq48sddq6t.amplifyapp.com'
+  : 'https://staging.dfgc4jtftrltl.amplifyapp.com'
 
 // Default Home/About links point to the landing page.
 // Apps that handle these routes internally (e.g. landing-page with HashRouter)
