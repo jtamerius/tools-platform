@@ -34,9 +34,17 @@ class SharedCookieStorage {
   getItem(key) {
     const enc = encodeURIComponent(key)
     for (const c of document.cookie.split(';')) {
-      const [k, v] = c.trim().split('=')
-      if (k === enc) return decodeURIComponent(v ?? '')
+      const trimmed = c.trim()
+      const eq = trimmed.indexOf('=')
+      if (eq === -1) continue
+      if (trimmed.slice(0, eq) === enc) return decodeURIComponent(trimmed.slice(eq + 1))
     }
+    // One-time migration: fall back to localStorage for sessions stored before
+    // the cookie-based SSO was deployed.
+    try {
+      const lsVal = localStorage.getItem(key)
+      if (lsVal !== null) return lsVal
+    } catch {}
     return null
   }
 
@@ -54,7 +62,9 @@ class SharedCookieStorage {
 
   clear() {
     document.cookie.split(';').forEach(c => {
-      const key = decodeURIComponent(c.trim().split('=')[0])
+      const trimmed = c.trim()
+      const eq = trimmed.indexOf('=')
+      const key = decodeURIComponent(eq === -1 ? trimmed : trimmed.slice(0, eq))
       if (key.includes('CognitoIdentityServiceProvider')) this.removeItem(key)
     })
   }
