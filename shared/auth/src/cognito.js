@@ -4,6 +4,62 @@ import {
   AuthenticationDetails,
 } from 'amazon-cognito-identity-js';
 
+function getSharedDomain() {
+  const hostname = window.location.hostname
+  if (hostname === 'localhost' || hostname === '127.0.0.1') return null
+  const parts = hostname.split('.')
+  if (parts.length >= 2 && parts.slice(-2).join('.') === 'jtamerius.com') {
+    return '.jtamerius.com'
+  }
+  return null
+}
+
+class SharedCookieStorage {
+  constructor(domain) { this._domain = domain }
+
+  setItem(key, value) {
+    const expires = new Date()
+    expires.setDate(expires.getDate() + 365)
+    const parts = [
+      `${encodeURIComponent(key)}=${encodeURIComponent(value)}`,
+      `expires=${expires.toUTCString()}`,
+      `path=/`,
+      `SameSite=Strict`,
+      `Secure`,
+    ]
+    if (this._domain) parts.push(`domain=${this._domain}`)
+    document.cookie = parts.join('; ')
+  }
+
+  getItem(key) {
+    const enc = encodeURIComponent(key)
+    for (const c of document.cookie.split(';')) {
+      const [k, v] = c.trim().split('=')
+      if (k === enc) return decodeURIComponent(v ?? '')
+    }
+    return null
+  }
+
+  removeItem(key) {
+    const parts = [
+      `${encodeURIComponent(key)}=`,
+      `expires=Thu, 01 Jan 1970 00:00:00 GMT`,
+      `path=/`,
+      `SameSite=Strict`,
+      `Secure`,
+    ]
+    if (this._domain) parts.push(`domain=${this._domain}`)
+    document.cookie = parts.join('; ')
+  }
+
+  clear() {
+    document.cookie.split(';').forEach(c => {
+      const key = decodeURIComponent(c.trim().split('=')[0])
+      if (key.includes('CognitoIdentityServiceProvider')) this.removeItem(key)
+    })
+  }
+}
+
 /**
  * Creates and returns a CognitoUserPool instance.
  * @param {string} userPoolId - The Cognito User Pool ID (e.g. us-east-1_XXXXXXXXX)
@@ -11,9 +67,11 @@ import {
  * @returns {CognitoUserPool}
  */
 export function createUserPool(userPoolId, clientId) {
+  const domain = getSharedDomain()
   return new CognitoUserPool({
     UserPoolId: userPoolId,
     ClientId: clientId,
+    ...(domain ? { Storage: new SharedCookieStorage(domain) } : {}),
   });
 }
 
