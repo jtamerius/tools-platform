@@ -1,3 +1,4 @@
+/* eslint-disable-next-line */
 const isProd = import.meta.env.VITE_ENV === 'production'
 
 /**
