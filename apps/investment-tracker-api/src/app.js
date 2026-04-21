@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
+const { getCurrentInvoke } = require('@vendia/serverless-express');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const {
   listAccounts, getAccount, updateAccountClosed, deleteAccountClosedOverride,
@@ -26,7 +27,8 @@ app.get(['/health', '/api/health'], (_req, res) => res.json({ ok: true }));
 
 // ── Auth middleware: extract userId from API Gateway v2 JWT authorizer ──
 app.use((req, res, next) => {
-  const ctx = req.apiGateway?.event?.requestContext;
+  const { event } = getCurrentInvoke();
+  const ctx = event?.requestContext;
   const claims =
     ctx?.authorizer?.jwt?.claims ||
     ctx?.authorizer?.claims ||
