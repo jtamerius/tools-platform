@@ -1,0 +1,358 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  weather-collector ? Lambda function that fetches ensemble forecasts from Open-Meteo,
+  generates an interactive HTML dashboard, and writes everything to S3.
+  Triggered twice daily by EventBridge. Independently deployable from the website stack.
+
+# ---------------------------------------------------------------------------
+# Parameters
+# ---------------------------------------------------------------------------
+Parameters:
+  ProjectName:
+    Type: String
+    Description: >
+      Short name used as a prefix for all resource names (e.g. "mysite").
+      Must match the value used when deploying the foundation and website stacks.
+
+  DomainName:
+    Type: String
+    Description: >
+      Apex domain name (e.g. "example.com"). Passed to Lambda as CDN_DOMAIN
+      so generated HTML can reference the correct public URL.
+
+  WebsiteBucketName:
+    Type: String
+    Description: >
+      Name of the S3 bucket where forecast JSON and HTML are written.
+      Retrieve from the website stack output WebsiteBucketName.
+
+  WebsiteBucketArn:
+    Type: String
+    Description: >
+      ARN of the S3 bucket. Retrieve from the website stack output WebsiteBucketArn.
+
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing the pre-uploaded lambda_package.zip
+
+  LambdaCodeKey:
+    Type: String
+    Default: lambda_package.zip
+    Description: S3 key of the Lambda deployment package
+
+  FunctionName:
+    Type: String
+    Default: weather-collector
+    Description: >
+      Base name for the Lambda function. The full name will be
+      "${ProjectName}-${FunctionName}" (e.g. "mysite-weather-collector").
+
+  ScheduleExpression:
+    Type: String
+    Default: 'cron(0 0,12 * * ? *)'
+    Description: >
+      EventBridge schedule expression. Default runs at 00:00 and 12:00 UTC daily.
+
+  LambdaTimeout:
+    Type: Number
+    Default: 600
+    Description: Lambda timeout in seconds (max 900)
+
+  LambdaMemory:
+    Type: Number
+    Default: 2048  # assemble task uses ~904 MB; keep at 2048
+    Description: Lambda memory in MB
+
+  MaxWorkers:
+    Type: Number
+    Default: 10
+    Description: MAX_WORKERS env var passed to Lambda
+
+  BatchSize:
+    Type: Number
+    Default: 100
+    Description: BATCH_SIZE env var passed to Lambda
+
+# ---------------------------------------------------------------------------
+# Resources
+# ---------------------------------------------------------------------------
+Resources:
+
+  # --------------------------------------------------------------------------
+  # IAM Role ? Lambda execution with scoped S3 access
+  # --------------------------------------------------------------------------
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${FunctionName}-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: s3-forecast-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:HeadObject
+                  - s3:ListBucket
+                Resource:
+                  - !Ref WebsiteBucketArn
+                  - !Sub '${WebsiteBucketArn}/*'
+
+  # --------------------------------------------------------------------------
+  # Lambda Function ? forecast collector + HTML generator
+  # --------------------------------------------------------------------------
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${FunctionName}'
+      Runtime: python3.12
+      Handler: lambda_function.handler
+      Role: !GetAtt LambdaRole.Arn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemory
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Environment:
+        Variables:
+          S3_BUCKET: !Ref WebsiteBucketName
+          CDN_DOMAIN: !Ref DomainName
+          MAX_WORKERS: !Sub '${MaxWorkers}'
+          BATCH_SIZE: !Sub '${BatchSize}'
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  # --------------------------------------------------------------------------
+  # EventBridge Rules ? 9 staggered invocations, 2 minutes apart
+  # Each rule passes a fixed Input payload to the same Lambda function.
+  # Schedule: det models at +0/+2/+4/+6 min, ens at +8/+10/+12/+14, assemble at +16.
+  # Repeated at 00:xx and 12:xx UTC daily.
+  # --------------------------------------------------------------------------
+
+  ScheduleGFSDet:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-gfs-det'
+      ScheduleExpression: 'cron(0 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"gfs_seamless","fetch_type":"det"}'
+
+  ScheduleECMWFDet:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-ecmwf-det'
+      ScheduleExpression: 'cron(2 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"ecmwf_ifs025","fetch_type":"det"}'
+
+  ScheduleICONDet:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-icon-det'
+      ScheduleExpression: 'cron(4 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"icon_seamless","fetch_type":"det"}'
+
+  ScheduleGEMDet:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-gem-det'
+      ScheduleExpression: 'cron(6 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"gem_global","fetch_type":"det"}'
+
+  ScheduleHRRRDet:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-hrrr-det'
+      ScheduleExpression: 'cron(8 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"gfs_hrrr","fetch_type":"det"}'
+
+  ScheduleGFSEns:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-gfs-ens'
+      ScheduleExpression: 'cron(12 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"gfs_seamless","fetch_type":"ens"}'
+
+  ScheduleECMWFEns:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-ecmwf-ens'
+      ScheduleExpression: 'cron(14 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"ecmwf_ifs025","fetch_type":"ens"}'
+
+  ScheduleICONEns:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-icon-ens'
+      ScheduleExpression: 'cron(16 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"icon_seamless","fetch_type":"ens"}'
+
+  ScheduleGEMEns:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-fetch-gem-ens'
+      ScheduleExpression: 'cron(18 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"fetch","model":"gem_global","fetch_type":"ens"}'
+
+  ScheduleAssemble:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub '${ProjectName}-assemble'
+      ScheduleExpression: 'cron(20 0,12 * * ? *)'
+      State: ENABLED
+      Targets:
+        - Id: Target
+          Arn: !GetAtt LambdaFunction.Arn
+          Input: '{"task":"assemble"}'
+
+  # --------------------------------------------------------------------------
+  # Lambda Permissions ? one per EventBridge rule
+  # --------------------------------------------------------------------------
+
+  PermGFSDet:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleGFSDet.Arn
+
+  PermECMWFDet:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleECMWFDet.Arn
+
+  PermICONDet:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleICONDet.Arn
+
+  PermGEMDet:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleGEMDet.Arn
+
+  PermHRRRDet:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleHRRRDet.Arn
+
+  PermGFSEns:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleGFSEns.Arn
+
+  PermECMWFEns:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleECMWFEns.Arn
+
+  PermICONEns:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleICONEns.Arn
+
+  PermGEMEns:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleGEMEns.Arn
+
+  PermAssemble:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt ScheduleAssemble.Arn
+
+# ---------------------------------------------------------------------------
+# Outputs
+# ---------------------------------------------------------------------------
+Outputs:
+  LambdaFunctionName:
+    Description: Lambda function name (use for manual invocation)
+    Value: !Ref LambdaFunction
+    Export:
+      Name: !Sub '${ProjectName}-WeatherCollectorFunctionName'
+
+  LambdaFunctionArn:
+    Description: Lambda function ARN
+    Value: !GetAtt LambdaFunction.Arn
+    Export:
+      Name: !Sub '${ProjectName}-WeatherCollectorFunctionArn'
+
+  InvokeCommand:
+    Description: AWS CLI command to manually trigger a forecast run
+    Value: !Sub >-
+      aws lambda invoke --function-name ${LambdaFunction} --region ${AWS::Region} /tmp/out.json
+

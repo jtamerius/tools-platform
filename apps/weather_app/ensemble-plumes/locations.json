@@ -1,0 +1,256 @@
+{
+  "locations": [
+    {
+      "name": "Durango",
+      "state": "CO",
+      "lat": 37.2753,
+      "lon": -107.8801
+    },
+    {
+      "name": "Grand Junction",
+      "state": "CO",
+      "lat": 39.0639,
+      "lon": -108.5506
+    },
+    {
+      "name": "Telluride",
+      "state": "CO",
+      "lat": 37.9375,
+      "lon": -107.8123
+    },
+    {
+      "name": "Montrose",
+      "state": "CO",
+      "lat": 38.4783,
+      "lon": -107.8762
+    },
+    {
+      "name": "Cortez",
+      "state": "CO",
+      "lat": 37.3489,
+      "lon": -108.5859
+    },
+    {
+      "name": "Pagosa Springs",
+      "state": "CO",
+      "lat": 37.2694,
+      "lon": -107.0097
+    },
+    {
+      "name": "Steamboat Springs",
+      "state": "CO",
+      "lat": 40.485,
+      "lon": -106.8317
+    },
+    {
+      "name": "Aspen",
+      "state": "CO",
+      "lat": 39.1911,
+      "lon": -106.8175
+    },
+    {
+      "name": "Glenwood Springs",
+      "state": "CO",
+      "lat": 39.5505,
+      "lon": -107.3248
+    },
+    {
+      "name": "Crested Butte",
+      "state": "CO",
+      "lat": 38.8697,
+      "lon": -106.9878
+    },
+    {
+      "name": "Gunnison",
+      "state": "CO",
+      "lat": 38.5458,
+      "lon": -106.9253
+    },
+    {
+      "name": "Alamosa",
+      "state": "CO",
+      "lat": 37.4695,
+      "lon": -105.87
+    },
+    {
+      "name": "Salida",
+      "state": "CO",
+      "lat": 38.5347,
+      "lon": -105.9986
+    },
+    {
+      "name": "Pueblo",
+      "state": "CO",
+      "lat": 38.2544,
+      "lon": -104.6091
+    },
+    {
+      "name": "Colorado Springs",
+      "state": "CO",
+      "lat": 38.8339,
+      "lon": -104.8214
+    },
+    {
+      "name": "Denver",
+      "state": "CO",
+      "lat": 39.7392,
+      "lon": -104.9903
+    },
+    {
+      "name": "Fort Collins",
+      "state": "CO",
+      "lat": 40.5853,
+      "lon": -105.0844
+    },
+    {
+      "name": "Boulder",
+      "state": "CO",
+      "lat": 40.015,
+      "lon": -105.2705
+    },
+    {
+      "name": "Vail",
+      "state": "CO",
+      "lat": 39.6433,
+      "lon": -106.3781
+    },
+    {
+      "name": "Leadville",
+      "state": "CO",
+      "lat": 39.2508,
+      "lon": -106.2926
+    },
+    {
+      "name": "Ouray",
+      "state": "CO",
+      "lat": 38.0228,
+      "lon": -107.6714
+    },
+    {
+      "name": "Silverthorne",
+      "state": "CO",
+      "lat": 39.6328,
+      "lon": -106.0697
+    },
+    {
+      "name": "Estes Park",
+      "state": "CO",
+      "lat": 40.3772,
+      "lon": -105.5217
+    },
+    {
+      "name": "Tucson",
+      "state": "AZ",
+      "lat": 32.2226,
+      "lon": -110.9747
+    },
+    {
+      "name": "Flagstaff",
+      "state": "AZ",
+      "lat": 35.1983,
+      "lon": -111.6513
+    },
+    {
+      "name": "San Diego",
+      "state": "CA",
+      "lat": 32.7157,
+      "lon": -117.1611
+    },
+    {
+      "name": "Los Angeles",
+      "state": "CA",
+      "lat": 34.0522,
+      "lon": -118.2437
+    },
+    {
+      "name": "San Francisco",
+      "state": "CA",
+      "lat": 37.7749,
+      "lon": -122.4194
+    },
+    {
+      "name": "Sacramento",
+      "state": "CA",
+      "lat": 38.5816,
+      "lon": -121.4944
+    },
+    {
+      "name": "Mammoth Lakes",
+      "state": "CA",
+      "lat": 37.6485,
+      "lon": -118.9721
+    },
+    {
+      "name": "South Lake Tahoe",
+      "state": "CA",
+      "lat": 38.9399,
+      "lon": -119.9772
+    },
+    {
+      "name": "Salt Lake City",
+      "state": "UT",
+      "lat": 40.7608,
+      "lon": -111.891
+    },
+    {
+      "name": "Park City",
+      "state": "UT",
+      "lat": 40.6461,
+      "lon": -111.498
+    },
+    {
+      "name": "Provo",
+      "state": "UT",
+      "lat": 40.2338,
+      "lon": -111.6585
+    },
+    {
+      "name": "Moab",
+      "state": "UT",
+      "lat": 38.5733,
+      "lon": -109.5498
+    },
+    {
+      "name": "St. George",
+      "state": "UT",
+      "lat": 37.1041,
+      "lon": -113.5841
+    },
+    {
+      "name": "Cedar City",
+      "state": "UT",
+      "lat": 37.6775,
+      "lon": -113.0619
+    },
+    {
+      "name": "Albuquerque",
+      "state": "NM",
+      "lat": 35.0844,
+      "lon": -106.6504
+    },
+    {
+      "name": "Santa Fe",
+      "state": "NM",
+      "lat": 35.687,
+      "lon": -105.9378
+    },
+    {
+      "name": "Taos",
+      "state": "NM",
+      "lat": 36.4072,
+      "lon": -105.5731
+    },
+    {
+      "name": "Ruidoso",
+      "state": "NM",
+      "lat": 33.3373,
+      "lon": -105.6572
+    },
+    {
+      "name": "Las Cruces",
+      "state": "NM",
+      "lat": 32.3199,
+      "lon": -106.7637
+    }
+  ]
+}

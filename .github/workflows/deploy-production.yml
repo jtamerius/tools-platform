@@ -860,7 +860,7 @@ jobs:
             --no-cli-pager \
             --parameter-overrides \
               ProjectName=jtamerius \
-              DomainName=jtamerius.com \
+              DomainName=www.jtamerius.com \
               WebsiteBucketName=jtamerius \
               WebsiteBucketArn=arn:aws:s3:::jtamerius \
               LambdaCodeBucket=jtamerius-website-deploy \
