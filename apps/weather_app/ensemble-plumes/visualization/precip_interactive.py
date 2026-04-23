@@ -790,15 +790,16 @@ def _build_full_html(
         var vEnd = allSeries.length ? lastValidIdx(allSeries) : timeArr.length;
         var tArr = vEnd < timeArr.length ? timeArr.slice(0, vEnd) : timeArr;
         var tArrMt = tArr.map(toMtIso);  // MT naive strings for Plotly x-axis
-        var _nowMs = Date.now();
-        var _nowIdx = 0;
-        for (var _ni = 0; _ni < tArr.length; _ni++) {{ var _t = tArr[_ni]; if (new Date(_t.slice(-1)!=='Z'?_t+'Z':_t).getTime() >= _nowMs) {{ _nowIdx = _ni; break; }} }}
+        var _latestT0 = availableRuns.length ? (((availableRuns[0].data.members||{{}}).time||(availableRuns[0].data.hourly||{{}}).time||[])[0]||null) : null;
+        var _refMs = _latestT0 ? new Date(_latestT0.slice(-1)!=='Z'?_latestT0+'Z':_latestT0).getTime() : 0;
+        var _refIdx = 0;
+        if (_refMs) {{ for (var _ni = 0; _ni < tArr.length; _ni++) {{ var _t = tArr[_ni]; if (new Date(_t.slice(-1)!=='Z'?_t+'Z':_t).getTime() >= _refMs) {{ _refIdx = _ni; break; }} }} }}
 
         // ── Row 1: cumulative precip ──────────────────────────────────────────
         if (precipSeries.length > 1) {{
           var clipped = precipSeries.map(function(s) {{ return s.slice(0, vEnd); }});
           var cumsums = clipped.map(cumsum);
-          if (_nowIdx > 0) {{ cumsums = cumsums.map(function(cs) {{ var b = cs[_nowIdx]||0; return cs.map(function(v) {{ return v - b; }}); }}); }}
+          if (_refIdx > 0) {{ cumsums = cumsums.map(function(cs) {{ var b = cs[_refIdx]||0; return cs.map(function(v) {{ return v - b; }}); }}); }}
           var q40 = boxSmooth(colQuantile(cumsums, 0.40), WIN);
           var q50 = boxSmooth(colQuantile(cumsums, 0.50), WIN);
           var q60 = boxSmooth(colQuantile(cumsums, 0.60), WIN);
@@ -1477,14 +1478,15 @@ def _build_combined_html(
         var vEnd = allSeries.length ? lastValidIdx(allSeries) : baseTimeArr.length;
         var tArr = vEnd < baseTimeArr.length ? baseTimeArr.slice(0, vEnd) : baseTimeArr;
         var tArrMt = tArr.map(toMtIso);
-        var _nowMs = Date.now();
-        var _nowIdx = 0;
-        for (var _ni = 0; _ni < tArr.length; _ni++) {{ var _t = tArr[_ni]; if (new Date(_t.slice(-1)!=='Z'?_t+'Z':_t).getTime() >= _nowMs) {{ _nowIdx = _ni; break; }} }}
+        var _latestT0 = availableRuns.length ? (((availableRuns[0].data.members||{{}}).time||(availableRuns[0].data.hourly||{{}}).time||[])[0]||null) : null;
+        var _refMs = _latestT0 ? new Date(_latestT0.slice(-1)!=='Z'?_latestT0+'Z':_latestT0).getTime() : 0;
+        var _refIdx = 0;
+        if (_refMs) {{ for (var _ni = 0; _ni < tArr.length; _ni++) {{ var _t = tArr[_ni]; if (new Date(_t.slice(-1)!=='Z'?_t+'Z':_t).getTime() >= _refMs) {{ _refIdx = _ni; break; }} }} }}
 
         if (precipSeries.length === 1) {{
           // Single deterministic series — show cumulative line without IQR band.
           var detCumsum = cumsum(precipSeries[0].slice(0, vEnd).map(function(v) {{ return v == null ? 0 : +v; }}));
-          var _pBase = _nowIdx < detCumsum.length ? detCumsum[_nowIdx] : 0; if (_pBase > 0) detCumsum = detCumsum.map(function(v) {{ return v - _pBase; }});
+          var _pBase = _refIdx < detCumsum.length ? detCumsum[_refIdx] : 0; if (_pBase > 0) detCumsum = detCumsum.map(function(v) {{ return v - _pBase; }});
           traces.push({{ type:'scatter', x:tArrMt, y:detCumsum, mode:'lines',
             line:{{color:color, width:2.0, dash: model === 'gfs_hrrr' ? 'solid' : 'dot'}}, name:mlabel,
             legendgroup:model+'_mean', xaxis:'x', yaxis:'y',
@@ -1492,7 +1494,7 @@ def _build_combined_html(
         }} else if (precipSeries.length > 1) {{
           var clipped = precipSeries.map(function(s) {{ return s.slice(0, vEnd); }});
           var cumsums = clipped.map(cumsum);
-          if (_nowIdx > 0) {{ cumsums = cumsums.map(function(cs) {{ var b = cs[_nowIdx]||0; return cs.map(function(v) {{ return v - b; }}); }}); }}
+          if (_refIdx > 0) {{ cumsums = cumsums.map(function(cs) {{ var b = cs[_refIdx]||0; return cs.map(function(v) {{ return v - b; }}); }}); }}
           var q40 = boxSmooth(colQuantile(cumsums, 0.40), WIN);
           var q50 = boxSmooth(colQuantile(cumsums, 0.50), WIN);
           var q60 = boxSmooth(colQuantile(cumsums, 0.60), WIN);
@@ -2058,9 +2060,11 @@ def _build_combined_html(
         var vEnd = lastValidIdx(series) || timeArr.length;
         var tArr = vEnd < timeArr.length ? timeArr.slice(0, vEnd) : timeArr;
         var tMt  = tArr.map(toMtIso);
-        var _nowMs = Date.now(); var _nowIdx = 0;
-        for (var _ni = 0; _ni < tArr.length; _ni++) {{ var _t = tArr[_ni]; if (new Date(_t.slice(-1)!=='Z'?_t+'Z':_t).getTime() >= _nowMs) {{ _nowIdx = _ni; break; }} }}
-        var A = series.map(function(s){{ var vals=s.slice(0,vEnd).map(function(v){{return v==null?NaN:+v;}}); var cs=varKey==='precipitation'?cumsum(vals):vals; if(varKey==='precipitation'&&_nowIdx>0){{var b=cs[_nowIdx]||0;cs=cs.map(function(v){{return v-b;}});}} return cs; }});
+        var _latestT0 = availableRuns.length ? (((availableRuns[0].data.members||{{}}).time||(availableRuns[0].data.hourly||{{}}).time||[])[0]||null) : null;
+        var _refMs = _latestT0 ? new Date(_latestT0.slice(-1)!=='Z'?_latestT0+'Z':_latestT0).getTime() : 0;
+        var _refIdx = 0;
+        if (_refMs) {{ for (var _ni = 0; _ni < tArr.length; _ni++) {{ var _t = tArr[_ni]; if (new Date(_t.slice(-1)!=='Z'?_t+'Z':_t).getTime() >= _refMs) {{ _refIdx = _ni; break; }} }} }}
+        var A = series.map(function(s){{ var vals=s.slice(0,vEnd).map(function(v){{return v==null?NaN:+v;}}); var cs=varKey==='precipitation'?cumsum(vals):vals; if(varKey==='precipitation'&&_refIdx>0){{var b=cs[_refIdx]||0;cs=cs.map(function(v){{return v-b;}});}} return cs; }});
         if (A.length === 1) {{
           traces.push({{ type:'scatter', x:tMt, y:A[0], mode:'lines',
             line:{{color:color, width:1.8, dash: model === 'gfs_hrrr' ? 'solid' : 'dot'}}, name:mlabel, legendgroup:model,
