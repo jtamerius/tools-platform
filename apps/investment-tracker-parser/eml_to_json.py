@@ -14,6 +14,10 @@ from pathlib import Path
 from typing import Any
 
 
+_ACCT_NO_PATTERN = re.compile(
+    r'(?i)(?:account\s*(?:no\.?|number|#)|acct\.?\s*(?:no\.?|#))\b'
+)
+
 FIELD_ORDER = [
     "Account No",
     "Property Address",
@@ -149,19 +153,20 @@ def _parse_money(value: str | None) -> float | None:
 
 
 def _split_statements_from_text(text: str) -> list[str]:
-    """Split a block of text into per-statement chunks at each 'Account No' boundary.
+    """Split a block of text into per-statement chunks at each account-number boundary.
 
-    When multiple statements are forwarded in one email the full converted text
-    contains several contiguous statements.  Each one starts with 'Account No'
-    so we use that as the split point.
+    Handles label variants: "Account No", "Account Number", "Account #", "Acct No", etc.
+    The preamble (company/header text before the first statement) is prepended to every
+    chunk so company-name extraction works for all statements, not just the first.
     """
-    positions = [m.start() for m in re.finditer(r'(?i)account\s+no\b', text)]
+    positions = [m.start() for m in _ACCT_NO_PATTERN.finditer(text)]
     if len(positions) <= 1:
         return [text]
+    preamble = text[:positions[0]]
     chunks = []
     for i, pos in enumerate(positions):
         end = positions[i + 1] if i + 1 < len(positions) else len(text)
-        chunks.append(text[pos:end])
+        chunks.append(preamble + text[pos:end])
     return chunks
 
 
@@ -281,12 +286,20 @@ def parse_statement_eml(eml_path: Path) -> StatementParseResult:
     )
 
 
+def _extract_account_no(text: str) -> str | None:
+    for label in ("Account No", "Account Number", "Account #", "Acct No", "Acct. No.", "Acct #"):
+        v = _extract_value_by_label(text, label)
+        if v:
+            return v
+    return None
+
+
 def _parse_statement_text(text: str, source_label: str) -> StatementParseResult:
     lines = [line.strip() for line in text.splitlines() if line.strip()]
     company = lines[0] if lines else None
     statement_title = "Seller Statement" if "Seller Statement" in text else None
 
-    account_no = _extract_value_by_label(text, "Account No")
+    account_no = _extract_account_no(text)
     recipient = _extract_between(text, "Recipient", "Payment")
     payor = _extract_between(text, "Payor", "Date Received")
     property_address = _extract_between(text, "Property Address", "Payor")

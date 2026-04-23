@@ -1,6 +1,6 @@
 {
-  "ssm:account=606196119553:parameterName=/tools/production/cognito/user-pool-id:region=us-east-1": "us-east-1_CLD8OTuB8",
-  "ssm:account=606196119553:parameterName=/tools/production/cognito/client-id:region=us-east-1": "7kepnsamtie74tjhj7kt7gb3bq",
+  "ssm:account=606196119553:parameterName=/tools/production/cognito/user-pool-id:region=us-east-1": "us-east-1_2uleQ81er",
+  "ssm:account=606196119553:parameterName=/tools/production/cognito/client-id:region=us-east-1": "6epcdrtkupskpeik9m10bb6i20",
   "ssm:account=606196119553:parameterName=/tools/staging/cognito/user-pool-id:region=us-east-1": "us-east-1_hKaIobmpm",
   "ssm:account=606196119553:parameterName=/tools/staging/cognito/client-id:region=us-east-1": "d3bhlrhnpbiukg0upfjpuuq7f"
 }

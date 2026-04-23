@@ -31,8 +31,11 @@ export class InvestmentTrackerStack extends cdk.Stack {
     const e = cfg.env;
     const isProd = e === 'production';
 
-    // Subdomain for all SES + API domains in production
+    // Web subdomain (Amplify hosting)
     const appSubdomain = 'investments'; // investments.jtamerius.com
+    // Email subdomain — must differ from appSubdomain because appSubdomain has a CNAME
+    // (Amplify custom domain), and DNS doesn't allow MX + CNAME on the same name.
+    const emailSubdomain = 'invest'; // invest.jtamerius.com
 
     // ── DynamoDB tables ──────────────────────────────────────────────────────
     const accountsTable = new ddb.Table(this, 'AccountsTable', {
@@ -147,7 +150,7 @@ export class InvestmentTrackerStack extends cdk.Stack {
         USER_EMAILS_TABLE: userEmailsTable.tableName,
         EMAIL_BUCKET: emailBucket.bucketName,
         EMAIL_DOMAIN: isProd
-          ? `${appSubdomain}.${cfg.domainRoot}`
+          ? `${emailSubdomain}.${cfg.domainRoot}`
           : `${appSubdomain}-${e}.${cfg.domainRoot}`,
       },
       // Point CDK at infra/cdk/package-lock.json so projectRoot = infra/cdk/,
@@ -219,6 +222,13 @@ export class InvestmentTrackerStack extends cdk.Stack {
       authorizerId: authorizer.ref,
     });
 
+    // OPTIONS preflight must not require auth — browsers reject non-2xx preflight responses.
+    new apigwv2.CfnRoute(this, 'OptionsRoute', {
+      apiId: httpApi.ref,
+      routeKey: 'OPTIONS /api/{proxy+}',
+      target: `integrations/${integration.ref}`,
+    });
+
     // Unauthenticated health route for smoke-tests.
     const healthRoute = new apigwv2.CfnRoute(this, 'HealthRoute', {
       apiId: httpApi.ref,
@@ -253,7 +263,7 @@ export class InvestmentTrackerStack extends cdk.Stack {
     });
 
     const emailRecipient = isProd
-      ? `${appSubdomain}.${cfg.domainRoot}`
+      ? `${emailSubdomain}.${cfg.domainRoot}`
       : `${appSubdomain}-${e}.${cfg.domainRoot}`;
 
     ruleSet.addRule('InboundToBucket', {
