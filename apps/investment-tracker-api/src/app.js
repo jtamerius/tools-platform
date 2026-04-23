@@ -378,6 +378,17 @@ app.get('/api/cells/:accountNumber', async (req, res) => {
 
 const path = require('path');
 const ALLOWED_UPLOAD_EXTS = new Set(['.eml', '.mbox', '.emlx']);
+const ALLOWED_UPLOAD_MIMES = new Set(['message/rfc822', 'application/mbox']);
+
+function isAllowedUpload(f) {
+  const ext = path.extname(f.originalname).toLowerCase();
+  if (ALLOWED_UPLOAD_EXTS.has(ext)) return true;
+  if (ALLOWED_UPLOAD_MIMES.has((f.mimetype || '').toLowerCase())) return true;
+  // Email clients often export without an extension — allow extensionless files
+  // since the parser will reject non-email content anyway.
+  if (ext === '') return true;
+  return false;
+}
 
 // ── POST /api/upload — push files to S3; parser Lambda picks them up ──
 app.post('/api/upload', upload.array('files'), async (req, res) => {
@@ -385,8 +396,7 @@ app.post('/api/upload', upload.array('files'), async (req, res) => {
   if (files.length === 0) return res.status(400).json({ error: 'No files uploaded' });
 
   for (const f of files) {
-    const ext = path.extname(f.originalname).toLowerCase();
-    if (!ALLOWED_UPLOAD_EXTS.has(ext)) {
+    if (!isAllowedUpload(f)) {
       return res.status(400).json({ error: `Unsupported file type: ${f.originalname}. Only .eml and .mbox files are accepted.` });
     }
   }
