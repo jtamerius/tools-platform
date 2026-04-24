@@ -301,3 +301,4 @@ export class InvestmentTrackerStack extends cdk.Stack {
     cdk.Tags.of(this).add('App', 'investment-tracker');
   }
 }
+
