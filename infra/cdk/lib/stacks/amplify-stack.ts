@@ -15,6 +15,7 @@ export interface AmplifyStackProps extends cdk.StackProps {
   /** Override CFn logical IDs to match a pre-CDK stack (prevents DELETE+CREATE on Amplify app) */
   legacyAppLogicalId?: string;
   legacyBranchLogicalId?: string;
+  legacyDomainLogicalId?: string;
 }
 
 export class AmplifyStack extends cdk.Stack {
@@ -24,7 +25,7 @@ export class AmplifyStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: AmplifyStackProps) {
     super(scope, id, props);
-    const { cfg, appName, subdomain, amplifyServiceRoleArn, exportPrefix, legacyAppLogicalId, legacyBranchLogicalId } = props;
+    const { cfg, appName, subdomain, amplifyServiceRoleArn, exportPrefix, legacyAppLogicalId, legacyBranchLogicalId, legacyDomainLogicalId } = props;
     const e = cfg.env;
 
     const hosting = new AmplifyHosting(this, 'Hosting', {
@@ -34,6 +35,7 @@ export class AmplifyStack extends cdk.Stack {
       amplifyServiceRoleArn,
       legacyAppLogicalId,
       legacyBranchLogicalId,
+      legacyDomainLogicalId,
     });
 
     this.appId = hosting.appId;

@@ -27,13 +27,11 @@ jobs:
       landing-page: ${{ steps.filter.outputs.landing-page }}
       weather-app: ${{ steps.filter.outputs.weather-app }}
       finance-app: ${{ steps.filter.outputs.finance-app }}
-      globe-app: ${{ steps.filter.outputs.globe-app }}
       infra-cognito: ${{ steps.filter.outputs.infra-cognito }}
       infra-dns: ${{ steps.filter.outputs.infra-dns }}
       infra-amplify-landing: ${{ steps.filter.outputs.infra-amplify-landing }}
       infra-amplify-weather: ${{ steps.filter.outputs.infra-amplify-weather }}
       infra-amplify-finance: ${{ steps.filter.outputs.infra-amplify-finance }}
-      infra-amplify-globe: ${{ steps.filter.outputs.infra-amplify-globe }}
       infra-monitoring: ${{ steps.filter.outputs.infra-monitoring }}
       infra-landing-page-app: ${{ steps.filter.outputs.infra-landing-page-app }}
       news-scraper: ${{ steps.filter.outputs.news-scraper }}
@@ -60,8 +58,6 @@ jobs:
             finance-app:
               - 'apps/finance-app/**'
               - 'shared/**'
-            globe-app:
-              - 'apps/globe-app/**'
             infra-cognito:
               - 'infra/cdk/lib/stacks/cognito-stack.ts'
               - 'infra/cdk/lib/config.ts'
@@ -81,11 +77,6 @@ jobs:
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
             infra-amplify-finance:
-              - 'infra/cdk/lib/stacks/amplify-stack.ts'
-              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
-              - 'infra/cdk/lib/config.ts'
-              - 'infra/cdk/bin/app.ts'
-            infra-amplify-globe:
               - 'infra/cdk/lib/stacks/amplify-stack.ts'
               - 'infra/cdk/lib/constructs/amplify-hosting.ts'
               - 'infra/cdk/lib/config.ts'
@@ -226,25 +217,6 @@ jobs:
           cache-dependency-path: infra/cdk/package-lock.json
       - run: cd infra/cdk && npm ci
       - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-finance-production -c env=production --require-approval never --no-cli-pager
-
-  deploy-amplify-globe-production:
-    name: Deploy Amplify (globe-app) — Production
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.infra-amplify-globe == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: infra/cdk/package-lock.json
-      - run: cd infra/cdk && npm ci
-      - run: cd infra/cdk && npx cdk deploy tools-shared-amplify-globe-production -c env=production --require-approval never --no-cli-pager
 
   # -----------------------------------------------------------------------
   # Job 2g: Deploy Monitoring stack
@@ -537,83 +509,6 @@ jobs:
         run: |
           JOB_ID="${{ steps.deploy.outputs.job_id }}"
           APP_ID="dhn8umbcf7yjw"
-          BRANCH="main"
-          MAX_ATTEMPTS=60
-          ATTEMPT=0
-
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            STATUS=$(aws amplify get-job \
-              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
-              --query 'job.summary.status' --output text --no-cli-pager)
-            echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
-            case "$STATUS" in
-              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
-              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
-              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
-              *) echo "Unexpected status: $STATUS"; exit 1 ;;
-            esac
-          done
-          echo "Timed out."; exit 1
-
-  # -----------------------------------------------------------------------
-  # Job 7: Deploy globe-app frontend
-  # -----------------------------------------------------------------------
-  deploy-globe-app-frontend-production:
-    name: Deploy globe-app Frontend — Production
-    runs-on: ubuntu-latest
-    needs:
-      - detect-changes
-      - deploy-amplify-globe-production
-    if: |
-      always() &&
-      needs.detect-changes.result == 'success' &&
-      needs.detect-changes.outputs.globe-app == 'true' &&
-      (needs.deploy-amplify-globe-production.result == 'success' ||
-       needs.deploy-amplify-globe-production.result == 'skipped')
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: apps/globe-app/package.json
-      - uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          aws-region: us-east-1
-
-      - name: Install and build
-        working-directory: apps/globe-app
-        run: |
-          npm ci
-          npm run build
-
-      - name: Package and deploy to Amplify
-        id: deploy
-        run: |
-          cd apps/globe-app/dist
-          zip -r ../dist.zip .
-          cd ..
-
-          RESULT=$(aws amplify create-deployment \
-            --app-id d31dppeu1ai6hv \
-            --branch-name main --output json --no-cli-pager)
-
-          JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
-          ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
-
-          curl --fail -T dist.zip "$ZIP_URL"
-
-          aws amplify start-deployment \
-            --app-id d31dppeu1ai6hv \
-            --branch-name main --job-id "$JOB_ID" --no-cli-pager
-
-          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
-
-      - name: Wait for deployment to complete
-        run: |
-          JOB_ID="${{ steps.deploy.outputs.job_id }}"
-          APP_ID="d31dppeu1ai6hv"
           BRANCH="main"
           MAX_ATTEMPTS=60
           ATTEMPT=0

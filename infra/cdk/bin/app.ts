@@ -51,6 +51,12 @@ const weatherAmplify = new AmplifyStack(app, `tools-shared-amplify-weather-${env
   amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify-weather',
   env: awsEnv,
+  // Preserve logical IDs from the legacy CFn template to prevent DELETE+CREATE on the Amplify app.
+  ...(envName === 'production' ? {
+    legacyAppLogicalId:    'WeatherAppAmplifyApp',
+    legacyBranchLogicalId: 'WeatherAppAmplifyBranch',
+    legacyDomainLogicalId: 'WeatherAppAmplifyDomain',
+  } : {}),
 });
 
 const financeAmplify = new AmplifyStack(app, `tools-shared-amplify-finance-${envName}`, {
@@ -60,6 +66,12 @@ const financeAmplify = new AmplifyStack(app, `tools-shared-amplify-finance-${env
   amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify-finance',
   env: awsEnv,
+  // Preserve logical IDs from the legacy CFn template to prevent DELETE+CREATE on the Amplify app.
+  ...(envName === 'production' ? {
+    legacyAppLogicalId:    'FinanceAppAmplifyApp',
+    legacyBranchLogicalId: 'FinanceAppAmplifyBranch',
+    legacyDomainLogicalId: 'FinanceAppAmplifyDomain',
+  } : {}),
 });
 
 const investmentTrackerAmplify = new AmplifyStack(app, `tools-shared-amplify-invest-tracker-${envName}`, {

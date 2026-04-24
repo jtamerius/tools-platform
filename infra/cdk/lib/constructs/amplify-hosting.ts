@@ -17,6 +17,7 @@ export interface AmplifyHostingProps {
    */
   legacyAppLogicalId?: string;
   legacyBranchLogicalId?: string;
+  legacyDomainLogicalId?: string;
 }
 
 export class AmplifyHosting extends Construct {
@@ -27,7 +28,7 @@ export class AmplifyHosting extends Construct {
 
   constructor(scope: Construct, id: string, props: AmplifyHostingProps) {
     super(scope, id);
-    const { cfg, appName, subdomain, amplifyServiceRoleArn, legacyAppLogicalId, legacyBranchLogicalId } = props;
+    const { cfg, appName, subdomain, amplifyServiceRoleArn, legacyAppLogicalId, legacyBranchLogicalId, legacyDomainLogicalId } = props;
     const e = cfg.env;
     const branchName = e === 'production' ? 'main' : 'staging';
 
@@ -75,7 +76,7 @@ export class AmplifyHosting extends Construct {
 
     // Custom domain only in production
     if (e === 'production') {
-      new amplify.CfnDomain(this, 'Domain', {
+      const domain = new amplify.CfnDomain(this, 'Domain', {
         appId: app.attrAppId,
         domainName: cfg.domainRoot,
         subDomainSettings: [
@@ -85,6 +86,7 @@ export class AmplifyHosting extends Construct {
           },
         ],
       });
+      if (legacyDomainLogicalId) domain.overrideLogicalId(legacyDomainLogicalId);
     }
 
     this.appId = app.attrAppId;

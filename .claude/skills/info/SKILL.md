@@ -16,7 +16,7 @@ GHA builds all artifacts; Amplify is a CDN endpoint only (no source connection).
 **Region:** `us-east-1`
 
 For per-app detail use `/app-landing-page`, `/app-weather`, `/app-finance`,
-`/app-investment-tracker`, `/app-globe`, `/app-news-scraper`, `/app-maritime`.
+`/app-investment-tracker`, `/app-news-scraper`.
 
 ---
 
@@ -28,9 +28,7 @@ For per-app detail use `/app-landing-page`, `/app-weather`, `/app-finance`,
 | Weather | `apps/weather-app/` | `weather.jtamerius.com` | None (public) |
 | Finance Tracker | `apps/finance-app/` | `finance.jtamerius.com` | Cognito (`member` group) |
 | Investment Tracker | `apps/investment-tracker/` | `investments.jtamerius.com` | Cognito |
-| Globe | `apps/globe-app/` | staging only | None (public) |
 | News Scraper | `apps/news-scraper/` | staging backend only | — |
-| Maritime | *(no app dir)* | staging backend only | — |
 
 ---
 
@@ -42,8 +40,6 @@ For per-app detail use `/app-landing-page`, `/app-weather`, `/app-finance`,
 | weather-app  | `d3ro6gzwr4icy0` | `d19cuiv0dybz8y` |
 | finance-app  | `d3r6r8egymbh24` | `dhn8umbcf7yjw` |
 | investment-tracker | `d1kqq0ntalvbmo` | `dkgy8mqrxm0zd` |
-| globe-app    | `d26bep45ffw4se` | none |
-| maritime     | `d1o8kdw7efkpuj` | none |
 
 ---
 
@@ -71,8 +67,6 @@ All stacks in `us-east-1`. ⚠️ = known broken state (see per-app skills for d
 | `tools-shared-amplify-weather-staging` | ✓ |
 | `tools-shared-amplify-finance-staging` | ✓ |
 | `tools-shared-amplify-invest-tracker-staging` | ✓ |
-| `tools-shared-amplify-globe-staging` | ⚠️ references deleted Amplify app |
-| `tools-shared-amplify-maritime-staging` | ✓ |
 | `tools-shared-amplify-invest-tracker-production` | ✓ |
 | `tools-shared-amplify-weather-production` | ⚠️ UPDATE_ROLLBACK_COMPLETE (10-app limit hit) |
 | `tools-shared-amplify-finance-production` | ⚠️ UPDATE_ROLLBACK_COMPLETE (10-app limit hit) |
@@ -87,7 +81,6 @@ All stacks in `us-east-1`. ⚠️ = known broken state (see per-app skills for d
 | `tools-app-investment-tracker-staging` | ⚠️ UPDATE_ROLLBACK_COMPLETE (OPTIONS route conflict) |
 | `tools-app-investment-tracker-production` | ✓ |
 | `tools-app-news-scraper-staging` | ✓ |
-| `tools-app-maritime-pipeline-staging` | ✓ |
 
 ### Legacy stacks (pre-tools-platform, still active)
 
@@ -135,10 +128,6 @@ not in any CFn stack). Should be confirmed empty and deleted.
 | `/tools/staging/investment-tracker/api-url` | Staging API Gateway URL |
 | `/tools/production/investment-tracker/api-url` | Production API Gateway URL |
 | `/tools/staging/news-scraper/recategorize-api-url` | News scraper API URL |
-| `/tools/staging/maritime/api-url` | Maritime API URL |
-| `/tools/staging/maritime/etl-function-name` | Maritime ETL Lambda name |
-| `/tools/staging/maritime/ais-input-bucket` | Maritime AIS input S3 |
-| `/tools/staging/maritime/processed-output-bucket` | Maritime processed output S3 |
 | `/tools/news-scraper/gemini-api-key` | SecureString (no env suffix) |
 | `/tools/news-scraper/groq-api-key` | SecureString |
 | `/tools/news-scraper/hf-api-key` | SecureString |
@@ -158,8 +147,6 @@ not in any CFn stack). Should be confirmed empty and deleted.
 | `jtamerius-website-deploy` | Lambda deploy packages (finance, weather, news-scraper) |
 | `tools-invest-tracker-emails-staging-606196119553` | SES emails (staging) |
 | `tools-invest-tracker-emails-production-606196119553` | SES emails (production) |
-| `tools-maritime-ais-input-staging-606196119553` | Maritime AIS input |
-| `tools-maritime-processed-staging-606196119553` | Maritime processed output |
 | `ensemble-plumes-37p274-neg107p8792` | Old weather bucket — likely orphaned |
 | `ensemble-plumes-southwest` | Old weather bucket — likely orphaned |
 | `jtamerius-website` | Orphaned S3 bucket (not in any CFn stack) |
@@ -226,7 +213,6 @@ not in any CFn stack). Should be confirmed empty and deleted.
 /app-investment-tracker
 /app-globe
 /app-news-scraper
-/app-maritime
 
 # Deploy
 /deploy-shared staging
