@@ -42,6 +42,12 @@ const landingAmplify = new AmplifyStack(app, `tools-shared-amplify-${envName}`, 
   amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify',
   env: awsEnv,
+  // Preserve logical IDs from the legacy CFn template to prevent DELETE+CREATE on the Amplify app.
+  ...(envName === 'production' ? {
+    legacyAppLogicalId:    'LandingPageAmplifyApp',
+    legacyBranchLogicalId: 'LandingPageAmplifyBranch',
+    legacyDomainLogicalId: 'LandingPageAmplifyDomain',
+  } : {}),
 });
 
 const weatherAmplify = new AmplifyStack(app, `tools-shared-amplify-weather-${envName}`, {
