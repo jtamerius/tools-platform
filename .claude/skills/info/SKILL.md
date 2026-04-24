@@ -15,6 +15,9 @@ GHA builds all artifacts; Amplify is a CDN endpoint only (no source connection).
 **AWS account:** `606196119553`
 **Region:** `us-east-1`
 
+For per-app detail use `/app-landing-page`, `/app-weather`, `/app-finance`,
+`/app-investment-tracker`, `/app-globe`, `/app-news-scraper`, `/app-maritime`.
+
 ---
 
 ## Apps
@@ -22,8 +25,12 @@ GHA builds all artifacts; Amplify is a CDN endpoint only (no source connection).
 | App | Directory | URL (production) | Auth |
 |-----|-----------|-----------------|------|
 | Landing Page | `apps/landing-page/` | `tools.jtamerius.com` | Cognito |
-| Ensemble Weather | `apps/weather-app/` | `weather.jtamerius.com` | None (public) |
+| Weather | `apps/weather-app/` | `weather.jtamerius.com` | None (public) |
 | Finance Tracker | `apps/finance-app/` | `finance.jtamerius.com` | Cognito (`member` group) |
+| Investment Tracker | `apps/investment-tracker/` | `investments.jtamerius.com` | Cognito |
+| Globe | `apps/globe-app/` | staging only | None (public) |
+| News Scraper | `apps/news-scraper/` | staging backend only | — |
+| Maritime | *(no app dir)* | staging backend only | — |
 
 ---
 
@@ -31,48 +38,79 @@ GHA builds all artifacts; Amplify is a CDN endpoint only (no source connection).
 
 | App | Staging | Production |
 |-----|---------|------------|
-| landing-page | `d223wq48sddq6t` | (deploy production stacks to get) |
-| weather-app  | `d26oqifvpt9ysq` | (deploy production stacks to get) |
-| finance-app  | `d1k4zfq8stlbd`  | (deploy production stacks to get) |
-
-**Staging default domains:**
-- `d223wq48sddq6t.amplifyapp.com` (landing-page)
-- `d26oqifvpt9ysq.amplifyapp.com` (weather-app)
-- `d1k4zfq8stlbd.amplifyapp.com` (finance-app)
+| landing-page | `dfgc4jtftrltl` | `d1eoywtcjjm80v` |
+| weather-app  | `d3ro6gzwr4icy0` | `d19cuiv0dybz8y` |
+| finance-app  | `d3r6r8egymbh24` | `dhn8umbcf7yjw` |
+| investment-tracker | `d1kqq0ntalvbmo` | `dkgy8mqrxm0zd` |
+| globe-app    | `d26bep45ffw4se` | none |
+| maritime     | `d1o8kdw7efkpuj` | none |
 
 ---
 
 ## CloudFormation Stacks
 
-All stacks deploy to `us-east-1`.
+All stacks in `us-east-1`. ⚠️ = known broken state (see per-app skills for details).
 
-### Shared stacks (per environment)
+### Shared stacks
 
-| Stack | Purpose |
-|-------|---------|
-| `tools-shared-iam-{env}` | OIDC provider, GitHub Actions role, Amplify service role |
-| `tools-shared-cognito-{env}` | User Pool, SPA client, groups (admin/member/guest) |
-| `tools-shared-dns-{env}` | ACM certificate (prod: `*.jtamerius.com`; staging: `*.staging.jtamerius.com`) |
-| `tools-shared-amplify-{env}` | Amplify app + branch for landing-page |
-| `tools-shared-amplify-weather-{env}` | Amplify app + branch for weather-app |
-| `tools-shared-amplify-finance-{env}` | Amplify app + branch for finance-app |
-| `tools-shared-monitoring-{env}` | CloudWatch alarms + SNS (optional, pass alert email to deploy-shared.sh) |
+| Stack | Status |
+|-------|--------|
+| `tools-shared-iam-staging` | ✓ |
+| `tools-shared-iam-production` | ✓ |
+| `tools-shared-cognito-staging` | ✓ |
+| `tools-shared-cognito-production` | ✓ |
+| `tools-shared-dns-staging` | ✓ |
+| `tools-shared-dns-production` | ✓ |
+| `tools-shared-monitoring-staging` | ✓ |
+
+### Amplify stacks
+
+| Stack | Status |
+|-------|--------|
+| `tools-shared-amplify-staging` | ✓ (landing-page staging) |
+| `tools-shared-amplify-weather-staging` | ✓ |
+| `tools-shared-amplify-finance-staging` | ✓ |
+| `tools-shared-amplify-invest-tracker-staging` | ✓ |
+| `tools-shared-amplify-globe-staging` | ⚠️ references deleted Amplify app |
+| `tools-shared-amplify-maritime-staging` | ✓ |
+| `tools-shared-amplify-invest-tracker-production` | ✓ |
+| `tools-shared-amplify-weather-production` | ⚠️ UPDATE_ROLLBACK_COMPLETE (10-app limit hit) |
+| `tools-shared-amplify-finance-production` | ⚠️ UPDATE_ROLLBACK_COMPLETE (10-app limit hit) |
+| *(none)* | ⚠️ landing-page production Amplify has no CFn stack |
 
 ### App-specific stacks
 
-| Stack | Purpose |
-|-------|---------|
-| `tools-app-landing-page-{env}` | SSM parameters (Cognito IDs written for build-time injection) |
+| Stack | Status |
+|-------|--------|
+| `tools-app-landing-page-staging` | ✓ |
+| `tools-app-landing-page-production` | ✓ |
+| `tools-app-investment-tracker-staging` | ⚠️ UPDATE_ROLLBACK_COMPLETE (OPTIONS route conflict) |
+| `tools-app-investment-tracker-production` | ✓ |
+| `tools-app-news-scraper-staging` | ✓ |
+| `tools-app-maritime-pipeline-staging` | ✓ |
+
+### Legacy stacks (pre-tools-platform, still active)
+
+| Stack | Status | Purpose |
+|-------|--------|---------|
+| `jtamerius-website` | ✓ UPDATE_COMPLETE | CloudFront + S3, serves `www.jtamerius.com` |
+| `jtamerius-weather-collector` | ✓ UPDATE_COMPLETE | Lambda + EventBridge, writes weather data |
+| `jtamerius-finance-tracker` | ✓ UPDATE_COMPLETE | Lambda Function URL + S3 |
+| `CDKToolkit` | ✓ | CDK bootstrap |
 
 ---
 
-## Cognito (Staging)
+## Cognito
 
-| Key | Value |
-|-----|-------|
-| User Pool ID | `us-east-1_Ia0QTCZTw` |
-| App Client ID | `3b2pgk03qi0pf0i723p6mtm54r` |
-| Groups | `admin` (precedence 1), `member` (10), `guest` (20) |
+| Key | Staging | Production |
+|-----|---------|------------|
+| User Pool ID | `us-east-1_hKaIobmpm` | `us-east-1_2uleQ81er` |
+| App Client ID | `d3bhlrhnpbiukg0upfjpuuq7f` | `6epcdrtkupskpeik9m10bb6i20` |
+| Groups | admin (1), member (10), guest (20) | admin (1), member (10), guest (20) |
+| Stack | `tools-shared-cognito-staging` | `tools-shared-cognito-production` |
+
+⚠️ There is an orphaned second production pool `us-east-1_CLD8OTuB8` (created 2026-04-04,
+not in any CFn stack). Should be confirmed empty and deleted.
 
 ---
 
@@ -81,36 +119,70 @@ All stacks deploy to `us-east-1`.
 | Role | ARN |
 |------|-----|
 | GitHub Actions (staging) | `arn:aws:iam::606196119553:role/tools-github-actions-staging` |
+| GitHub Actions (production) | `arn:aws:iam::606196119553:role/tools-github-actions-production` |
 | Amplify service (staging) | `arn:aws:iam::606196119553:role/tools-amplify-service-staging` |
 
 ---
 
-## SSM Parameters (written by deploy-app.sh)
+## SSM Parameters
 
-| Parameter | Value |
-|-----------|-------|
-| `/tools/{env}/cognito/user-pool-id` | Cognito User Pool ID |
-| `/tools/{env}/cognito/client-id` | Cognito App Client ID |
+| Parameter | Purpose |
+|-----------|---------|
+| `/tools/staging/cognito/user-pool-id` | `us-east-1_hKaIobmpm` |
+| `/tools/staging/cognito/client-id` | `d3bhlrhnpbiukg0upfjpuuq7f` |
+| `/tools/production/cognito/user-pool-id` | `us-east-1_2uleQ81er` |
+| `/tools/production/cognito/client-id` | `6epcdrtkupskpeik9m10bb6i20` |
+| `/tools/staging/investment-tracker/api-url` | Staging API Gateway URL |
+| `/tools/production/investment-tracker/api-url` | Production API Gateway URL |
+| `/tools/staging/news-scraper/recategorize-api-url` | News scraper API URL |
+| `/tools/staging/maritime/api-url` | Maritime API URL |
+| `/tools/staging/maritime/etl-function-name` | Maritime ETL Lambda name |
+| `/tools/staging/maritime/ais-input-bucket` | Maritime AIS input S3 |
+| `/tools/staging/maritime/processed-output-bucket` | Maritime processed output S3 |
+| `/tools/news-scraper/gemini-api-key` | SecureString (no env suffix) |
+| `/tools/news-scraper/groq-api-key` | SecureString |
+| `/tools/news-scraper/hf-api-key` | SecureString |
+| `/tools/news-scraper/openrouter-api-key` | SecureString |
+| `finance-tracker` | Old SecureString — pre-platform era, no `/tools/` prefix |
 
 ---
 
-## GitHub Secrets Required
+## S3 Buckets
 
-### `production` environment
-| Secret | Value |
-|--------|-------|
-| `AWS_ROLE_ARN` | Deploy production stacks and check IAM export |
-| `AMPLIFY_APP_ID_LANDING_PAGE` | Deploy production stacks and check amplify export |
-| `AMPLIFY_APP_ID_WEATHER_APP` | Deploy production stacks and check amplify export |
-| `AMPLIFY_APP_ID_FINANCE_APP` | Deploy production stacks and check amplify export |
+| Bucket | Owner / Purpose |
+|--------|----------------|
+| `cdk-hnb659fds-assets-606196119553-us-east-1` | CDK bootstrap assets |
+| `jtamerius` | Legacy website data (CloudFront origin, active) |
+| `jtamerius-finance-data` | Legacy finance tracker data |
+| `jtamerius-news-data` | News scraper output (daily updated) |
+| `jtamerius-website-deploy` | Lambda deploy packages (finance, weather, news-scraper) |
+| `tools-invest-tracker-emails-staging-606196119553` | SES emails (staging) |
+| `tools-invest-tracker-emails-production-606196119553` | SES emails (production) |
+| `tools-maritime-ais-input-staging-606196119553` | Maritime AIS input |
+| `tools-maritime-processed-staging-606196119553` | Maritime processed output |
+| `ensemble-plumes-37p274-neg107p8792` | Old weather bucket — likely orphaned |
+| `ensemble-plumes-southwest` | Old weather bucket — likely orphaned |
+| `jtamerius-website` | Orphaned S3 bucket (not in any CFn stack) |
+
+---
+
+## GitHub Secrets
 
 ### `staging` environment
 | Secret | Value |
 |--------|-------|
 | `AWS_ROLE_ARN` | `arn:aws:iam::606196119553:role/tools-github-actions-staging` |
-| `AMPLIFY_APP_ID_LANDING_PAGE` | `d223wq48sddq6t` |
-| `AMPLIFY_APP_ID_WEATHER_APP` | `d26oqifvpt9ysq` |
-| `AMPLIFY_APP_ID_FINANCE_APP` | `d1k4zfq8stlbd` |
+| `AMPLIFY_APP_ID_LANDING_PAGE` | `dfgc4jtftrltl` |
+| `AMPLIFY_APP_ID_WEATHER_APP` | `d3ro6gzwr4icy0` |
+| `AMPLIFY_APP_ID_FINANCE_APP` | `d3r6r8egymbh24` |
+
+### `production` environment
+| Secret | Value |
+|--------|-------|
+| `AWS_ROLE_ARN` | `arn:aws:iam::606196119553:role/tools-github-actions-production` |
+| `AMPLIFY_APP_ID_LANDING_PAGE` | `d1eoywtcjjm80v` |
+| `AMPLIFY_APP_ID_WEATHER_APP` | `d19cuiv0dybz8y` |
+| `AMPLIFY_APP_ID_FINANCE_APP` | `dhn8umbcf7yjw` |
 
 ---
 
@@ -119,9 +191,9 @@ All stacks deploy to `us-east-1`.
 | Workflow | Trigger | Purpose |
 |----------|---------|---------|
 | `ci.yml` | PR to `staging` or `main` | Lint, test, build, validate CFn templates |
-| `deploy-staging.yml` | Push to `staging` branch | Deploy shared infra + all app frontends to staging |
-| `deploy-production.yml` | Push to `main` branch | Deploy shared infra + all app frontends to production |
-| `add-new-app.yml` | Manual dispatch | Scaffold a new app (creates directories + stack stubs) |
+| `deploy-staging.yml` | Push to `staging` branch | Deploy shared infra + all app frontends |
+| `deploy-production.yml` | Push to `main` branch | Deploy shared infra + all app frontends |
+| `add-new-app.yml` | Manual dispatch | Scaffold a new app |
 
 ---
 
@@ -146,37 +218,28 @@ All stacks deploy to `us-east-1`.
 
 ## Common Workflows
 
-**First-time environment setup:**
-```
+```bash
+# Per-app quick reference
+/app-landing-page
+/app-weather
+/app-finance
+/app-investment-tracker
+/app-globe
+/app-news-scraper
+/app-maritime
+
+# Deploy
 /deploy-shared staging
-```
-
-**Deploy app infra + write SSM params:**
-```
 /deploy-app landing-page staging
-```
-
-**Manual build + deploy to Amplify (bypass CI):**
-```
 /amplify-deploy landing-page staging
-```
 
-**Check stack health:**
-```
+# Check health
 /stack-status
-```
-
-**Check Amplify deployment status:**
-```
 /amplify-status
-```
 
-**Manage Cognito users:**
-```
+# Auth
 /cognito
-```
 
-**SSO expired?**
-```
+# SSO expired?
 /sso
 ```
