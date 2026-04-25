@@ -876,7 +876,7 @@ jobs:
       - name: Install and build
         working-directory: apps/adventure-builder
         run: |
-          npm ci --legacy-peer-deps
+          npm install --legacy-peer-deps
           npm run build
 
       - name: Package and deploy to Amplify
