@@ -12,8 +12,10 @@ export interface AmplifyHostingProps {
   amplifyServiceRoleArn: string;
   /**
    * Override CFn logical IDs to match an existing stack created outside CDK.
-   * Without these, CDK would create new resources (DELETE old + CREATE new)
-   * which fails if the account is at the Amplify app limit.
+   * Without these, CDK would try DELETE + CREATE, which fails two ways:
+   *   1. The account is at the 10-app Amplify limit
+   *   2. The custom domain is already validated — re-associating it causes a
+   *      domain conflict error and rolls the stack back to UPDATE_ROLLBACK_COMPLETE.
    */
   legacyAppLogicalId?: string;
   legacyBranchLogicalId?: string;
