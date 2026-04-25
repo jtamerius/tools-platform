@@ -10,6 +10,8 @@ export interface AmplifyHostingProps {
   /** subdomain prefix, e.g. 'tools', 'weather' */
   subdomain: string;
   amplifyServiceRoleArn: string;
+  /** Extra subdomain prefixes to add to the domain association (e.g. ['www', ''] for apex) */
+  additionalSubdomains?: string[];
   /**
    * Override CFn logical IDs to match an existing stack created outside CDK.
    * Without these, CDK would try DELETE + CREATE, which fails two ways:
@@ -30,7 +32,7 @@ export class AmplifyHosting extends Construct {
 
   constructor(scope: Construct, id: string, props: AmplifyHostingProps) {
     super(scope, id);
-    const { cfg, appName, subdomain, amplifyServiceRoleArn, legacyAppLogicalId, legacyBranchLogicalId, legacyDomainLogicalId } = props;
+    const { cfg, appName, subdomain, amplifyServiceRoleArn, additionalSubdomains, legacyAppLogicalId, legacyBranchLogicalId, legacyDomainLogicalId } = props;
     const e = cfg.env;
     const branchName = e === 'production' ? 'main' : 'staging';
 
@@ -82,10 +84,8 @@ export class AmplifyHosting extends Construct {
         appId: app.attrAppId,
         domainName: cfg.domainRoot,
         subDomainSettings: [
-          {
-            prefix: subdomain,
-            branchName: branch.branchName,
-          },
+          { prefix: subdomain, branchName: branch.branchName },
+          ...(additionalSubdomains ?? []).map(p => ({ prefix: p, branchName: branch.branchName })),
         ],
       });
       if (legacyDomainLogicalId) domain.overrideLogicalId(legacyDomainLogicalId);

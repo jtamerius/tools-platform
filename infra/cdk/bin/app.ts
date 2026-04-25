@@ -48,6 +48,7 @@ const landingAmplify = new AmplifyStack(app, `tools-shared-amplify-${envName}`, 
     legacyAppLogicalId:    'LandingPageAmplifyApp',
     legacyBranchLogicalId: 'LandingPageAmplifyBranch',
     legacyDomainLogicalId: 'LandingPageAmplifyDomain',
+    additionalSubdomains:  ['www', ''],
   } : {}),
 });
 
