@@ -244,7 +244,7 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Name: !Sub '${ProjectName}-assemble'
-      ScheduleExpression: 'cron(20 0,12 * * ? *)'
+      ScheduleExpression: 'cron(30 0,12 * * ? *)'
       State: ENABLED
       Targets:
         - Id: Target

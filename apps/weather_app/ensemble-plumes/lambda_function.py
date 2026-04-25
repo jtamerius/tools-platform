@@ -15,11 +15,12 @@ Schedule (UTC, repeated at 00:xx and 12:xx daily):
   +02 min  fetch ecmwf_ifs025   det
   +04 min  fetch icon_seamless  det
   +06 min  fetch gem_global     det
-  +08 min  fetch gfs_seamless   ens
-  +10 min  fetch ecmwf_ifs025   ens
-  +12 min  fetch icon_seamless  ens
-  +14 min  fetch gem_global     ens
-  +16 min  assemble
+  +08 min  fetch gfs_hrrr       det
+  +12 min  fetch gfs_seamless   ens
+  +14 min  fetch ecmwf_ifs025   ens
+  +16 min  fetch icon_seamless  ens
+  +18 min  fetch gem_global     ens
+  +30 min  assemble
 
 S3 key layout::
 
