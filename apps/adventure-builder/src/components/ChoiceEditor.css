@@ -1,0 +1,44 @@
+.ce-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ce-text {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #13131f;
+  color: inherit;
+  font-size: 13px;
+}
+.ce-text:focus { outline: none; border-color: #7c3aed; }
+
+.ce-target {
+  flex: 1;
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid #333;
+  background: #13131f;
+  color: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.ce-target:focus { outline: none; border-color: #7c3aed; }
+
+.ce-del {
+  background: none;
+  border: 1px solid #444;
+  color: #666;
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.ce-del:hover { border-color: #f87171; color: #f87171; }

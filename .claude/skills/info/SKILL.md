@@ -29,6 +29,7 @@ For per-app detail use `/app-landing-page`, `/app-weather`, `/app-finance`,
 | Finance Tracker | `apps/finance-app/` | `finance.jtamerius.com` | Cognito (`member` group) |
 | Investment Tracker | `apps/investment-tracker/` | `investments.jtamerius.com` | Cognito |
 | News Scraper | `apps/news-scraper/` | staging backend only | — |
+| Adventure Builder | `apps/adventure-builder/` | `adventure.jtamerius.com` | Cognito |
 
 ---
 

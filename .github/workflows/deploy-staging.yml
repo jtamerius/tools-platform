@@ -32,6 +32,9 @@ jobs:
       infra-landing-page-app: ${{ steps.filter.outputs.infra-landing-page-app }}
       infra-investment-tracker: ${{ steps.filter.outputs.infra-investment-tracker }}
       news-scraper: ${{ steps.filter.outputs.news-scraper }}
+      adventure-builder: ${{ steps.filter.outputs.adventure-builder }}
+      infra-amplify-adventure-builder: ${{ steps.filter.outputs.infra-amplify-adventure-builder }}
+      infra-adventure-builder: ${{ steps.filter.outputs.infra-adventure-builder }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -101,6 +104,21 @@ jobs:
               - 'apps/news-scraper/**'
               - 'infra/cdk/lib/stacks/news-scraper-stack.ts'
               - 'infra/cdk/lib/config.ts'
+            adventure-builder:
+              - 'apps/adventure-builder/**'
+              - 'shared/**'
+            infra-amplify-adventure-builder:
+              - 'infra/cdk/lib/stacks/amplify-stack.ts'
+              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-adventure-builder:
+              - 'infra/cdk/lib/stacks/adventure-builder-stack.ts'
+              - 'apps/adventure-builder-api/**'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+              - 'infra/cdk/package.json'
+              - 'infra/cdk/package-lock.json'
 
   # -----------------------------------------------------------------------
   # CDK helper — reusable setup steps (referenced via needs/run)
@@ -754,3 +772,157 @@ jobs:
           done
           echo "Timed out."; exit 1
 
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy adventure-builder Amplify hosting stack
+  # -----------------------------------------------------------------------
+  deploy-amplify-adventure-builder-staging:
+    name: Deploy Amplify (adventure-builder) — Staging
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-amplify-adventure-builder == 'true'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-amplify-adventure-builder-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy adventure-builder backend infra (DynamoDB, Lambda, API GW)
+  # -----------------------------------------------------------------------
+  deploy-adventure-builder-app-staging:
+    name: Deploy adventure-builder App Infra — Staging
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-cognito-staging
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.infra-adventure-builder == 'true' &&
+      (needs.deploy-cognito-staging.result == 'success' ||
+       needs.deploy-cognito-staging.result == 'skipped')
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-app-adventure-builder-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy adventure-builder frontend via Amplify (staging branch)
+  # -----------------------------------------------------------------------
+  deploy-adventure-builder-frontend-staging:
+    name: Deploy adventure-builder Frontend — Staging
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-adventure-builder-app-staging
+      - deploy-amplify-adventure-builder-staging
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.adventure-builder == 'true' &&
+      (needs.deploy-adventure-builder-app-staging.result == 'success' ||
+       needs.deploy-adventure-builder-app-staging.result == 'skipped') &&
+      (needs.deploy-amplify-adventure-builder-staging.result == 'success' ||
+       needs.deploy-amplify-adventure-builder-staging.result == 'skipped')
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Fetch build env vars from SSM
+        run: |
+          echo "VITE_COGNITO_USER_POOL_ID=$(aws ssm get-parameter \
+            --name /tools/staging/cognito/user-pool-id \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_COGNITO_CLIENT_ID=$(aws ssm get-parameter \
+            --name /tools/staging/cognito/client-id \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_API_URL=$(aws ssm get-parameter \
+            --name /tools/staging/adventure-builder/api-url \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_ENV=staging" >> "$GITHUB_ENV"
+
+      - name: Install and build
+        working-directory: apps/adventure-builder
+        run: |
+          npm ci --legacy-peer-deps
+          npm run build
+
+      - name: Package and deploy to Amplify
+        id: deploy
+        run: |
+          # TODO: Replace ADVENTURE_BUILDER_AMPLIFY_APP_ID after first CDK deploy
+          AMPLIFY_APP_ID=ADVENTURE_BUILDER_AMPLIFY_APP_ID
+
+          cd apps/adventure-builder/dist
+          zip -r ../dist.zip .
+          cd ..
+
+          RESULT=$(aws amplify create-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name staging --output json --no-cli-pager)
+
+          JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
+          ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
+
+          curl --fail -T dist.zip "$ZIP_URL"
+
+          aws amplify start-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name staging --job-id "$JOB_ID" --no-cli-pager
+
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "amplify_app_id=$AMPLIFY_APP_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for deployment to complete
+        run: |
+          JOB_ID="${{ steps.deploy.outputs.job_id }}"
+          APP_ID="${{ steps.deploy.outputs.amplify_app_id }}"
+          BRANCH="staging"
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(aws amplify get-job \
+              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text --no-cli-pager)
+            echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
+            esac
+          done
+          echo "Timed out."; exit 1

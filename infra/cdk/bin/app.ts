@@ -9,6 +9,7 @@ import { AmplifyStack } from '../lib/stacks/amplify-stack';
 import { LandingPageStack } from '../lib/stacks/landing-page-stack';
 import { NewsScraperStack } from '../lib/stacks/news-scraper-stack';
 import { InvestmentTrackerStack } from '../lib/stacks/investment-tracker-stack';
+import { AdventureBuilderStack } from '../lib/stacks/adventure-builder-stack';
 
 const app = new cdk.App();
 
@@ -89,6 +90,15 @@ const investmentTrackerAmplify = new AmplifyStack(app, `tools-shared-amplify-inv
   env: awsEnv,
 });
 
+const adventureBuilderAmplify = new AmplifyStack(app, `tools-shared-amplify-adventure-builder-${envName}`, {
+  cfg,
+  appName: 'adventure-builder',
+  subdomain: 'adventure',
+  amplifyServiceRoleArn,
+  exportPrefix: 'tools-shared-amplify-adventure-builder',
+  env: awsEnv,
+});
+
 // ── Shared: Monitoring ───────────────────────────────────────────────────────
 new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
   cfg,
@@ -97,6 +107,7 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
     weatherAmplify.appId,
     financeAmplify.appId,
     investmentTrackerAmplify.appId,
+    adventureBuilderAmplify.appId,
   ],
   env: awsEnv,
 });
@@ -113,6 +124,12 @@ new NewsScraperStack(app, `tools-app-news-scraper-${envName}`, { cfg, env: awsEn
 
 /// ── App: investment-tracker (DynamoDB + S3 + Lambda API + SES inbound) ───────
 new InvestmentTrackerStack(app, `tools-app-investment-tracker-${envName}`, {
+  cfg,
+  env: awsEnv,
+});
+
+// ── App: adventure-builder (DynamoDB + Lambda API + Bedrock) ─────────────────
+new AdventureBuilderStack(app, `tools-app-adventure-builder-${envName}`, {
   cfg,
   env: awsEnv,
 });

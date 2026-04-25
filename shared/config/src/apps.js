@@ -44,6 +44,15 @@ export const APPS = [
     requiredGroup: 'admin',
   },
   {
+    id: 'adventure-builder',
+    name: 'Adventure Builder',
+    description: 'Create and visualize choose-your-own-adventure stories.',
+    url: isProd ? 'https://adventure.jtamerius.com' : 'https://staging.AMPLIFY_ID_PLACEHOLDER.amplifyapp.com',
+    subdomain: 'adventure',
+    isPublic: false,
+    requiredGroup: 'admin',
+  },
+  {
     id: 'news',
     name: 'Global News',
     description: 'Top headlines from 96 countries, categorized by AI',
