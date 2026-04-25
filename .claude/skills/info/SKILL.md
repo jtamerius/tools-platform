@@ -64,13 +64,13 @@ All stacks in `us-east-1`. ⚠️ = known broken state (see per-app skills for d
 | Stack | Status |
 |-------|--------|
 | `tools-shared-amplify-staging` | ✓ (landing-page staging) |
+| `tools-shared-amplify-production` | ✓ (landing-page production) |
 | `tools-shared-amplify-weather-staging` | ✓ |
+| `tools-shared-amplify-weather-production` | ✓ |
 | `tools-shared-amplify-finance-staging` | ✓ |
+| `tools-shared-amplify-finance-production` | ✓ |
 | `tools-shared-amplify-invest-tracker-staging` | ✓ |
 | `tools-shared-amplify-invest-tracker-production` | ✓ |
-| `tools-shared-amplify-weather-production` | ⚠️ UPDATE_ROLLBACK_COMPLETE (10-app limit hit) |
-| `tools-shared-amplify-finance-production` | ⚠️ UPDATE_ROLLBACK_COMPLETE (10-app limit hit) |
-| *(none)* | ⚠️ landing-page production Amplify has no CFn stack |
 
 ### App-specific stacks
 
@@ -78,7 +78,7 @@ All stacks in `us-east-1`. ⚠️ = known broken state (see per-app skills for d
 |-------|--------|
 | `tools-app-landing-page-staging` | ✓ |
 | `tools-app-landing-page-production` | ✓ |
-| `tools-app-investment-tracker-staging` | ⚠️ UPDATE_ROLLBACK_COMPLETE (OPTIONS route conflict) |
+| `tools-app-investment-tracker-staging` | ✓ |
 | `tools-app-investment-tracker-production` | ✓ |
 | `tools-app-news-scraper-staging` | ✓ |
 
@@ -101,9 +101,6 @@ All stacks in `us-east-1`. ⚠️ = known broken state (see per-app skills for d
 | App Client ID | `d3bhlrhnpbiukg0upfjpuuq7f` | `6epcdrtkupskpeik9m10bb6i20` |
 | Groups | admin (1), member (10), guest (20) | admin (1), member (10), guest (20) |
 | Stack | `tools-shared-cognito-staging` | `tools-shared-cognito-production` |
-
-⚠️ There is an orphaned second production pool `us-east-1_CLD8OTuB8` (created 2026-04-04,
-not in any CFn stack). Should be confirmed empty and deleted.
 
 ---
 
