@@ -51,7 +51,7 @@ export default function Home() {
 const HIGHLIGHTS = [
   { label: 'Focus', value: 'Data engineering & internal tooling' },
   { label: 'Stack', value: 'AWS · Python · React' },
-  { label: 'Platform', value: 'tools.jtamerius.com' },
+  { label: 'Location', value: 'Durango, CO' },
 ]
 
 const styles = {
