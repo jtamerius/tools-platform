@@ -882,8 +882,7 @@ jobs:
       - name: Package and deploy to Amplify
         id: deploy
         run: |
-          # TODO: Replace ADVENTURE_BUILDER_AMPLIFY_APP_ID after first CDK deploy
-          AMPLIFY_APP_ID=ADVENTURE_BUILDER_AMPLIFY_APP_ID
+          AMPLIFY_APP_ID=d1sgxuayv4jvam
 
           cd apps/adventure-builder/dist
           zip -r ../dist.zip .

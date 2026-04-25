@@ -23,12 +23,8 @@ Two code directories:
 
 | Environment | App ID | URL |
 |-------------|--------|-----|
-| Staging     | `ADVENTURE_BUILDER_AMPLIFY_APP_ID` | `staging.<id>.amplifyapp.com` |
-| Production  | `ADVENTURE_BUILDER_AMPLIFY_APP_ID` | `adventure.jtamerius.com` |
-
-> **TODO:** Replace `ADVENTURE_BUILDER_AMPLIFY_APP_ID` placeholders after first CDK deploy.
-> Run: `aws cloudformation describe-stacks --stack-name tools-shared-amplify-adventure-builder-staging --query 'Stacks[0].Outputs' --profile jtam`
-> Then update this file, `shared/config/src/apps.js`, and the CI/CD workflow files.
+| Staging     | `d1sgxuayv4jvam` | `staging.d1sgxuayv4jvam.amplifyapp.com` |
+| Production  | TBD (deploy prod stack first) | `adventure.jtamerius.com` |
 
 ## Backend Resources
 
@@ -36,7 +32,7 @@ Two code directories:
 
 | Environment | SSM key | Notes |
 |-------------|---------|-------|
-| Staging     | `/tools/staging/adventure-builder/api-url` | Populated by CDK deploy |
+| Staging     | `/tools/staging/adventure-builder/api-url` | `https://3rdzffq3u7.execute-api.us-east-1.amazonaws.com` |
 | Production  | `/tools/production/adventure-builder/api-url` | Populated by CDK deploy |
 
 ### Lambda

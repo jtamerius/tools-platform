@@ -47,7 +47,7 @@ export const APPS = [
     id: 'adventure-builder',
     name: 'Adventure Builder',
     description: 'Create and visualize choose-your-own-adventure stories.',
-    url: isProd ? 'https://adventure.jtamerius.com' : 'https://staging.AMPLIFY_ID_PLACEHOLDER.amplifyapp.com',
+    url: isProd ? 'https://adventure.jtamerius.com' : 'https://staging.d1sgxuayv4jvam.amplifyapp.com',
     subdomain: 'adventure',
     isPublic: false,
     requiredGroup: 'admin',
