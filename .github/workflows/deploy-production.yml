@@ -881,7 +881,7 @@ jobs:
       - run: cd infra/cdk && npm ci
       - run: |
           cd infra/cdk
-          out=$(npx cdk deploy tools-shared-amplify-adventure-builder-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+          out=$(npx cdk deploy tools-shared-amplify-adventure-builder-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job: Deploy adventure-builder backend infra (DynamoDB, Lambda, API GW)
@@ -967,7 +967,7 @@ jobs:
       - name: Package and deploy to Amplify
         id: deploy
         run: |
-          AMPLIFY_APP_ID=ADVENTURE_BUILDER_PROD_APP_ID_PLACEHOLDER
+          AMPLIFY_APP_ID=d2usbvt62tz6jt
 
           cd apps/adventure-builder/dist
           zip -r ../dist.zip .

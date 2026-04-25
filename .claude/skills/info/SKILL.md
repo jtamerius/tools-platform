@@ -41,6 +41,7 @@ For per-app detail use `/app-landing-page`, `/app-weather`, `/app-finance`,
 | weather-app  | `d3ro6gzwr4icy0` | `d19cuiv0dybz8y` |
 | finance-app  | `d3r6r8egymbh24` | `dhn8umbcf7yjw` |
 | investment-tracker | `d1kqq0ntalvbmo` | `dkgy8mqrxm0zd` |
+| adventure-builder  | `d1sgxuayv4jvam` | `d2usbvt62tz6jt` |
 
 ---
 

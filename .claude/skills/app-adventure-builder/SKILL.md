@@ -24,7 +24,7 @@ Two code directories:
 | Environment | App ID | URL |
 |-------------|--------|-----|
 | Staging     | `d1sgxuayv4jvam` | `staging.d1sgxuayv4jvam.amplifyapp.com` |
-| Production  | TBD (deploy prod stack first) | `adventure.jtamerius.com` |
+| Production  | `d2usbvt62tz6jt` | `adventure.jtamerius.com` |
 
 ## Backend Resources
 
