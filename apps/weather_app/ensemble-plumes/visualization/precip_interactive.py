@@ -592,6 +592,10 @@ def _build_full_html(
       <ul id="loc-suggestions"></ul>
     </div>
     <span id="loc-status"></span>
+    <span class="bar-sep"></span>
+    <label for="iqr-slider">Band:</label>
+    <input type="range" id="iqr-slider" min="0" max="50" value="10" step="1">
+    <span id="iqr-label">40\u201360%</span>
     <span class="s3-note" id="s3-note"></span>
   </div>
   <div id="run-bar">
@@ -601,11 +605,7 @@ def _build_full_html(
       <input type="range" id="run-slider" min="0" max="0" value="0" step="1">
       <span class="run-edge">latest</span>
       <span id="run-label"></span>
-      <span class="bar-sep"></span>
     </span>
-    <label for="iqr-slider">Band:</label>
-    <input type="range" id="iqr-slider" min="0" max="50" value="10" step="1">
-    <span id="iqr-label">40\u201360%</span>
   </div>
   {plot_html}
   <script type="text/javascript">
