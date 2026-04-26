@@ -10,13 +10,17 @@ allowed-tools: Bash(aws *)
 
 ```
 Amplify weather-app (React shell at weather.jtamerius.com)
-  └─ embeds <iframe src="https://www.jtamerius.com/weather/">
+  └─ embeds <iframe src="https://d326hhew368icp.cloudfront.net/weather/">
         └─ served by CloudFront E15B1H9LICVP1J → s3://jtamerius/
               ← written by jtamerius-weather-collector Lambda (runs 0,12 UTC)
 
 The Amplify app is a thin wrapper. ALL weather data and the rendered HTML
 come from the legacy jtamerius-website / jtamerius-weather-collector stack.
 See /weather-ensemble for the full pipeline reference.
+
+NOTE: www.jtamerius.com was removed as a CloudFront CNAME (now serves the
+landing page). The iframe and Lambda CDN_DOMAIN both use the CloudFront
+default domain d326hhew368icp.cloudfront.net directly.
 ```
 
 ## App IDs
@@ -47,7 +51,8 @@ The weather data backend is NOT part of the tools platform — it is a separate 
 | Stack | `jtamerius-weather-collector` |
 | Lambda | `jtamerius-weather-collector` (Python 3.12, runs every 12 h) |
 | Data S3 | `s3://jtamerius/` (forecasts, grid_summary, locations, weather/) |
-| CloudFront | `E15B1H9LICVP1J` → `www.jtamerius.com` |
+| CloudFront | `E15B1H9LICVP1J` → `d326hhew368icp.cloudfront.net` (no custom domain — www was moved to landing page) |
+| Lambda env | `CDN_DOMAIN=d326hhew368icp.cloudfront.net` (baked into generated weather/index.html) |
 | Deploy S3 | `s3://jtamerius-website-deploy/lambda_package.zip` |
 
 See `/weather-ensemble` for full pipeline detail (EventBridge rules, S3 layout, debug commands).

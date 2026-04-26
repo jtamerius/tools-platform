@@ -579,6 +579,9 @@ def _build_full_html(
     #run-bar .run-edge {{ font-size: 11px; color: #999; }}
     #run-slider {{ width: 220px; cursor: pointer; accent-color: #4a6fa5; }}
     #run-label {{ font-size: 13px; color: #444; font-family: monospace; }}
+    #iqr-slider {{ width: 120px; cursor: pointer; accent-color: #4a6fa5; }}
+    #iqr-label {{ font-size: 13px; color: #444; font-family: monospace; white-space: nowrap; }}
+    .bar-sep {{ width: 1px; height: 16px; background: #ccc; margin: 0 6px; align-self: center; }}
   </style>
 </head>
 <body>
@@ -592,11 +595,17 @@ def _build_full_html(
     <span class="s3-note" id="s3-note"></span>
   </div>
   <div id="run-bar">
-    <label>Forecast run:</label>
-    <span class="run-edge">older</span>
-    <input type="range" id="run-slider" min="0" max="0" value="0" step="1">
-    <span class="run-edge">latest</span>
-    <span id="run-label"></span>
+    <span id="run-controls" style="display:none;align-items:center;gap:10px;">
+      <label>Forecast run:</label>
+      <span class="run-edge">older</span>
+      <input type="range" id="run-slider" min="0" max="0" value="0" step="1">
+      <span class="run-edge">latest</span>
+      <span id="run-label"></span>
+      <span class="bar-sep"></span>
+    </span>
+    <label for="iqr-slider">Band:</label>
+    <input type="range" id="iqr-slider" min="0" max="50" value="10" step="1">
+    <span id="iqr-label">40\u201360%</span>
   </div>
   {plot_html}
   <script type="text/javascript">
@@ -800,14 +809,14 @@ def _build_full_html(
           var clipped = precipSeries.map(function(s) {{ return s.slice(0, vEnd); }});
           var cumsums = clipped.map(cumsum);
           if (_refIdx > 0) {{ cumsums = cumsums.map(function(cs) {{ var b = cs[_refIdx]||0; return cs.map(function(v) {{ return v - b; }}); }}); }}
-          var q40 = boxSmooth(colQuantile(cumsums, 0.40), WIN);
+          var qLo = boxSmooth(colQuantile(cumsums, 0.5 - iqrHalf/100), WIN);
           var q50 = boxSmooth(colQuantile(cumsums, 0.50), WIN);
-          var q60 = boxSmooth(colQuantile(cumsums, 0.60), WIN);
+          var qHi = boxSmooth(colQuantile(cumsums, 0.5 + iqrHalf/100), WIN);
 
-          traces.push({{ type:'scatter', x:tArrMt, y:q60, mode:'lines',
+          traces.push({{ type:'scatter', x:tArrMt, y:qHi, mode:'lines',
             line:{{width:0}}, hoverinfo:'skip', showlegend:false,
             legendgroup:model+'_iqr', xaxis:'x', yaxis:'y' }});
-          traces.push({{ type:'scatter', x:tArrMt, y:q40, mode:'lines',
+          traces.push({{ type:'scatter', x:tArrMt, y:qLo, mode:'lines',
             line:{{width:0}}, fill:'tonexty', fillcolor:rgba,
             name:mlabel+' IQR', hoverinfo:'skip',
             legendgroup:model+'_iqr', xaxis:'x', yaxis:'y' }});
@@ -850,14 +859,14 @@ def _build_full_html(
         // ── Row 3: temperature ────────────────────────────────────────────────
         if (tempSeries.length > 1) {{
           var tempArrs = tempSeries.map(function(s) {{ return s.slice(0, vEnd).map(function(v) {{ return v==null?NaN:+v; }}); }});
-          var tq40 = colQuantile(tempArrs, 0.40);
+          var tqLo = colQuantile(tempArrs, 0.5 - iqrHalf/100);
           var tq50 = colQuantile(tempArrs, 0.50);
-          var tq60 = colQuantile(tempArrs, 0.60);
+          var tqHi = colQuantile(tempArrs, 0.5 + iqrHalf/100);
 
-          traces.push({{ type:'scatter', x:tArrMt, y:tq60, mode:'lines',
+          traces.push({{ type:'scatter', x:tArrMt, y:tqHi, mode:'lines',
             line:{{width:0}}, hoverinfo:'skip', showlegend:false,
             legendgroup:model+'_iqr', xaxis:'x3', yaxis:'y3' }});
-          traces.push({{ type:'scatter', x:tArrMt, y:tq40, mode:'lines',
+          traces.push({{ type:'scatter', x:tArrMt, y:tqLo, mode:'lines',
             line:{{width:0}}, fill:'tonexty', fillcolor:rgba,
             hoverinfo:'skip', showlegend:false,
             legendgroup:model+'_iqr', xaxis:'x3', yaxis:'y3' }});
@@ -989,9 +998,12 @@ def _build_full_html(
     var availableRuns  = [];   // [{{dateStr, data}}, ...] newest-first
     var latestXRange   = null; // [isoStart, isoEnd] from newest run; locked for all renders
     var latestYRanges  = null; // {{yaxis, yaxis3, yaxis4}} captured after latest render
+    var currentRun     = null; // currently displayed run; needed to re-render on IQR change
+    var iqrHalf        = 10;   // half-width of band in pct points; 10 → 40–60% band
 
     // ── Render one run ───────────────────────────────────────────────────────
     function renderRun(run) {{
+      currentRun = run;
       var data = run.data;
       var plotDiv = document.getElementById(DIV_ID);
       if (!plotDiv) return;
@@ -1087,13 +1099,27 @@ def _build_full_html(
       el.textContent = run.dateStr + suffix;
     }}
 
-    // ── Slider event ─────────────────────────────────────────────────────────
+    // ── Run slider event ─────────────────────────────────────────────────────
     document.getElementById('run-slider').addEventListener('input', function() {{
       if (!availableRuns.length) return;
       var sliderVal = parseInt(this.value);
       var runIdx    = availableRuns.length - 1 - sliderVal;
       updateRunLabel(sliderVal);
       renderRun(availableRuns[runIdx]);
+    }});
+
+    // ── IQR slider event ─────────────────────────────────────────────────────
+    function updateIqrLabel() {{
+      var lo = Math.round(50 - iqrHalf);
+      var hi = Math.round(50 + iqrHalf);
+      document.getElementById('iqr-label').textContent =
+        iqrHalf === 0 ? 'median only' : lo + '\u2013' + hi + '%';
+    }}
+
+    document.getElementById('iqr-slider').addEventListener('input', function() {{
+      iqrHalf = parseInt(this.value);
+      updateIqrLabel();
+      if (currentRun) renderRun(currentRun);
     }});
 
     // ── Load all available runs then render latest ───────────────────────────
@@ -1140,13 +1166,15 @@ def _build_full_html(
       var latestTimes = availableRuns[0].data.hourly.time;
       latestXRange = [toMtIso(latestTimes[0]), toMtIso(latestTimes[latestTimes.length - 1])];
 
-      // Configure slider (hidden when only one run available).
-      var sliderEl = document.getElementById('run-slider');
-      var runBar   = document.getElementById('run-bar');
+      // Configure sliders.  Run-controls shown only when multiple runs available.
+      var sliderEl    = document.getElementById('run-slider');
+      var runBar      = document.getElementById('run-bar');
+      var runControls = document.getElementById('run-controls');
       sliderEl.min   = 0;
       sliderEl.max   = availableRuns.length - 1;
       sliderEl.value = availableRuns.length - 1; // rightmost = latest
-      runBar.style.display = availableRuns.length > 1 ? 'flex' : 'none';
+      runBar.style.display = 'flex';
+      if (runControls) runControls.style.display = availableRuns.length > 1 ? 'flex' : 'none';
       updateRunLabel(availableRuns.length - 1);
 
       // Render latest run with autorange, then capture those ranges to lock all
@@ -1439,10 +1467,10 @@ def _build_combined_html(
           name:mlabel, showlegend:false, legendgroup:model+'_mean', xaxis:xaxis, yaxis:yaxis,
           hovertemplate:hover }}];
       }}
-      var q40 = colQuantile(A, 0.40), q50 = colQuantile(A, 0.50), q60 = colQuantile(A, 0.60);
+      var qLo = colQuantile(A, 0.5 - iqrHalf/100), q50 = colQuantile(A, 0.50), qHi = colQuantile(A, 0.5 + iqrHalf/100);
       return [
-        {{ type:'scatter', x:tArrMt, y:q60, mode:'lines', line:{{width:0}}, hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr', xaxis:xaxis, yaxis:yaxis }},
-        {{ type:'scatter', x:tArrMt, y:q40, mode:'lines', line:{{width:0}}, fill:'tonexty', fillcolor:rgba, hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr', xaxis:xaxis, yaxis:yaxis }},
+        {{ type:'scatter', x:tArrMt, y:qHi, mode:'lines', line:{{width:0}}, hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr', xaxis:xaxis, yaxis:yaxis }},
+        {{ type:'scatter', x:tArrMt, y:qLo, mode:'lines', line:{{width:0}}, fill:'tonexty', fillcolor:rgba, hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr', xaxis:xaxis, yaxis:yaxis }},
         {{ type:'scatter', x:tArrMt, y:q50, mode:'lines', line:{{color:color, width:2.0}}, name:mlabel, showlegend:false, legendgroup:model+'_mean', xaxis:xaxis, yaxis:yaxis,
           hovertemplate:hover }},
       ];
@@ -1495,12 +1523,12 @@ def _build_combined_html(
           var clipped = precipSeries.map(function(s) {{ return s.slice(0, vEnd); }});
           var cumsums = clipped.map(cumsum);
           if (_refIdx > 0) {{ cumsums = cumsums.map(function(cs) {{ var b = cs[_refIdx]||0; return cs.map(function(v) {{ return v - b; }}); }}); }}
-          var q40 = boxSmooth(colQuantile(cumsums, 0.40), WIN);
+          var qLo = boxSmooth(colQuantile(cumsums, 0.5 - iqrHalf/100), WIN);
           var q50 = boxSmooth(colQuantile(cumsums, 0.50), WIN);
-          var q60 = boxSmooth(colQuantile(cumsums, 0.60), WIN);
-          traces.push({{ type:'scatter', x:tArrMt, y:q60, mode:'lines', line:{{width:0}},
+          var qHi = boxSmooth(colQuantile(cumsums, 0.5 + iqrHalf/100), WIN);
+          traces.push({{ type:'scatter', x:tArrMt, y:qHi, mode:'lines', line:{{width:0}},
             hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr', xaxis:'x', yaxis:'y' }});
-          traces.push({{ type:'scatter', x:tArrMt, y:q40, mode:'lines', line:{{width:0}},
+          traces.push({{ type:'scatter', x:tArrMt, y:qLo, mode:'lines', line:{{width:0}},
             fill:'tonexty', fillcolor:rgba, name:mlabel+' IQR', hoverinfo:'skip',
             legendgroup:model+'_iqr', xaxis:'x', yaxis:'y' }});
           traces.push({{ type:'scatter', x:tArrMt, y:q50, mode:'lines',
@@ -2070,9 +2098,9 @@ def _build_combined_html(
             line:{{color:color, width:1.8, dash: model === 'gfs_hrrr' ? 'solid' : 'dot'}}, name:mlabel, legendgroup:model,
             hovertemplate:hover }});
         }} else {{
-          var q40=colQuantile(A,0.40), q50=colQuantile(A,0.50), q60=colQuantile(A,0.60);
-          traces.push({{ type:'scatter', x:tMt, y:q60, mode:'lines', line:{{width:0}}, hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr' }});
-          traces.push({{ type:'scatter', x:tMt, y:q40, mode:'lines', line:{{width:0}}, fill:'tonexty', fillcolor:rgba, hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr' }});
+          var qLo=colQuantile(A,0.5-iqrHalf/100), q50=colQuantile(A,0.50), qHi=colQuantile(A,0.5+iqrHalf/100);
+          traces.push({{ type:'scatter', x:tMt, y:qHi, mode:'lines', line:{{width:0}}, hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr' }});
+          traces.push({{ type:'scatter', x:tMt, y:qLo, mode:'lines', line:{{width:0}}, fill:'tonexty', fillcolor:rgba, hoverinfo:'skip', showlegend:false, legendgroup:model+'_iqr' }});
           traces.push({{ type:'scatter', x:tMt, y:q50, mode:'lines', line:{{color:color, width:2.5}},
             name:mlabel, legendgroup:model, hovertemplate:hover }});
         }}

@@ -26,8 +26,8 @@ Amplify d19cuiv0dybz8y (weather.jtamerius.com)
   → embeds <iframe src="https://www.jtamerius.com/weather/">
 ```
 
-**CRITICAL DNS NOTE:** `jtamerius.com` (bare) → Amplify landing page (returns 404 for data).
-Data is ONLY served from `www.jtamerius.com`. The Lambda's `CDN_DOMAIN` env var MUST be `www.jtamerius.com`.
+**CRITICAL DNS NOTE:** `jtamerius.com` (bare) and `www.jtamerius.com` both → Amplify landing page (returns 404 for data).
+Data is ONLY served from CloudFront `d326hhew368icp.cloudfront.net`. The Lambda's `CDN_DOMAIN` env var MUST be that CloudFront default domain (not a custom domain — www was moved to the landing page).
 
 ---
 
@@ -56,7 +56,7 @@ Data is ONLY served from `www.jtamerius.com`. The Lambda's `CDN_DOMAIN` env var 
 | `jtamerius-fetch-gem-det` | cron(6 0,12 * * ? *) | `{"task":"fetch","model":"gem_global","type":"det"}` |
 | `jtamerius-fetch-gem-ens` | cron(18 0,12 * * ? *) | `{"task":"fetch","model":"gem_global","type":"ens"}` |
 | `jtamerius-fetch-hrrr-det` | cron(8 0,12 * * ? *) | `{"task":"fetch","model":"gfs_hrrr","type":"det"}` |
-| `jtamerius-assemble` | cron(20 0,12 * * ? *) | `{"task":"assemble"}` |
+| `jtamerius-assemble` | cron(30 0,12 * * ? *) | `{"task":"assemble"}` |
 | `daily-forecast-southwest` | cron(0 0,12 * * ? *) | (older pipeline — `ensemble-plumes-southwest` bucket, no longer active) |
 
 ---
@@ -155,41 +155,30 @@ aws lambda get-function-configuration \
 
 ## Common Fixes
 
-### Fix: CDN_DOMAIN is wrong (e.g. bare domain instead of www.)
+### Fix: CDN_DOMAIN is wrong
+
+The correct value is the CloudFront default domain `d326hhew368icp.cloudfront.net` — NOT `www.jtamerius.com` (www now points to the landing page).
 
 Update Lambda env var:
 ```bash
 aws lambda update-function-configuration \
   --function-name jtamerius-weather-collector \
-  --environment "Variables={S3_BUCKET=jtamerius,MAX_WORKERS=10,BATCH_SIZE=100,CDN_DOMAIN=www.jtamerius.com}" \
+  --environment "Variables={S3_BUCKET=jtamerius,MAX_WORKERS=10,BATCH_SIZE=100,CDN_DOMAIN=d326hhew368icp.cloudfront.net}" \
   --profile jtam --region us-east-1
 ```
 
-Update CFn stack parameter so it persists across deploys:
-```bash
-aws cloudformation update-stack \
-  --stack-name jtamerius-weather-collector \
-  --use-previous-template \
-  --capabilities CAPABILITY_NAMED_IAM \
-  --parameters \
-    ParameterKey=FunctionName,UsePreviousValue=true \
-    ParameterKey=ScheduleExpression,UsePreviousValue=true \
-    ParameterKey=BatchSize,UsePreviousValue=true \
-    ParameterKey=LambdaTimeout,UsePreviousValue=true \
-    ParameterKey=MaxWorkers,UsePreviousValue=true \
-    ParameterKey=WebsiteBucketName,UsePreviousValue=true \
-    ParameterKey=ProjectName,UsePreviousValue=true \
-    ParameterKey=DomainName,ParameterValue=www.jtamerius.com \
-    ParameterKey=LambdaCodeKey,UsePreviousValue=true \
-    ParameterKey=WebsiteBucketArn,UsePreviousValue=true \
-    ParameterKey=LambdaCodeBucket,UsePreviousValue=true \
-    ParameterKey=LambdaMemory,UsePreviousValue=true \
-  --profile jtam --region us-east-1
-```
+Update the `DomainName` parameter in [template.yaml](apps/weather_app/ensemble-plumes/infrastructure/weather-collector/template.yaml) and the GHA workflow override so it persists across deploys.
 
 Then trigger regeneration of index.html (see below).
 
 ### Fix: Trigger manual re-run of assemble step
+
+**Always include `{"task":"assemble"}` payload.** The Lambda handler defaults to assemble when
+no `task` key is present, so a bare invocation (e.g. console test event `{}`) silently runs the
+assembler with whatever partials exist at that moment — even mid-pipeline. This has caused
+premature assembly (missing ens models → dotted lines) during debugging sessions. Always
+specify the task explicitly.
+
 ```bash
 aws lambda invoke \
   --function-name jtamerius-weather-collector \
@@ -198,10 +187,30 @@ aws lambda invoke \
   --profile jtam --region us-east-1 \
   /tmp/assemble_out.json && cat /tmp/assemble_out.json
 ```
-Response will show `ok/skipped/errors` counts. "skipped" means that run_id was already assembled — the HTML is still regenerated regardless.
+Response will show `ok/skipped/errors` counts. "skipped" means that run_id was already assembled.
+If all are skipped, delete the stale forecast JSONs first (see below), then re-invoke.
+
+### Fix: Re-assemble when all locations are skipped (assembler already ran prematurely)
+
+The assembler skips locations whose forecast JSON already exists for the current run_id.
+If a premature assembler run (e.g. triggered manually mid-pipeline) published bad forecasts,
+delete the stale JSONs first, then re-invoke:
+
+```bash
+RUN_ID="2026-04-26T00"   # replace with current run_id (YYYY-MM-DDTHH format, HH = 00 or 12)
+aws s3 ls s3://jtamerius/forecasts/ --recursive --profile jtam | grep "$RUN_ID" \
+  | awk '{print $4}' | while read key; do
+    aws s3 rm "s3://jtamerius/$key" --profile jtam
+  done
+# Then invoke the assembler (see above) and invalidate CloudFront
+aws cloudfront create-invalidation \
+  --distribution-id E15B1H9LICVP1J \
+  --paths "/weather/index.html" "/forecasts/*" \
+  --profile jtam --no-cli-pager
+```
 
 ### Fix: Pipeline stopped — trigger full fetch + assemble for current run
-The fetch tasks run in sequence 0–18 min past the hour; assemble runs at +20 min.
+The fetch tasks run in sequence 0–18 min past the hour; assemble runs at +30 min.
 To re-run everything manually, invoke each fetch rule's payload in order, then invoke assemble.
 Or wait for the next scheduled run (next 00:00 or 12:00 UTC).
 

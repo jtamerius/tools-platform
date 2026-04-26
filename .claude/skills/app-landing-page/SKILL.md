@@ -13,6 +13,8 @@ GitHub Actions (push to staging/main)
   → npm build  →  dist.zip  →  Amplify deploy API
 Amplify (CDN only, no source connection)
   → tools.jtamerius.com (production)
+  → www.jtamerius.com (production — same CloudFront, domain association updated)
+  → jtamerius.com (production — Route 53 ALIAS to same CloudFront)
   → dfgc4jtftrltl.amplifyapp.com (staging default domain)
 Cognito (shared platform pool) → auth for this and all other apps
 ```
