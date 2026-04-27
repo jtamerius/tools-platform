@@ -6,6 +6,7 @@ export {
   getGroupsFromToken,
   getUserAttributesFromToken,
   getIdTokenJwt,
+  getAccessTokenJwt,
   forgotPassword,
   confirmForgotPassword,
   completeNewPassword,

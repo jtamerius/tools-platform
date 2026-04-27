@@ -15,7 +15,7 @@ const btn = { padding: '10px 0', borderRadius: 8, background: 'var(--accent, #7c
 const errStyle = { color: 'var(--red, #f87171)', fontSize: 13, margin: 0 }
 
 export default function App() {
-  const { user, isLoading, signIn, completeNewPasswordChallenge } = useAuth(AUTH_CONFIG)
+  const { user, isLoading, signIn, signOut, completeNewPasswordChallenge, getAccessToken } = useAuth(AUTH_CONFIG)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -65,8 +65,8 @@ export default function App() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
-      <Nav />
-      <FinancePage />
+      <Nav user={user} onSignOut={signOut} />
+      <FinancePage getAccessToken={getAccessToken} />
     </div>
   )
 }

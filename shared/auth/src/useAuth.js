@@ -6,6 +6,7 @@ import {
   signOut as cognitoSignOut,
   getGroupsFromToken,
   getUserAttributesFromToken,
+  getAccessTokenJwt,
   completeNewPassword as cognitoCompleteNewPassword,
 } from './cognito.js';
 
@@ -177,6 +178,11 @@ export function useAuth({ userPoolId, clientId }) {
 
   const isAdmin = hasGroup('admin');
 
+  const getAccessToken = useCallback(
+    () => getAccessTokenJwt(userPoolRef.current),
+    []
+  );
+
   return {
     user,
     groups,
@@ -187,5 +193,6 @@ export function useAuth({ userPoolId, clientId }) {
     completeNewPasswordChallenge,
     hasGroup,
     isAdmin,
+    getAccessToken,
   };
 }

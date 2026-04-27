@@ -1,0 +1,156 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  finance-tracker — Private S3 data bucket, Lambda API (Function URL),
+  and supporting IAM/logs for a single-user personal finance tracking app.
+  Serves hard-money investment ledger and account balance snapshots.
+  Auth delegated to Cognito (access token validated via cognito-idp:GetUser).
+
+Parameters:
+  ProjectName:
+    Type: String
+    Description: Short name prefix for resource names (e.g. "jtamerius").
+
+  WebsiteBucketName:
+    Type: String
+    Description: Name of the website S3 bucket. Unused but kept for stack compat.
+
+  LambdaCodeBucket:
+    Type: String
+    Description: S3 bucket containing the pre-uploaded finance_package.zip
+
+  LambdaCodeKey:
+    Type: String
+    Default: finance_package.zip
+    Description: S3 key of the Lambda deployment package
+
+  FunctionName:
+    Type: String
+    Default: finance-tracker
+    Description: Lambda base name. Full name will be "${ProjectName}-${FunctionName}".
+
+  AuthSecret:
+    Type: String
+    Default: unused
+    NoEcho: true
+    Description: Deprecated — auth now uses Cognito. Kept for stack parameter compat.
+
+  LambdaTimeout:
+    Type: Number
+    Default: 30
+
+  LambdaMemory:
+    Type: Number
+    Default: 256
+
+Resources:
+
+  DataBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub '${ProjectName}-finance-data'
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  LambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${ProjectName}-${FunctionName}'
+      RetentionInDays: 30
+
+  LambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${ProjectName}-${FunctionName}-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: finance-data-access
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !GetAtt DataBucket.Arn
+                  - !Sub '${DataBucket.Arn}/*'
+
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LambdaLogGroup
+    Properties:
+      FunctionName: !Sub '${ProjectName}-${FunctionName}'
+      Runtime: python3.12
+      Handler: lambda_handler.handler
+      Role: !GetAtt LambdaRole.Arn
+      Timeout: !Ref LambdaTimeout
+      MemorySize: !Ref LambdaMemory
+      Code:
+        S3Bucket: !Ref LambdaCodeBucket
+        S3Key: !Ref LambdaCodeKey
+      Environment:
+        Variables:
+          DATA_BUCKET: !Ref DataBucket
+      Tags:
+        - Key: Project
+          Value: !Ref ProjectName
+
+  LambdaUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      AuthType: NONE
+      TargetFunctionArn: !GetAtt LambdaFunction.Arn
+      Cors:
+        AllowCredentials: false
+        AllowHeaders:
+          - authorization
+          - content-type
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+        AllowOrigins:
+          - '*'
+        MaxAge: 86400
+
+  LambdaUrlPublicAccess:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt LambdaFunction.Arn
+      Action: lambda:InvokeFunctionUrl
+      Principal: '*'
+      FunctionUrlAuthType: NONE
+
+Outputs:
+  FunctionUrl:
+    Description: Lambda Function URL (API endpoint)
+    Value: !GetAtt LambdaUrl.FunctionUrl
+    Export:
+      Name: !Sub '${ProjectName}-FinanceTrackerUrl'
+
+  DataBucketName:
+    Description: Private S3 bucket storing financial data
+    Value: !Ref DataBucket
+    Export:
+      Name: !Sub '${ProjectName}-FinanceDataBucketName'
+
+  LambdaFunctionName:
+    Description: Lambda function name
+    Value: !Ref LambdaFunction

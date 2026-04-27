@@ -180,6 +180,18 @@ export async function getIdTokenJwt(userPool) {
 }
 
 /**
+ * Returns the current access token JWT string, or null if there is no valid session.
+ * Use this for authorizing Lambda API calls (passed as Bearer token).
+ * @param {CognitoUserPool} userPool
+ * @returns {Promise<string | null>}
+ */
+export async function getAccessTokenJwt(userPool) {
+  const session = await getCurrentSession(userPool);
+  if (!session) return null;
+  return session.getAccessToken().getJwtToken();
+}
+
+/**
  * Extracts basic user attributes (email, sub) from the ID token payload.
  * @param {import('amazon-cognito-identity-js').CognitoUserSession} session
  * @returns {{ email: string, sub: string }}

@@ -804,13 +804,6 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: us-east-1
 
-      - name: Fetch auth secret from SSM
-        run: |
-          echo "FINANCE_AUTH_SECRET=$(aws ssm get-parameter \
-            --name finance-tracker \
-            --with-decryption \
-            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
-
       - name: Package Lambda
         run: bash apps/weather_app/finance-tracker/package_lambda.sh
 
@@ -830,8 +823,7 @@ jobs:
             --parameter-overrides \
               ProjectName=jtamerius \
               WebsiteBucketName=jtamerius \
-              LambdaCodeBucket=jtamerius-website-deploy \
-              "AuthSecret=$FINANCE_AUTH_SECRET"
+              LambdaCodeBucket=jtamerius-website-deploy
 
       - name: Force Lambda code update
         run: |
@@ -841,22 +833,6 @@ jobs:
             --s3-key finance_package.zip \
             --no-cli-pager \
             --query '[LastModified,CodeSize]' --output text
-
-      - name: Inject Function URL into finance.html and upload to S3
-        run: |
-          FUNC_URL=$(aws cloudformation describe-stacks \
-            --stack-name jtamerius-finance-tracker \
-            --query 'Stacks[0].Outputs[?OutputKey==`FunctionUrl`].OutputValue' \
-            --output text --no-cli-pager)
-
-          STRIPPED_URL="${FUNC_URL%/}"
-          sed "s|__API_URL__|${STRIPPED_URL}|g" \
-            apps/weather_app/finance-tracker/finance.html > /tmp/finance_built.html
-
-          aws s3 cp /tmp/finance_built.html s3://jtamerius/finance/index.html \
-            --content-type text/html \
-            --cache-control "no-cache, max-age=0" \
-            --no-cli-pager
 
   # -----------------------------------------------------------------------
   # Job: Deploy adventure-builder Amplify hosting stack
