@@ -473,6 +473,42 @@ def _handle_timeseries(event: dict) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Scenarios
+# ---------------------------------------------------------------------------
+
+def _handle_scenarios_list(event: dict) -> dict:
+    scenarios = _read("scenarios.json")
+    scenarios.sort(key=lambda s: s.get("created_at", ""), reverse=True)
+    return _ok(scenarios)
+
+
+def _handle_scenarios_create(event: dict) -> dict:
+    scenarios = _read("scenarios.json")
+    b = _body(event)
+    now = _now()
+    scen = {
+        "id": _new_id("scen"),
+        "name": b.get("name", "Untitled"),
+        "starting_balance": float(b.get("starting_balance", 0)),
+        "annual_return_pct": float(b.get("annual_return_pct", 7)),
+        "monthly_contribution": float(b.get("monthly_contribution", 0)),
+        "tax_rate_pct": float(b.get("tax_rate_pct", 0)),
+        "years": int(b.get("years", 20)),
+        "created_at": now,
+    }
+    scenarios.append(scen)
+    _write("scenarios.json", scenarios)
+    return _created(scen)
+
+
+def _handle_scenario_delete(event: dict, scen_id: str) -> dict:
+    scenarios = _read("scenarios.json")
+    scenarios = [s for s in scenarios if s["id"] != scen_id]
+    _write("scenarios.json", scenarios)
+    return _ok({"deleted": scen_id})
+
+
+# ---------------------------------------------------------------------------
 # Router
 # ---------------------------------------------------------------------------
 
@@ -529,5 +565,15 @@ def handler(event, context):
     elif resource == "timeseries":
         if method == "GET":
             return _handle_timeseries(event)
+
+    elif resource == "scenarios":
+        if len(parts) == 1:
+            if method == "GET":
+                return _handle_scenarios_list(event)
+            if method == "POST":
+                return _handle_scenarios_create(event)
+        elif len(parts) == 2:
+            if method == "DELETE":
+                return _handle_scenario_delete(event, parts[1])
 
     return _notfound(f"No route: {method} /{'/'.join(parts)}")

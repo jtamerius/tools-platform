@@ -36,6 +36,39 @@ const EVENT_LABELS = {
   status_change: 'Status Change',
 }
 
+// ─── Projection math ───────────────────────────────────────────────────────
+
+function project(startBalance, annualReturnPct, monthlyContribution, taxRatePct, years) {
+  const monthlyRate = annualReturnPct / 100 / 12
+  const taxRate = taxRatePct / 100
+  let balance = startBalance
+  let totalContributed = 0
+  let totalInterest = 0
+  let totalTaxes = 0
+  const rows = []
+
+  for (let yr = 1; yr <= years; yr++) {
+    const startOfYear = balance
+    for (let m = 0; m < 12; m++) {
+      balance = balance * (1 + monthlyRate) + monthlyContribution
+    }
+    totalContributed += monthlyContribution * 12
+    const interestEarned = balance - startOfYear - monthlyContribution * 12
+    const taxes = Math.max(0, interestEarned * taxRate)
+    totalInterest += interestEarned
+    totalTaxes += taxes
+    balance -= taxes
+    rows.push({
+      year: yr,
+      balance: Math.round(balance),
+      totalContributed: Math.round(totalContributed),
+      totalInterest: Math.round(totalInterest),
+      totalTaxes: Math.round(totalTaxes),
+    })
+  }
+  return rows
+}
+
 // ─── Modal (bottom sheet) ──────────────────────────────────────────────────
 
 function Modal({ title, onClose, children }) {
@@ -95,6 +128,7 @@ const inp = {
   width: '100%', padding: '11px 12px', borderRadius: 8,
   border: '1px solid var(--border)', background: 'var(--bg)',
   color: 'var(--text)', fontSize: '0.95rem', fontFamily: 'inherit',
+  boxSizing: 'border-box',
 }
 
 const primaryBtn = {
@@ -510,6 +544,198 @@ function AccountsTab({ accounts, snapshots, onAddAccount, onAddSnapshot }) {
   )
 }
 
+// ─── Calculator Tab ────────────────────────────────────────────────────────
+
+function CalcTab({ accounts, scenarios, onSaveScenario, onDeleteScenario }) {
+  const totalAccounts = accounts.reduce((s, a) => s + (a.latest_balance ?? 0), 0)
+
+  const [params, setParams] = useState({
+    startBalance: Math.round(totalAccounts),
+    annualReturnPct: 7,
+    monthlyContribution: 1000,
+    taxRatePct: 20,
+    years: 20,
+  })
+  const [showSave, setShowSave] = useState(false)
+  const [saveName, setSaveName] = useState('')
+  const [saving, setSaving] = useState(false)
+
+  const setNum = k => e => setParams(p => ({ ...p, [k]: parseFloat(e.target.value) || 0 }))
+
+  const rows = project(params.startBalance, params.annualReturnPct, params.monthlyContribution, params.taxRatePct, params.years)
+  const milestoneYears = new Set()
+  for (let y = 5; y <= params.years; y += 5) milestoneYears.add(y)
+  milestoneYears.add(params.years)
+  const milestones = rows.filter(r => milestoneYears.has(r.year))
+
+  async function saveScenario() {
+    if (!saveName.trim()) return
+    setSaving(true)
+    try {
+      await onSaveScenario({
+        name: saveName.trim(),
+        starting_balance: params.startBalance,
+        annual_return_pct: params.annualReturnPct,
+        monthly_contribution: params.monthlyContribution,
+        tax_rate_pct: params.taxRatePct,
+        years: params.years,
+      })
+      setSaveName('')
+      setShowSave(false)
+    } finally { setSaving(false) }
+  }
+
+  function loadScenario(scen) {
+    setParams({
+      startBalance: scen.starting_balance,
+      annualReturnPct: scen.annual_return_pct,
+      monthlyContribution: scen.monthly_contribution,
+      taxRatePct: scen.tax_rate_pct,
+      years: scen.years,
+    })
+    setShowSave(false)
+  }
+
+  return (
+    <div>
+      {/* Inputs */}
+      <Field label="Starting Balance ($)">
+        <input type="number" min="0" style={inp} value={params.startBalance} onChange={setNum('startBalance')} />
+      </Field>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <Field label="Annual Return (%)">
+          <input type="number" min="0" max="100" step="0.5" style={inp} value={params.annualReturnPct} onChange={setNum('annualReturnPct')} />
+        </Field>
+        <Field label="Tax Rate (%)">
+          <input type="number" min="0" max="100" step="1" style={inp} value={params.taxRatePct} onChange={setNum('taxRatePct')} />
+        </Field>
+      </div>
+
+      <Field label="Monthly Contribution ($)">
+        <input type="number" min="0" style={inp} value={params.monthlyContribution} onChange={setNum('monthlyContribution')} />
+      </Field>
+
+      <Field label="Time Horizon">
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {[10, 20, 30].map(y => (
+            <button
+              key={y}
+              style={{ ...pill.btn, ...(params.years === y ? pill.active : {}), flex: 1, padding: '10px 4px' }}
+              onClick={() => setParams(p => ({ ...p, years: y }))}
+            >
+              {y}yr
+            </button>
+          ))}
+          <input
+            type="number" min="1" max="50" step="1"
+            style={{ ...inp, width: 72, flex: 'none', padding: '10px 10px' }}
+            value={params.years}
+            onChange={setNum('years')}
+          />
+        </div>
+      </Field>
+
+      {/* Projection table */}
+      {milestones.length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 24 }}>
+          <p style={{ ...tab.sectionLabel, marginBottom: 8 }}>Projection</p>
+          <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <table style={calc.table}>
+              <thead>
+                <tr style={{ background: 'var(--surface)' }}>
+                  <th style={calc.th}>Yr</th>
+                  <th style={calc.th}>Balance</th>
+                  <th style={calc.th}>Contributed</th>
+                  <th style={calc.th}>Taxes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {milestones.map((r, i) => (
+                  <tr key={r.year} style={{ background: i % 2 === 0 ? 'var(--bg)' : 'var(--surface)' }}>
+                    <td style={calc.td}>{r.year}</td>
+                    <td style={{ ...calc.td, fontWeight: 700 }}>{fmt(r.balance)}</td>
+                    <td style={calc.td}>{fmt(r.totalContributed)}</td>
+                    <td style={{ ...calc.td, color: 'var(--text-muted)' }}>{fmt(r.totalTaxes)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!showSave
+            ? <button style={{ ...primaryBtn, marginTop: 14 }} onClick={() => setShowSave(true)}>Save Scenario</button>
+            : (
+              <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+                <input
+                  autoFocus
+                  style={{ ...inp, flex: 1 }}
+                  placeholder="Scenario name…"
+                  value={saveName}
+                  onChange={e => setSaveName(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') saveScenario(); if (e.key === 'Escape') setShowSave(false) }}
+                />
+                <button
+                  style={{ padding: '11px 16px', borderRadius: 8, border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
+                  onClick={saveScenario} disabled={saving}
+                >
+                  {saving ? '…' : 'Save'}
+                </button>
+                <button
+                  style={{ padding: '11px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', cursor: 'pointer', flexShrink: 0 }}
+                  onClick={() => setShowSave(false)}
+                >✕</button>
+              </div>
+            )
+          }
+        </div>
+      )}
+
+      {/* Saved Scenarios */}
+      {scenarios.length > 0 && (
+        <div>
+          <p style={tab.sectionLabel}>Saved Scenarios</p>
+          {scenarios.map(scen => (
+            <div key={scen.id} style={calc.scenRow}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)', marginBottom: 3 }}>{scen.name}</div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {fmt(scen.starting_balance)} · {scen.annual_return_pct}% return · +{fmt(scen.monthly_contribution)}/mo · {scen.tax_rate_pct}% tax · {scen.years}yr
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 10 }}>
+                <button style={calc.scenBtn} onClick={() => loadScenario(scen)}>Load</button>
+                <button style={{ ...calc.scenBtn, color: '#e53e3e', borderColor: '#fed7d7' }} onClick={() => onDeleteScenario(scen.id)}>✕</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const calc = {
+  table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' },
+  th: {
+    textAlign: 'left', padding: '8px 12px',
+    fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase',
+    letterSpacing: '0.05em', color: 'var(--text-faint)',
+    borderBottom: '1px solid var(--border)',
+  },
+  td: { padding: '9px 12px', color: 'var(--text)', fontSize: '0.85rem' },
+  scenRow: {
+    display: 'flex', alignItems: 'center',
+    padding: '12px 14px', background: 'var(--surface)',
+    border: '1px solid var(--border)', borderRadius: 10, marginBottom: 8,
+  },
+  scenBtn: {
+    padding: '5px 12px', borderRadius: 6,
+    border: '1px solid var(--border)', background: 'none',
+    color: 'var(--text)', fontSize: '0.78rem', fontWeight: 600, cursor: 'pointer',
+  },
+}
+
 const pill = {
   btn: {
     padding: '6px 14px', borderRadius: 20,
@@ -531,7 +757,7 @@ const pill = {
 function BottomTabs({ active, onChange }) {
   return (
     <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, height: 58, background: 'var(--surface)', borderTop: '1px solid var(--border)', display: 'flex', zIndex: 100 }}>
-      {[['dashboard', 'Overview'], ['investments', 'Investments'], ['accounts', 'Accounts']].map(([id, label]) => (
+      {[['dashboard', 'Overview'], ['investments', 'Invest.'], ['accounts', 'Accounts'], ['calc', 'Calc']].map(([id, label]) => (
         <button
           key={id}
           onClick={() => onChange(id)}
@@ -561,22 +787,25 @@ export default function FinancePage({ getAccessToken }) {
   const [investments, setInvestments] = useState([])
   const [accounts, setAccounts] = useState([])
   const [snapshots, setSnapshots] = useState([])
+  const [scenarios, setScenarios] = useState([])
   const [modal, setModal] = useState(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
-      const [sum, invs, accs, snaps] = await Promise.all([
+      const [sum, invs, accs, snaps, scens] = await Promise.all([
         apiFetch('/summary', getAccessToken),
         apiFetch('/investments?status=all', getAccessToken),
         apiFetch('/accounts', getAccessToken),
         apiFetch('/snapshots', getAccessToken),
+        apiFetch('/scenarios', getAccessToken),
       ])
       setSummary(sum)
       setInvestments(invs)
       setAccounts(accs)
       setSnapshots(snaps)
+      setScenarios(scens)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -588,6 +817,11 @@ export default function FinancePage({ getAccessToken }) {
 
   async function post(path, body) {
     await apiFetch(path, getAccessToken, { method: 'POST', body: JSON.stringify(body) })
+    await load()
+  }
+
+  async function del(path) {
+    await apiFetch(path, getAccessToken, { method: 'DELETE' })
     await load()
   }
 
@@ -629,6 +863,14 @@ export default function FinancePage({ getAccessToken }) {
             snapshots={snapshots}
             onAddAccount={() => setModal({ type: 'addAccount' })}
             onAddSnapshot={accId => setModal({ type: 'addSnapshot', accId })}
+          />
+        )}
+        {activeTab === 'calc' && (
+          <CalcTab
+            accounts={accounts}
+            scenarios={scenarios}
+            onSaveScenario={b => post('/scenarios', b)}
+            onDeleteScenario={id => del(`/scenarios/${id}`)}
           />
         )}
       </main>
