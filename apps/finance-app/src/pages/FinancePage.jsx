@@ -558,18 +558,25 @@ function CalcTab({ accounts, investments, scenarios, onSaveScenario, onDeleteSce
     setRows(prev => {
       const prevMap = new Map(prev.map(r => [r.id, r]))
       const activeInvs = investments.filter(i => i.status === 'active')
+      const totalPrincipal = activeInvs.reduce((s, i) => s + i.principal_outstanding, 0)
+      const weightedRate = totalPrincipal > 0
+        ? activeInvs.reduce((s, i) => s + i.current_rate * i.principal_outstanding, 0) / totalPrincipal
+        : 0.11
+      const prevHard = prevMap.get('__hard_loans__')
+      const hardLoansRow = {
+        id: '__hard_loans__', name: 'Hard Loans', tag: 'loans',
+        balance: Math.round(totalPrincipal),
+        annualReturnPct: Math.round(weightedRate * 1000) / 10,
+        monthlyContribution: prevHard?.monthlyContribution ?? 0,
+        taxRatePct: prevHard?.taxRatePct ?? 0,
+      }
       return [
         ...accounts.map(a => prevMap.get(a.id) ?? {
           id: a.id, name: a.name, tag: a.type,
           balance: Math.round(a.latest_balance ?? 0),
           annualReturnPct: 7, monthlyContribution: 0, taxRatePct: 20,
         }),
-        ...activeInvs.map(inv => prevMap.get(inv.id) ?? {
-          id: inv.id, name: inv.project_name, tag: 'loan',
-          balance: Math.round(inv.principal_outstanding),
-          annualReturnPct: Math.round(inv.current_rate * 1000) / 10,
-          monthlyContribution: 0, taxRatePct: 0,
-        }),
+        ...(activeInvs.length > 0 ? [hardLoansRow] : []),
       ]
     })
   }, [accounts, investments])
