@@ -280,13 +280,14 @@ function InvestmentCard({ inv, expanded, onToggle, onAddEvent }) {
   return (
     <div style={card.wrap}>
       <button style={card.row} onClick={onToggle}>
-        <div style={card.left}>
-          <div style={card.name}>{inv.project_name}</div>
-          <div style={card.sub}>{inv.address || '—'}</div>
+        <div style={{ flex: 1, minWidth: 0, marginRight: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span style={card.name}>{inv.project_name}</span>
+          {inv.address && <span style={{ ...card.sub, marginLeft: 8 }}>{inv.address}</span>}
         </div>
-        <div style={card.right}>
-          <div style={card.amount}>{fmt(inv.principal_outstanding)}</div>
-          <div style={card.detail}>{fmt(inv.projected_monthly)}/mo · {pct(inv.current_rate)}</div>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexShrink: 0 }}>
+          <span style={card.amount}>{fmt(inv.principal_outstanding)}</span>
+          <span style={card.detail}>{pct(inv.current_rate)}</span>
+          <span style={card.detail}>{fmt(inv.projected_monthly)}/mo</span>
         </div>
       </button>
 
@@ -610,31 +611,43 @@ function CalcTab({ accounts, investments, scenarios, onSaveScenario, onDeleteSce
     <div>
       <p style={tab.sectionLabel}>Accounts & Investments</p>
 
-      {rows.map(row => (
-        <div key={row.id} style={calcRow.wrap}>
-          <div style={calcRow.header}>
-            <span style={calcRow.name}>{row.name}</span>
-            <span style={calcRow.tag}>{row.tag}</span>
-          </div>
-          <div style={calcRow.grid}>
-            {[
-              { label: 'Balance ($)', field: 'balance', step: '1' },
-              { label: 'Return (%)', field: 'annualReturnPct', step: '0.5' },
-              { label: 'Monthly ($)', field: 'monthlyContribution', step: '1' },
-              { label: 'Tax (%)', field: 'taxRatePct', step: '1' },
-            ].map(({ label, field, step }) => (
-              <div key={field}>
-                <div style={calcRow.fieldLabel}>{label}</div>
-                <input
-                  type="number" min="0" step={step} style={inp}
-                  value={row[field]}
-                  onChange={e => setRowField(row.id, field, e.target.value)}
-                />
-              </div>
+      <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)', marginBottom: 20 }}>
+        <table style={{ ...calc.table, minWidth: 480 }}>
+          <thead>
+            <tr style={{ background: 'var(--surface)' }}>
+              <th style={{ ...calc.th, minWidth: 110 }}>Account</th>
+              <th style={calc.th}>Balance ($)</th>
+              <th style={calc.th}>Return (%)</th>
+              <th style={calc.th}>Monthly ($)</th>
+              <th style={calc.th}>Tax (%)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => (
+              <tr key={row.id} style={{ background: i % 2 === 0 ? 'var(--bg)' : 'var(--surface)' }}>
+                <td style={{ ...calc.td, fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 110 }}>
+                  {row.name}
+                </td>
+                {[
+                  { field: 'balance', step: '1' },
+                  { field: 'annualReturnPct', step: '0.5' },
+                  { field: 'monthlyContribution', step: '1' },
+                  { field: 'taxRatePct', step: '1' },
+                ].map(({ field, step }) => (
+                  <td key={field} style={{ ...calc.td, padding: '4px 6px' }}>
+                    <input
+                      type="number" min="0" step={step}
+                      style={{ ...inp, padding: '7px 8px', fontSize: '0.83rem', minWidth: 70 }}
+                      value={row[field]}
+                      onChange={e => setRowField(row.id, field, e.target.value)}
+                    />
+                  </td>
+                ))}
+              </tr>
             ))}
-          </div>
-        </div>
-      ))}
+          </tbody>
+        </table>
+      </div>
 
       <div style={{ marginTop: 8, marginBottom: 20 }}>
         <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Time Horizon</div>
@@ -725,30 +738,6 @@ function CalcTab({ accounts, investments, scenarios, onSaveScenario, onDeleteSce
   )
 }
 
-const calcRow = {
-  wrap: {
-    background: 'var(--surface)', border: '1px solid var(--border)',
-    borderRadius: 12, marginBottom: 12, overflow: 'hidden',
-  },
-  header: {
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '10px 14px 8px', borderBottom: '1px solid var(--border)',
-  },
-  name: { fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' },
-  tag: {
-    fontSize: '0.67rem', fontWeight: 700, textTransform: 'uppercase',
-    letterSpacing: '0.06em', color: 'var(--text-faint)',
-    padding: '2px 8px', background: 'var(--bg)', borderRadius: 4,
-  },
-  grid: {
-    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px',
-    padding: '12px 14px 14px',
-  },
-  fieldLabel: {
-    fontSize: '0.67rem', fontWeight: 700, color: 'var(--text-faint)',
-    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5,
-  },
-}
 
 const calc = {
   table: { width: '100%', borderCollapse: 'collapse', fontSize: '0.83rem' },
