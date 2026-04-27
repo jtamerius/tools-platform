@@ -1,14 +1,17 @@
 import { useEffect, useState, useCallback } from 'react'
 
-const LAMBDA_URL = 'https://e5jtowipomsb5uqnmxfl3kj6cu0vrtjk.lambda-url.us-east-1.on.aws'
+const API_URL = 'https://uvt928vggh.execute-api.us-east-1.amazonaws.com'
 
 async function apiFetch(path, getAccessToken) {
   const token = await getAccessToken()
-  const res = await fetch(`${LAMBDA_URL}${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   const data = await res.json()
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), { status: res.status })
+  if (!res.ok) {
+    const msg = data.error || data.message || data.Message || 'Request failed'
+    throw Object.assign(new Error(`${res.status}: ${msg}`), { status: res.status })
+  }
   return data
 }
 
