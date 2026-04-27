@@ -546,100 +546,118 @@ function AccountsTab({ accounts, snapshots, onAddAccount, onAddSnapshot }) {
 
 // ─── Calculator Tab ────────────────────────────────────────────────────────
 
-function CalcTab({ accounts, scenarios, onSaveScenario, onDeleteScenario }) {
-  const totalAccounts = accounts.reduce((s, a) => s + (a.latest_balance ?? 0), 0)
-
-  const [params, setParams] = useState({
-    startBalance: Math.round(totalAccounts),
-    annualReturnPct: 7,
-    monthlyContribution: 1000,
-    taxRatePct: 20,
-    years: 20,
-  })
+function CalcTab({ accounts, investments, scenarios, onSaveScenario, onDeleteScenario }) {
+  const [rows, setRows] = useState([])
+  const [years, setYears] = useState(20)
   const [showSave, setShowSave] = useState(false)
   const [saveName, setSaveName] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const setNum = k => e => setParams(p => ({ ...p, [k]: parseFloat(e.target.value) || 0 }))
+  useEffect(() => {
+    setRows(prev => {
+      const prevMap = new Map(prev.map(r => [r.id, r]))
+      const activeInvs = investments.filter(i => i.status === 'active')
+      return [
+        ...accounts.map(a => prevMap.get(a.id) ?? {
+          id: a.id, name: a.name, tag: a.type,
+          balance: Math.round(a.latest_balance ?? 0),
+          annualReturnPct: 7, monthlyContribution: 0, taxRatePct: 20,
+        }),
+        ...activeInvs.map(inv => prevMap.get(inv.id) ?? {
+          id: inv.id, name: inv.project_name, tag: 'loan',
+          balance: Math.round(inv.principal_outstanding),
+          annualReturnPct: Math.round(inv.current_rate * 1000) / 10,
+          monthlyContribution: 0, taxRatePct: 0,
+        }),
+      ]
+    })
+  }, [accounts, investments])
 
-  const rows = project(params.startBalance, params.annualReturnPct, params.monthlyContribution, params.taxRatePct, params.years)
+  const setRowField = (id, field, val) =>
+    setRows(rs => rs.map(r => r.id === id ? { ...r, [field]: parseFloat(val) || 0 } : r))
+
   const milestoneYears = new Set()
-  for (let y = 5; y <= params.years; y += 5) milestoneYears.add(y)
-  milestoneYears.add(params.years)
-  const milestones = rows.filter(r => milestoneYears.has(r.year))
+  for (let y = 5; y <= years; y += 5) milestoneYears.add(y)
+  milestoneYears.add(years)
+  const sortedMilestones = [...milestoneYears].sort((a, b) => a - b)
+
+  const combined = sortedMilestones.map(yr => {
+    let balance = 0, totalContributed = 0, totalTaxes = 0
+    for (const row of rows) {
+      const result = project(row.balance, row.annualReturnPct, row.monthlyContribution, row.taxRatePct, yr)
+      const last = result[result.length - 1]
+      if (last) { balance += last.balance; totalContributed += last.totalContributed; totalTaxes += last.totalTaxes }
+    }
+    return { year: yr, balance: Math.round(balance), totalContributed: Math.round(totalContributed), totalTaxes: Math.round(totalTaxes) }
+  })
 
   async function saveScenario() {
     if (!saveName.trim()) return
     setSaving(true)
     try {
-      await onSaveScenario({
-        name: saveName.trim(),
-        starting_balance: params.startBalance,
-        annual_return_pct: params.annualReturnPct,
-        monthly_contribution: params.monthlyContribution,
-        tax_rate_pct: params.taxRatePct,
-        years: params.years,
-      })
-      setSaveName('')
-      setShowSave(false)
+      await onSaveScenario({ name: saveName.trim(), years, rows })
+      setSaveName(''); setShowSave(false)
     } finally { setSaving(false) }
   }
 
   function loadScenario(scen) {
-    setParams({
-      startBalance: scen.starting_balance,
-      annualReturnPct: scen.annual_return_pct,
-      monthlyContribution: scen.monthly_contribution,
-      taxRatePct: scen.tax_rate_pct,
-      years: scen.years,
-    })
+    if (scen.rows) setRows(scen.rows)
+    if (scen.years) setYears(scen.years)
     setShowSave(false)
   }
 
   return (
     <div>
-      {/* Inputs */}
-      <Field label="Starting Balance ($)">
-        <input type="number" min="0" style={inp} value={params.startBalance} onChange={setNum('startBalance')} />
-      </Field>
+      <p style={tab.sectionLabel}>Accounts & Investments</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <Field label="Annual Return (%)">
-          <input type="number" min="0" max="100" step="0.5" style={inp} value={params.annualReturnPct} onChange={setNum('annualReturnPct')} />
-        </Field>
-        <Field label="Tax Rate (%)">
-          <input type="number" min="0" max="100" step="1" style={inp} value={params.taxRatePct} onChange={setNum('taxRatePct')} />
-        </Field>
-      </div>
+      {rows.map(row => (
+        <div key={row.id} style={calcRow.wrap}>
+          <div style={calcRow.header}>
+            <span style={calcRow.name}>{row.name}</span>
+            <span style={calcRow.tag}>{row.tag}</span>
+          </div>
+          <div style={calcRow.grid}>
+            {[
+              { label: 'Balance ($)', field: 'balance', step: '1' },
+              { label: 'Return (%)', field: 'annualReturnPct', step: '0.5' },
+              { label: 'Monthly ($)', field: 'monthlyContribution', step: '1' },
+              { label: 'Tax (%)', field: 'taxRatePct', step: '1' },
+            ].map(({ label, field, step }) => (
+              <div key={field}>
+                <div style={calcRow.fieldLabel}>{label}</div>
+                <input
+                  type="number" min="0" step={step} style={inp}
+                  value={row[field]}
+                  onChange={e => setRowField(row.id, field, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
 
-      <Field label="Monthly Contribution ($)">
-        <input type="number" min="0" style={inp} value={params.monthlyContribution} onChange={setNum('monthlyContribution')} />
-      </Field>
-
-      <Field label="Time Horizon">
+      <div style={{ marginTop: 8, marginBottom: 20 }}>
+        <div style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 8 }}>Time Horizon</div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {[10, 20, 30].map(y => (
             <button
               key={y}
-              style={{ ...pill.btn, ...(params.years === y ? pill.active : {}), flex: 1, padding: '10px 4px' }}
-              onClick={() => setParams(p => ({ ...p, years: y }))}
-            >
-              {y}yr
-            </button>
+              style={{ ...pill.btn, ...(years === y ? pill.active : {}), flex: 1, padding: '10px 4px' }}
+              onClick={() => setYears(y)}
+            >{y}yr</button>
           ))}
           <input
-            type="number" min="1" max="50" step="1"
-            style={{ ...inp, width: 72, flex: 'none', padding: '10px 10px' }}
-            value={params.years}
-            onChange={setNum('years')}
+            type="number" min="1" max="50"
+            style={{ ...inp, width: 72, flex: 'none', padding: '10px' }}
+            value={years}
+            onChange={e => setYears(parseInt(e.target.value) || 20)}
           />
         </div>
-      </Field>
+      </div>
 
-      {/* Projection table */}
-      {milestones.length > 0 && (
-        <div style={{ marginTop: 8, marginBottom: 24 }}>
-          <p style={{ ...tab.sectionLabel, marginBottom: 8 }}>Projection</p>
+      {combined.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <p style={{ ...tab.sectionLabel, marginBottom: 8 }}>Combined Projection</p>
           <div style={{ overflowX: 'auto', borderRadius: 10, border: '1px solid var(--border)' }}>
             <table style={calc.table}>
               <thead>
@@ -651,7 +669,7 @@ function CalcTab({ accounts, scenarios, onSaveScenario, onDeleteScenario }) {
                 </tr>
               </thead>
               <tbody>
-                {milestones.map((r, i) => (
+                {combined.map((r, i) => (
                   <tr key={r.year} style={{ background: i % 2 === 0 ? 'var(--bg)' : 'var(--surface)' }}>
                     <td style={calc.td}>{r.year}</td>
                     <td style={{ ...calc.td, fontWeight: 700 }}>{fmt(r.balance)}</td>
@@ -668,30 +686,22 @@ function CalcTab({ accounts, scenarios, onSaveScenario, onDeleteScenario }) {
             : (
               <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
                 <input
-                  autoFocus
-                  style={{ ...inp, flex: 1 }}
+                  autoFocus style={{ ...inp, flex: 1 }}
                   placeholder="Scenario name…"
                   value={saveName}
                   onChange={e => setSaveName(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') saveScenario(); if (e.key === 'Escape') setShowSave(false) }}
                 />
-                <button
-                  style={{ padding: '11px 16px', borderRadius: 8, border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }}
-                  onClick={saveScenario} disabled={saving}
-                >
+                <button style={{ padding: '11px 16px', borderRadius: 8, border: 'none', background: 'var(--text)', color: 'var(--bg)', fontSize: '0.9rem', fontWeight: 600, cursor: 'pointer', flexShrink: 0 }} onClick={saveScenario} disabled={saving}>
                   {saving ? '…' : 'Save'}
                 </button>
-                <button
-                  style={{ padding: '11px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', cursor: 'pointer', flexShrink: 0 }}
-                  onClick={() => setShowSave(false)}
-                >✕</button>
+                <button style={{ padding: '11px 14px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: '0.9rem', cursor: 'pointer', flexShrink: 0 }} onClick={() => setShowSave(false)}>✕</button>
               </div>
             )
           }
         </div>
       )}
 
-      {/* Saved Scenarios */}
       {scenarios.length > 0 && (
         <div>
           <p style={tab.sectionLabel}>Saved Scenarios</p>
@@ -700,7 +710,7 @@ function CalcTab({ accounts, scenarios, onSaveScenario, onDeleteScenario }) {
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)', marginBottom: 3 }}>{scen.name}</div>
                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  {fmt(scen.starting_balance)} · {scen.annual_return_pct}% return · +{fmt(scen.monthly_contribution)}/mo · {scen.tax_rate_pct}% tax · {scen.years}yr
+                  {scen.rows?.length ?? 0} rows · {scen.years}yr
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginLeft: 10 }}>
@@ -713,6 +723,31 @@ function CalcTab({ accounts, scenarios, onSaveScenario, onDeleteScenario }) {
       )}
     </div>
   )
+}
+
+const calcRow = {
+  wrap: {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 12, marginBottom: 12, overflow: 'hidden',
+  },
+  header: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '10px 14px 8px', borderBottom: '1px solid var(--border)',
+  },
+  name: { fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)' },
+  tag: {
+    fontSize: '0.67rem', fontWeight: 700, textTransform: 'uppercase',
+    letterSpacing: '0.06em', color: 'var(--text-faint)',
+    padding: '2px 8px', background: 'var(--bg)', borderRadius: 4,
+  },
+  grid: {
+    display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px 12px',
+    padding: '12px 14px 14px',
+  },
+  fieldLabel: {
+    fontSize: '0.67rem', fontWeight: 700, color: 'var(--text-faint)',
+    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5,
+  },
 }
 
 const calc = {
@@ -868,6 +903,7 @@ export default function FinancePage({ getAccessToken }) {
         {activeTab === 'calc' && (
           <CalcTab
             accounts={accounts}
+            investments={investments}
             scenarios={scenarios}
             onSaveScenario={b => post('/scenarios', b)}
             onDeleteScenario={id => del(`/scenarios/${id}`)}

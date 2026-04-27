@@ -489,11 +489,8 @@ def _handle_scenarios_create(event: dict) -> dict:
     scen = {
         "id": _new_id("scen"),
         "name": b.get("name", "Untitled"),
-        "starting_balance": float(b.get("starting_balance", 0)),
-        "annual_return_pct": float(b.get("annual_return_pct", 7)),
-        "monthly_contribution": float(b.get("monthly_contribution", 0)),
-        "tax_rate_pct": float(b.get("tax_rate_pct", 0)),
         "years": int(b.get("years", 20)),
+        "rows": b.get("rows", []),
         "created_at": now,
     }
     scenarios.append(scen)
