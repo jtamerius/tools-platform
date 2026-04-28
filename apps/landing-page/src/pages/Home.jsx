@@ -1,50 +1,62 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import DataMeshCanvas from '../components/DataMeshCanvas'
 
 export default function Home() {
+  // Swap body background to dark while this page is mounted
+  useEffect(() => {
+    const prev = document.body.style.background
+    document.body.style.background = '#0d0d0d'
+    return () => { document.body.style.background = prev }
+  }, [])
+
   return (
-    <main style={styles.main}>
-      {/* Hero */}
-      <section style={styles.hero}>
-        <p style={styles.eyebrow}>Welcome</p>
-        <h1 style={styles.heading}>
-          Hi, I'm J. Tamerius.
-        </h1>
-        <p style={styles.tagline}>
-          I build tools, analyze data, and explore ideas at the intersection of technology and the real world.
-        </p>
-        <div style={styles.ctas}>
-          <Link
-            to="/about"
-            style={styles.ctaSecondary}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--border-subtle)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-          >
-            About me
-          </Link>
-          <Link
-            to="/apps"
-            style={styles.ctaPrimary}
-            onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--accent-hover)' }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--accent)' }}
-          >
-            Browse apps →
-          </Link>
-        </div>
-      </section>
-
-      {/* Divider */}
-      <div style={styles.divider} />
-
-      {/* Brief highlights */}
-      <section style={styles.highlights}>
-        {HIGHLIGHTS.map((item) => (
-          <div key={item.label} style={styles.highlight}>
-            <span style={styles.highlightLabel}>{item.label}</span>
-            <span style={styles.highlightValue}>{item.value}</span>
+    <>
+      <DataMeshCanvas />
+      <main style={styles.main}>
+        {/* Hero */}
+        <section style={styles.hero}>
+          <p style={styles.eyebrow}>Welcome</p>
+          <h1 style={styles.heading}>
+            Hi, I'm J. Tamerius.
+          </h1>
+          <p style={styles.tagline}>
+            I build tools, analyze data, and explore ideas at the intersection of technology and the real world.
+          </p>
+          <div style={styles.ctas}>
+            <Link
+              to="/about"
+              style={styles.ctaSecondary}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              About me
+            </Link>
+            <Link
+              to="/apps"
+              style={styles.ctaPrimary}
+              onMouseEnter={(e) => { e.currentTarget.style.background = '#1a1a1a' }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = '#ffffff' }}
+            >
+              Browse apps →
+            </Link>
           </div>
-        ))}
-      </section>
-    </main>
+        </section>
+
+        {/* Divider */}
+        <div style={styles.divider} />
+
+        {/* Brief highlights */}
+        <section style={styles.highlights}>
+          {HIGHLIGHTS.map((item) => (
+            <div key={item.label} style={styles.highlight}>
+              <span style={styles.highlightLabel}>{item.label}</span>
+              <span style={styles.highlightValue}>{item.value}</span>
+            </div>
+          ))}
+        </section>
+      </main>
+    </>
   )
 }
 
@@ -70,7 +82,7 @@ const styles = {
     fontWeight: 600,
     letterSpacing: '0.1em',
     textTransform: 'uppercase',
-    color: 'var(--text-faint)',
+    color: 'rgba(255,255,255,0.35)',
     marginBottom: '20px',
   },
   heading: {
@@ -78,12 +90,12 @@ const styles = {
     fontWeight: 700,
     letterSpacing: '-0.03em',
     lineHeight: 1.15,
-    color: 'var(--text)',
+    color: '#ffffff',
     marginBottom: '24px',
   },
   tagline: {
     fontSize: '1.1rem',
-    color: 'var(--text-muted)',
+    color: 'rgba(255,255,255,0.55)',
     lineHeight: 1.65,
     marginBottom: '40px',
     maxWidth: '520px',
@@ -98,8 +110,8 @@ const styles = {
     display: 'inline-block',
     padding: '10px 22px',
     borderRadius: '8px',
-    background: 'var(--accent)',
-    color: '#fff',
+    background: '#ffffff',
+    color: '#0d0d0d',
     fontSize: '0.9rem',
     fontWeight: 600,
     transition: 'background 0.12s ease',
@@ -110,15 +122,15 @@ const styles = {
     padding: '10px 22px',
     borderRadius: '8px',
     background: 'transparent',
-    color: 'var(--text)',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: '0.9rem',
     fontWeight: 500,
-    border: '1px solid var(--border)',
+    border: '1px solid rgba(255,255,255,0.18)',
     transition: 'background 0.12s ease',
   },
   divider: {
     height: '1px',
-    background: 'var(--border)',
+    background: 'rgba(255,255,255,0.1)',
     margin: '64px 0',
   },
   highlights: {
@@ -136,10 +148,10 @@ const styles = {
     fontWeight: 600,
     letterSpacing: '0.08em',
     textTransform: 'uppercase',
-    color: 'var(--text-faint)',
+    color: 'rgba(255,255,255,0.3)',
   },
   highlightValue: {
     fontSize: '0.9rem',
-    color: 'var(--text-muted)',
+    color: 'rgba(255,255,255,0.5)',
   },
 }
