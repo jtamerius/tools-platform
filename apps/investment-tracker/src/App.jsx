@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@tools/auth';
 import LoginScreen from './components/LoginScreen';
 import Nav from './components/Nav';
-import Sidebar from './components/Sidebar';
+import AccountList from './components/AccountList';
 import MonthSelector from './components/MonthSelector';
 import PaymentTable from './components/PaymentTable';
 import AccountDetails from './components/AccountDetails';
@@ -25,7 +25,8 @@ export default function App() {
   const [accountDetail, setAccountDetail] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [view, setView] = useState('grid'); // 'grid' or 'detail'
+  const [tab, setTab] = useState('overview'); // 'overview' | 'accounts' | 'upload'
+  const [accountView, setAccountView] = useState('list'); // 'list' | 'detail'
   const [showClosed, setShowClosed] = useState(false);
   const [cellNotes, setCellNotes] = useState({});
   const [editingInvestment, setEditingInvestment] = useState(false);
@@ -77,7 +78,6 @@ export default function App() {
     ? accountDetail?.payments?.find(p => p.sort_key === selectedMonth)
     : accountDetail?.payments?.[accountDetail.payments.length - 1];
 
-  // Find note for current payment
   const currentNote = (() => {
     if (!currentPayment || !selectedAcct) return null;
     const ipt = currentPayment.status?.interest_paid_to || currentPayment.date_received;
@@ -89,7 +89,13 @@ export default function App() {
 
   const handleGridSelect = acctNum => {
     setSelectedAcct(acctNum);
-    setView('detail');
+    setTab('accounts');
+    setAccountView('detail');
+  };
+
+  const handleAccountSelect = acctNum => {
+    setSelectedAcct(acctNum);
+    setAccountView('detail');
   };
 
   const refreshAccounts = () => fetchAccounts().then(setAccounts);
@@ -131,7 +137,7 @@ export default function App() {
       await deleteAccount(selectedAcct);
       setSelectedAcct(null);
       setAccountDetail(null);
-      setView('grid');
+      setAccountView('list');
       await refreshAccounts();
     } catch (err) {
       setDeleteError(err.message);
@@ -155,65 +161,53 @@ export default function App() {
   }
 
   if (loading) {
-    return (
-      <div className="loading">
-        <p>Loading investments…</p>
-      </div>
-    );
+    return <div className="loading"><p>Loading investments…</p></div>;
   }
 
   return (
     <>
-    <Nav />
-    <div className="app">
-      <Sidebar
-        accounts={accounts}
-        selected={selectedAcct}
-        showClosed={showClosed}
-        onSelect={acct => {
-          setSelectedAcct(acct);
-          setView('detail');
-        }}
-      />
-      <main className="main">
-        <nav className="view-tabs">
-          <button
-            className={view === 'grid' ? 'active' : ''}
-            onClick={() => setView('grid')}
-          >
-            Payment Overview
-          </button>
-          <button
-            className={view === 'detail' ? 'active' : ''}
-            onClick={() => setView('detail')}
-          >
-            Account Detail
-          </button>
-          <button
-            className={view === 'upload' ? 'active' : ''}
-            onClick={() => setView('upload')}
-          >
-            Upload
-          </button>
-          <label className="closed-toggle">
-            <input
-              type="checkbox"
-              checked={showClosed}
-              onChange={e => setShowClosed(e.target.checked)}
-            />
-            Show closed
-          </label>
-          <button className="signout-btn" onClick={signOut}>{user.email}</button>
-        </nav>
+      <Nav />
+      <div className="app">
 
-        {view === 'grid' && (
+        {/* Overview tab */}
+        {tab === 'overview' && (
           <PaymentGrid onSelectAccount={handleGridSelect} showClosed={showClosed} />
         )}
 
-        {view === 'detail' && accountDetail && (
+        {/* Accounts tab */}
+        {tab === 'accounts' && accountView === 'list' && (
           <>
+            <div className="accounts-header">
+              <span className="accounts-title">Accounts</span>
+              <div className="accounts-controls">
+                <label className="closed-toggle">
+                  <input
+                    type="checkbox"
+                    checked={showClosed}
+                    onChange={e => setShowClosed(e.target.checked)}
+                  />
+                  Show closed
+                </label>
+                <button className="signout-btn" onClick={signOut}>{user.email}</button>
+              </div>
+            </div>
+            <AccountList
+              accounts={accounts}
+              selected={selectedAcct}
+              showClosed={showClosed}
+              onSelect={handleAccountSelect}
+            />
+          </>
+        )}
+
+        {tab === 'accounts' && accountView === 'detail' && accountDetail && (
+          <>
+            <button className="detail-back" onClick={() => setAccountView('list')}>
+              ← Accounts
+            </button>
+
             <header className="main-header">
-              <div className="main-header-info">
+              <div>
                 <h1>{accountDetail.payor}</h1>
                 <p className="payor">{accountDetail.account_number}</p>
                 {accountDetail.property_address && (
@@ -237,7 +231,7 @@ export default function App() {
                       <button onClick={handleSavePrincipal}>Save</button>
                       <button onClick={() => setEditingInvestment(false)}>Cancel</button>
                       {accountDetail.investment?.is_overridden && (
-                        <button className="inv-reset-btn" onClick={handleClearPrincipal}>Reset to calculated</button>
+                        <button className="inv-reset-btn" onClick={handleClearPrincipal}>Reset</button>
                       )}
                     </div>
                   </div>
@@ -297,18 +291,41 @@ export default function App() {
                     <button className="delete-payment-btn" onClick={() => setConfirmDeletePayment(true)}>Delete this payment</button>
                   )}
                 </div>
+                {deleteError && <p style={{ color: '#dc2626', fontSize: '0.82rem', textAlign: 'right' }}>{deleteError}</p>}
               </>
             )}
           </>
         )}
 
-        {view === 'upload' && (
+        {/* Upload tab */}
+        {tab === 'upload' && (
           <BatchUpload inboundEmail={inboundEmail} onUploadComplete={() => {
             fetchAccounts().then(setAccounts);
           }} />
         )}
-      </main>
-    </div>
+      </div>
+
+      {/* Bottom Tab Bar */}
+      <nav className="bottom-tabs">
+        <button
+          className={`bottom-tab${tab === 'overview' ? ' active' : ''}`}
+          onClick={() => setTab('overview')}
+        >
+          Overview
+        </button>
+        <button
+          className={`bottom-tab${tab === 'accounts' ? ' active' : ''}`}
+          onClick={() => setTab('accounts')}
+        >
+          Accounts
+        </button>
+        <button
+          className={`bottom-tab${tab === 'upload' ? ' active' : ''}`}
+          onClick={() => setTab('upload')}
+        >
+          Upload
+        </button>
+      </nav>
     </>
   );
 }

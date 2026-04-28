@@ -1,0 +1,106 @@
+.account-list-summary {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+}
+
+.summary-label {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.summary-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  margin-top: 4px;
+  letter-spacing: -0.02em;
+}
+
+.account-list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.account-card {
+  display: block;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px 16px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.12s;
+}
+
+.account-card:hover {
+  border-color: var(--text-muted);
+}
+
+.account-card.active {
+  border-color: var(--text);
+}
+
+.account-card.closed {
+  opacity: 0.5;
+}
+
+.acct-row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.acct-payor {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.account-card.active .acct-payor {
+  color: var(--text);
+}
+
+.acct-inv {
+  font-size: 0.88rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.acct-num {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+  margin-top: 3px;
+}
+
+.closed-tag {
+  font-size: 0.6rem;
+  background: var(--border);
+  color: var(--text-muted);
+  padding: 1px 4px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  text-transform: uppercase;
+}

@@ -1,68 +1,82 @@
-.upload-wrap { max-width: 640px; margin: 2rem auto; }
+.upload-wrap { }
 
 .inbound-email {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 8px;
-  margin-bottom: 1.25rem;
+  padding: 12px 14px;
+  background: var(--border-subtle);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
-.inbound-label { font-size: 0.85rem; color: var(--muted); white-space: nowrap; }
-.inbound-addr { font-size: 0.88rem; color: var(--text); flex: 1; word-break: break-all; }
+.inbound-label { font-size: 0.82rem; color: var(--text-faint); white-space: nowrap; }
+.inbound-addr { font-size: 0.85rem; color: var(--text); flex: 1; word-break: break-all; }
 .copy-btn {
   background: none;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 0.2rem 0.65rem;
-  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  font-family: inherit;
   cursor: pointer;
   color: var(--text);
   white-space: nowrap;
+}
+.copy-btn:hover {
+  border-color: var(--text-muted);
 }
 
 .drop-zone {
   border: 2px dashed var(--border);
   border-radius: 12px;
-  padding: 3rem 2rem;
+  padding: 2.5rem 1.5rem;
   text-align: center;
   cursor: pointer;
-  transition: border-color .2s, background .2s;
+  transition: border-color 0.15s, background 0.15s;
   background: var(--surface);
 }
 .drop-zone.drag-over {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border-color: var(--text-muted);
+  background: var(--border-subtle);
 }
-.drop-zone p { margin: 0; color: var(--muted); font-size: .95rem; }
-.drop-zone .browse { color: var(--accent); text-decoration: underline; cursor: pointer; }
+.drop-zone p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+.drop-zone .browse { color: var(--text); text-decoration: underline; cursor: pointer; }
 
-.file-list { margin: 1rem 0; list-style: none; padding: 0; }
+.file-list { margin: 10px 0; list-style: none; padding: 0; }
 .file-list li {
   display: flex; justify-content: space-between; align-items: center;
-  padding: .45rem .6rem; border-bottom: 1px solid var(--border);
-  font-size: .88rem;
+  padding: 8px 0; border-bottom: 1px solid var(--border-subtle);
+  font-size: 0.85rem;
 }
 .file-list li button {
-  background: none; border: none; color: var(--muted); cursor: pointer; font-size: 1rem;
+  background: none; border: none; color: var(--text-faint); cursor: pointer; font-size: 1rem;
 }
+.file-list li button:hover { color: var(--text); }
 
-.upload-actions { display: flex; gap: .75rem; align-items: center; }
+.upload-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
 .upload-btn {
-  padding: .5rem 1.4rem; border: none; border-radius: 8px;
-  background: var(--accent); color: #fff; font-weight: 600;
-  cursor: pointer; font-size: .9rem;
+  padding: 10px 20px; border: none; border-radius: 10px;
+  background: var(--text); color: var(--bg); font-weight: 600;
+  cursor: pointer; font-size: 0.9rem; font-family: inherit;
 }
-.upload-btn:disabled { opacity: .5; cursor: default; }
+.upload-btn:disabled { opacity: 0.45; cursor: default; }
 .clear-btn {
-  background: none; border: 1px solid var(--border); border-radius: 8px;
-  padding: .5rem 1rem; cursor: pointer; font-size: .9rem; color: var(--text);
+  background: none; border: 1px solid var(--border); border-radius: 10px;
+  padding: 10px 16px; cursor: pointer; font-size: 0.9rem; font-family: inherit;
+  color: var(--text);
 }
+.clear-btn:hover { border-color: var(--text-muted); }
 
-.upload-results { margin-top: 1.5rem; }
-.upload-results h3 { font-size: 1rem; margin-bottom: .5rem; }
+.upload-results { margin-top: 1.25rem; }
+.upload-results h3 {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
+}
 .result-ok { color: #16a34a; }
 .result-fail { color: #dc2626; }

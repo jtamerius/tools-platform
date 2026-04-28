@@ -1,43 +1,53 @@
+.account-details {
+  margin-bottom: 10px;
+}
+
 .account-details h3 {
-  margin-bottom: 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin-bottom: 10px;
 }
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  gap: 1rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 10px;
 }
 
 .stat {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
   display: flex;
   flex-direction: column;
+  gap: 4px;
 }
 
 .stat-label {
   font-size: 0.7rem;
-  color: var(--text-muted);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 500;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
 }
 
 .stat-value {
-  font-size: 1.05rem;
-  font-weight: 600;
-  margin-top: 0.15rem;
+  font-size: 1.1rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
   color: var(--text);
+  letter-spacing: -0.02em;
 }
 
 .mono-small {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   word-break: break-all;
-  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-variant-numeric: tabular-nums;
   color: var(--text-muted);
 }
 
@@ -49,8 +59,8 @@
 .account-details td {
   padding: 0.45rem 0;
   border-bottom: 1px solid var(--border-subtle);
-  font-size: 0.875rem;
-  color: var(--text-secondary);
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
 
 .account-details td:first-child {

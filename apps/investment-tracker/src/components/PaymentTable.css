@@ -1,12 +1,12 @@
 .payment-section {
-  margin-bottom: 1.5rem;
+  margin-bottom: 10px;
 }
 
 .payment-section h3 {
-  margin-bottom: 0.5rem;
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: 0.7rem;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  margin-bottom: 8px;
 }
