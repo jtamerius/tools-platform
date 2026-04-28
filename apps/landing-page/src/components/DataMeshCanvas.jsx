@@ -51,6 +51,7 @@ export default function DataMeshCanvas() {
     }
     resize()
 
+    // Listen on window so hover works even over page content
     function onMouseMove(e) { mouse.x = e.clientX; mouse.y = e.clientY }
     function onMouseLeave() { mouse.x = null; mouse.y = null }
     function onClick(e) {
@@ -67,9 +68,9 @@ export default function DataMeshCanvas() {
     }
 
     window.addEventListener('resize', resize)
-    canvas.addEventListener('mousemove', onMouseMove)
-    canvas.addEventListener('mouseleave', onMouseLeave)
-    canvas.addEventListener('click', onClick)
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseleave', onMouseLeave)
+    window.addEventListener('click', onClick)
 
     function draw() {
       ctx.clearRect(0, 0, w, h)
@@ -148,9 +149,9 @@ export default function DataMeshCanvas() {
     return () => {
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', resize)
-      canvas.removeEventListener('mousemove', onMouseMove)
-      canvas.removeEventListener('mouseleave', onMouseLeave)
-      canvas.removeEventListener('click', onClick)
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseleave', onMouseLeave)
+      window.removeEventListener('click', onClick)
     }
   }, [])
 
@@ -160,9 +161,9 @@ export default function DataMeshCanvas() {
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: -1,
+        zIndex: 0,
         display: 'block',
-        cursor: 'crosshair',
+        pointerEvents: 'none',
       }}
     />
   )

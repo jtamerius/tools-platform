@@ -73,6 +73,8 @@ const styles = {
     width: '100%',
     margin: '0 auto',
     padding: '80px 24px 80px',
+    position: 'relative',
+    zIndex: 1,
   },
   hero: {
     maxWidth: '640px',
