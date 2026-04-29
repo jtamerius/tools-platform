@@ -121,7 +121,7 @@ export default function DataMeshCanvas() {
       diffuseHues(nodes, delaunay.triangles)
 
       const rawSin = Math.sin((now / 12000) * Math.PI * 2)
-      const fade = 0.5 + 0.5 * Math.sign(rawSin) * Math.pow(Math.abs(rawSin), 0.8)
+      const fade = 1
       const voroA = 1 - fade * 0.85
       const meshA = fade
 
@@ -139,7 +139,7 @@ export default function DataMeshCanvas() {
         for (let k = 1; k < cell.length; k++) ctx.lineTo(cell[k][0], cell[k][1])
         ctx.closePath()
         ctx.strokeStyle = `hsla(${h_},65%,72%,${(voroA * (0.06 + speedFactor * 0.45)).toFixed(3)})`
-        ctx.lineWidth = 2
+        ctx.lineWidth = 1
         ctx.stroke()
       }
 
@@ -152,7 +152,7 @@ export default function DataMeshCanvas() {
           const prox = Math.max(0, 1 - dist / (Math.sqrt(w*w + h*h) * 0.35))
           const eh = ((nodes[a].hue + nodes[b].hue) / 2).toFixed(1)
           ctx.strokeStyle = `hsla(${eh},65%,65%,${(meshA * prox * 0.45).toFixed(3)})`
-          ctx.lineWidth = 2
+          ctx.lineWidth = 1
           ctx.beginPath(); ctx.moveTo(nodes[a].x, nodes[a].y); ctx.lineTo(nodes[b].x, nodes[b].y); ctx.stroke()
         }
       }
