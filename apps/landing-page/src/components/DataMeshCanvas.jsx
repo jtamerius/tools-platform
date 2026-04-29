@@ -1,14 +1,11 @@
 import { useEffect, useRef } from 'react'
 import { Delaunay } from 'd3-delaunay'
 
-const HUE_A = 172, HUE_B = 155, HUE_RANGE = 30
+const HUE_A = 172, HUE_RANGE = 30
 const N_INIT = 42
 const MAX_SPEED = 0.3, DAMPING = 0.996, MIN_DIST = 60
 const ATTRACT_RADIUS = 180, ATTRACT_STRENGTH = 0.006
 
-function clampHue(v) {
-  return Math.max(Math.min(HUE_A, HUE_B) - 15, Math.min(Math.max(HUE_A, HUE_B) + 15, v))
-}
 
 function makeNode(x, y, w, h) {
   return {
@@ -23,22 +20,6 @@ function makeNode(x, y, w, h) {
   }
 }
 
-function diffuseHues(nodes, tri) {
-  const sums = nodes.map(() => ({ hue: 0, count: 0 }))
-  for (let k = 0; k < tri.length; k += 3) {
-    for (const [a, b] of [[tri[k], tri[k+1]], [tri[k+1], tri[k+2]], [tri[k], tri[k+2]]]) {
-      if (!nodes[a] || !nodes[b]) continue
-      sums[a].hue += nodes[b].hue; sums[a].count++
-      sums[b].hue += nodes[a].hue; sums[b].count++
-    }
-  }
-  for (let i = 0; i < nodes.length; i++) {
-    if (sums[i]?.count > 0) {
-      nodes[i].hue += (sums[i].hue / sums[i].count - nodes[i].hue) * 0.002
-      nodes[i].hue = clampHue(nodes[i].hue)
-    }
-  }
-}
 
 export default function DataMeshCanvas() {
   const canvasRef = useRef(null)
@@ -118,12 +99,6 @@ export default function DataMeshCanvas() {
       const pts = new Float64Array(nodes.flatMap(nd => [nd.x, nd.y]))
       const delaunay = new Delaunay(pts)
       const voronoi = delaunay.voronoi([0, 0, w, h])
-      diffuseHues(nodes, delaunay.triangles)
-
-      const rawSin = Math.sin((now / 12000) * Math.PI * 2)
-      const fade = 1
-      const voroA = 1 - fade * 0.85
-      const meshA = fade
 
       ctx.clearRect(0, 0, w, h)
       ctx.fillStyle = '#0d0d0d'
@@ -138,24 +113,11 @@ export default function DataMeshCanvas() {
         ctx.moveTo(cell[0][0], cell[0][1])
         for (let k = 1; k < cell.length; k++) ctx.lineTo(cell[k][0], cell[k][1])
         ctx.closePath()
-        ctx.strokeStyle = `hsla(${h_},65%,72%,${(voroA * (0.06 + speedFactor * 0.45)).toFixed(3)})`
+        ctx.strokeStyle = `hsla(${h_},65%,72%,${(0.06 + speedFactor * 0.45).toFixed(3)})`
         ctx.lineWidth = 1
         ctx.stroke()
       }
 
-      const tri = delaunay.triangles
-      for (let k = 0; k < tri.length; k += 3) {
-        for (const [a, b] of [[tri[k], tri[k+1]], [tri[k+1], tri[k+2]], [tri[k], tri[k+2]]]) {
-          if (!nodes[a] || !nodes[b]) continue
-          const dx = nodes[a].x - nodes[b].x, dy = nodes[a].y - nodes[b].y
-          const dist = Math.sqrt(dx*dx + dy*dy)
-          const prox = Math.max(0, 1 - dist / (Math.sqrt(w*w + h*h) * 0.35))
-          const eh = ((nodes[a].hue + nodes[b].hue) / 2).toFixed(1)
-          ctx.strokeStyle = `hsla(${eh},65%,65%,${(meshA * prox * 0.45).toFixed(3)})`
-          ctx.lineWidth = 1
-          ctx.beginPath(); ctx.moveTo(nodes[a].x, nodes[a].y); ctx.lineTo(nodes[b].x, nodes[b].y); ctx.stroke()
-        }
-      }
 
       for (let i = 0; i < nCount; i++) {
         const nd = nodes[i]
