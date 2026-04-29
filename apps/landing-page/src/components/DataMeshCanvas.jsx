@@ -121,7 +121,7 @@ export default function DataMeshCanvas() {
       diffuseHues(nodes, delaunay.triangles)
 
       const rawSin = Math.sin((now / 12000) * Math.PI * 2)
-      const fade = 0.5 + 0.5 * Math.sign(rawSin) * Math.pow(Math.abs(rawSin), 0.25)
+      const fade = 0.5 + 0.5 * Math.sign(rawSin) * Math.pow(Math.abs(rawSin), 0.8)
       const voroA = 1 - fade * 0.85
       const meshA = fade
 
