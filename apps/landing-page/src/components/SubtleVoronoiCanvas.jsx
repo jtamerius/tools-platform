@@ -58,6 +58,10 @@ export default function SubtleVoronoiCanvas() {
           }
         }
 
+        // Persistent gentle jitter so nodes never fully stop
+        nd.vx += (Math.random() - 0.5) * 0.025
+        nd.vy += (Math.random() - 0.5) * 0.025
+
         nd.vx *= DAMPING; nd.vy *= DAMPING
         const spd = Math.sqrt(nd.vx * nd.vx + nd.vy * nd.vy)
         if (spd > MAX_SPEED) { nd.vx = (nd.vx / spd) * MAX_SPEED; nd.vy = (nd.vy / spd) * MAX_SPEED }
