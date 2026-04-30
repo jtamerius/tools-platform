@@ -1,8 +1,11 @@
 import AppCard from '../components/AppCard'
 import { APPS } from '../config/apps'
+import SubtleVoronoiCanvas from '../components/SubtleVoronoiCanvas'
 
 export default function Apps() {
   return (
+    <>
+    <SubtleVoronoiCanvas />
     <main style={styles.main}>
       <div style={styles.header}>
         <p style={styles.eyebrow}>Platform</p>
@@ -23,6 +26,7 @@ export default function Apps() {
         ))}
       </div>
     </main>
+    </>
   )
 }
 
@@ -33,6 +37,8 @@ const styles = {
     width: '100%',
     margin: '0 auto',
     padding: '72px 24px 80px',
+    position: 'relative',
+    zIndex: 1,
   },
   header: {
     marginBottom: '48px',

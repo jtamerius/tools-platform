@@ -1,5 +1,9 @@
+import SubtleVoronoiCanvas from '../components/SubtleVoronoiCanvas'
+
 export default function About() {
   return (
+    <>
+    <SubtleVoronoiCanvas />
     <main style={styles.main}>
       <div style={styles.content}>
 
@@ -96,6 +100,7 @@ export default function About() {
         </div>
       </div>
     </main>
+    </>
   )
 }
 
@@ -113,6 +118,8 @@ const styles = {
     width: '100%',
     margin: '0 auto',
     padding: '72px 24px 80px',
+    position: 'relative',
+    zIndex: 1,
   },
   content: {
     maxWidth: '680px',
