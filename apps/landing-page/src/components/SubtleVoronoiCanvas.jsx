@@ -1,17 +1,17 @@
 import { useEffect, useRef } from 'react'
 import { Delaunay } from 'd3-delaunay'
 
-const N_NODES = 80
-const MAX_SPEED = 0.18
-const DAMPING = 0.997
-const MIN_DIST = 70
+const N_NODES = 120
+const MAX_SPEED = 0.4
+const DAMPING = 0.995
+const MIN_DIST = 60
 
 function makeNode(w, h) {
   return {
     x: Math.random() * w,
     y: Math.random() * h,
-    vx: (Math.random() - 0.5) * 0.12,
-    vy: (Math.random() - 0.5) * 0.12,
+    vx: (Math.random() - 0.5) * 0.3,
+    vy: (Math.random() - 0.5) * 0.3,
   }
 }
 
@@ -66,8 +66,8 @@ export default function SubtleVoronoiCanvas() {
         if (nd.x < -80 || nd.x > w + 80 || nd.y < -80 || nd.y > h + 80) {
           nd.x = w * 0.2 + Math.random() * w * 0.6
           nd.y = h * 0.2 + Math.random() * h * 0.6
-          nd.vx = (Math.random() - 0.5) * 0.08
-          nd.vy = (Math.random() - 0.5) * 0.08
+          nd.vx = (Math.random() - 0.5) * 0.2
+          nd.vy = (Math.random() - 0.5) * 0.2
         }
       }
 
@@ -76,8 +76,8 @@ export default function SubtleVoronoiCanvas() {
       const voronoi = delaunay.voronoi([0, 0, w, h])
 
       ctx.clearRect(0, 0, w, h)
-      ctx.strokeStyle = 'rgba(0,0,0,0.045)'
-      ctx.lineWidth = 0.75
+      ctx.strokeStyle = 'rgba(0,0,0,0.08)'
+      ctx.lineWidth = 1
 
       for (let i = 0; i < n; i++) {
         const cell = voronoi.cellPolygon(i)
