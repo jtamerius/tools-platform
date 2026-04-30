@@ -3,6 +3,7 @@ import { useAuth } from '@tools/auth';
 import LoginScreen from './components/LoginScreen';
 import StoryList from './components/StoryList';
 import StoryEditor from './components/StoryEditor';
+import StoryReader from './components/StoryReader';
 import './App.css';
 
 const AUTH_CONFIG = {
@@ -13,6 +14,7 @@ const AUTH_CONFIG = {
 export default function App() {
   const { user, isLoading: authLoading, signIn, signOut, completeNewPasswordChallenge } = useAuth(AUTH_CONFIG);
   const [activeStoryId, setActiveStoryId] = useState(null);
+  const [readStoryId, setReadStoryId] = useState(null);
 
   if (authLoading) {
     return <div className="app-loading"><p>Loading…</p></div>;
@@ -22,11 +24,21 @@ export default function App() {
     return <LoginScreen onSignIn={signIn} onCompleteNewPassword={completeNewPasswordChallenge} />;
   }
 
+  if (readStoryId) {
+    return (
+      <StoryReader
+        storyId={readStoryId}
+        onBack={() => setReadStoryId(null)}
+      />
+    );
+  }
+
   if (activeStoryId) {
     return (
       <StoryEditor
         storyId={activeStoryId}
         onBack={() => setActiveStoryId(null)}
+        onReadStory={setReadStoryId}
       />
     );
   }
@@ -36,6 +48,7 @@ export default function App() {
       user={user}
       onSignOut={signOut}
       onOpenStory={setActiveStoryId}
+      onReadStory={setReadStoryId}
     />
   );
 }

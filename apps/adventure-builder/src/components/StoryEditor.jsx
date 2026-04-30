@@ -5,7 +5,7 @@ import StoryMap from './StoryMap';
 import AIAssistant from './AIAssistant';
 import './StoryEditor.css';
 
-export default function StoryEditor({ storyId, onBack }) {
+export default function StoryEditor({ storyId, onBack, onReadStory }) {
   const [story, setStory] = useState(null);
   const [selectedPageId, setSelectedPageId] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -86,6 +86,7 @@ export default function StoryEditor({ storyId, onBack }) {
         <button className="se-back" onClick={onBack}>← Stories</button>
         <h2 className="se-title">{story.title}</h2>
         <span className="se-meta">{story.pages?.length ?? 0} pages</span>
+        <button className="se-play-btn" onClick={() => onReadStory(storyId)}>Play ▶</button>
       </header>
 
       <div className="se-body">

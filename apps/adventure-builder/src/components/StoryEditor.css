@@ -50,6 +50,19 @@
   flex-shrink: 0;
 }
 
+.se-play-btn {
+  background: none;
+  border: 1px solid #7c3aed;
+  color: #c4b5fd;
+  border-radius: 6px;
+  padding: 5px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+.se-play-btn:hover { background: #7c3aed; color: #fff; }
+
 .se-body {
   display: flex;
   flex: 1;

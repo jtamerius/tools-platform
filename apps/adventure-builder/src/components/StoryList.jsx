@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { fetchStories, createStory, deleteStory } from '../services/api';
 import './StoryList.css';
 
-export default function StoryList({ onOpenStory, user, onSignOut }) {
+export default function StoryList({ onOpenStory, onReadStory, user, onSignOut }) {
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -99,6 +99,7 @@ export default function StoryList({ onOpenStory, user, onSignOut }) {
               <span className="sl-card-meta">{story.pageCount ?? 0} pages · {new Date(story.updatedAt).toLocaleDateString()}</span>
             </button>
             <div className="sl-card-actions">
+              <button className="sl-read-btn" onClick={() => onReadStory(story.id)}>Read</button>
               {confirmDelete === story.id ? (
                 <>
                   <button className="sl-del-confirm" onClick={() => handleDelete(story.id)}>Sure?</button>
