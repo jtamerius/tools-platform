@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { Delaunay } from 'd3-delaunay'
 
 const HUE_A = 172, HUE_RANGE = 30
-const N_INIT = 42
+const N_INIT = 126
 const MAX_SPEED = 0.3, DAMPING = 0.996, MIN_DIST = 60
 const ATTRACT_RADIUS = 180, ATTRACT_STRENGTH = 0.006
 
@@ -42,7 +42,16 @@ export default function DataMeshCanvas() {
     }
     resize()
 
-    function onMouseMove(e) { mouse.x = e.clientX; mouse.y = e.clientY }
+    let lastSpawnX = null, lastSpawnY = null
+    function onMouseMove(e) {
+      mouse.x = e.clientX; mouse.y = e.clientY
+      if (lastSpawnX === null) { lastSpawnX = e.clientX; lastSpawnY = e.clientY }
+      const dx = e.clientX - lastSpawnX, dy = e.clientY - lastSpawnY
+      if (Math.sqrt(dx*dx + dy*dy) > 40) {
+        nodes.push(makeNode(e.clientX, e.clientY, w, h))
+        lastSpawnX = e.clientX; lastSpawnY = e.clientY
+      }
+    }
     function onMouseLeave() { mouse.x = null; mouse.y = null }
     function onClick(e) { nodes.push(makeNode(e.clientX, e.clientY, w, h)) }
 
