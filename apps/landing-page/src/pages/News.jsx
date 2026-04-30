@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef, useMemo } from 'react'
 import NewsMap from './NewsMap'
+import BackButton from '../components/BackButton'
 
 const S3_URL = 'https://jtamerius-news-data.s3.amazonaws.com/latest.json'
 const RECAT_URL = import.meta.env.VITE_NEWS_RECATEGORIZE_API_URL || ''
@@ -214,6 +215,8 @@ export default function News() {
   const activeOverrides = Object.values(overrides).filter(Boolean).length
 
   return (
+    <>
+    <BackButton />
     <main style={styles.main}>
       <div style={styles.header}>
         <h1 style={styles.heading}>Global News</h1>
@@ -379,6 +382,7 @@ export default function News() {
         </div>
       )}
     </main>
+    </>
   )
 }
 

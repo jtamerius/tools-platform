@@ -1,9 +1,11 @@
 import SubtleVoronoiCanvas from '../components/SubtleVoronoiCanvas'
+import BackButton from '../components/BackButton'
 
 export default function About() {
   return (
     <>
     <SubtleVoronoiCanvas />
+    <BackButton />
     <main style={styles.main}>
       <div style={styles.content}>
 

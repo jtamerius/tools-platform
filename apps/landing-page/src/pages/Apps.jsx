@@ -1,11 +1,13 @@
 import AppCard from '../components/AppCard'
 import { APPS } from '../config/apps'
 import SubtleVoronoiCanvas from '../components/SubtleVoronoiCanvas'
+import BackButton from '../components/BackButton'
 
 export default function Apps() {
   return (
     <>
     <SubtleVoronoiCanvas />
+    <BackButton />
     <main style={styles.main}>
       <div style={styles.header}>
         <p style={styles.eyebrow}>Platform</p>
