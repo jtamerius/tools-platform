@@ -1,6 +1,6 @@
 ---
 name: app-weather
-description: Reference for the weather-app — Amplify IDs, stack names, URLs, and notes on the dual-architecture (Amplify shell + legacy CloudFront backend) for staging and production.
+description: Reference for the weather-app — Amplify IDs, stack names, URLs, and notes on the native React architecture (variable chart + event windows, no iframe) for staging and production.
 allowed-tools: Bash(aws *)
 ---
 
@@ -9,18 +9,20 @@ allowed-tools: Bash(aws *)
 ## Architecture
 
 ```
-Amplify weather-app (React shell at weather.jtamerius.com)
-  └─ embeds <iframe src="https://d326hhew368icp.cloudfront.net/weather/">
-        └─ served by CloudFront E15B1H9LICVP1J → s3://jtamerius/
-              ← written by jtamerius-weather-collector Lambda (runs 0,12 UTC)
+Amplify weather-app (React app at weather.jtamerius.com)
+  └─ apps/weather-app/src/pages/WeatherPage.jsx
+        ├─ fetches https://d326hhew368icp.cloudfront.net/locations/manifest.json
+        └─ fetches https://d326hhew368icp.cloudfront.net/forecasts/{lat}_{lon}/{run_id}.json
+              └─ CloudFront E15B1H9LICVP1J → s3://jtamerius/
+                    ← written by jtamerius-weather-collector Lambda (runs 0,12 UTC)
 
-The Amplify app is a thin wrapper. ALL weather data and the rendered HTML
-come from the legacy jtamerius-website / jtamerius-weather-collector stack.
-See /weather-ensemble for the full pipeline reference.
+The React app renders a native react-plotly.js variable chart (temperature, precip,
+wind, etc.) with per-model lines and storm event windows. No iframe.
 
-NOTE: www.jtamerius.com was removed as a CloudFront CNAME (now serves the
-landing page). The iframe and Lambda CDN_DOMAIN both use the CloudFront
-default domain d326hhew368icp.cloudfront.net directly.
+NOTE: CDN_BASE must be d326hhew368icp.cloudfront.net — www.jtamerius.com now serves
+the landing page and returns 404 for /forecasts/ and /locations/ paths.
+CloudFront distribution E15B1H9LICVP1J has Managed-CORS-With-Preflight policy
+(5cc3b908-e619-4b99-88e5-2cf7f45965bd) on /forecasts/* and the default behavior.
 ```
 
 ## App IDs
@@ -40,22 +42,32 @@ default domain d326hhew368icp.cloudfront.net directly.
 **⚠️ Issue:** `tools-shared-amplify-weather-production` is in `UPDATE_ROLLBACK_COMPLETE`.
 Root cause: stack tried to create a new Amplify app when the 10-app account limit was already
 reached. The Amplify app `d19cuiv0dybz8y` still exists and works — the stack just can't manage
-it cleanly. Needs to be fixed (import existing app or delete+recreate stack).
+it cleanly.
 
-## Legacy Data Pipeline Resources
+## Data Pipeline Resources
 
-The weather data backend is NOT part of the tools platform — it is a separate CDK stack:
+The weather data backend is NOT part of the tools platform — it is a separate stack:
 
 | Resource | Name / ID |
 |----------|-----------|
 | Stack | `jtamerius-weather-collector` |
 | Lambda | `jtamerius-weather-collector` (Python 3.12, runs every 12 h) |
 | Data S3 | `s3://jtamerius/` (forecasts, grid_summary, locations, weather/) |
-| CloudFront | `E15B1H9LICVP1J` → `d326hhew368icp.cloudfront.net` (no custom domain — www was moved to landing page) |
-| Lambda env | `CDN_DOMAIN=d326hhew368icp.cloudfront.net` (baked into generated weather/index.html) |
+| CloudFront | `E15B1H9LICVP1J` → `d326hhew368icp.cloudfront.net` |
+| CORS policy | `Managed-CORS-With-Preflight` on `/forecasts/*` + default behavior |
 | Deploy S3 | `s3://jtamerius-website-deploy/lambda_package.zip` |
 
 See `/weather-ensemble` for full pipeline detail (EventBridge rules, S3 layout, debug commands).
+
+## React App Key Files
+
+| File | Purpose |
+|------|---------|
+| `apps/weather-app/src/pages/WeatherPage.jsx` | Main page — location picker, variable selector, Plotly chart, event windows |
+| `apps/weather-app/package.json` | Deps: `react-plotly.js`, `plotly.js-dist-min` |
+
+**Run ID format** (matches Lambda `_run_id()`): `YYYY-MM-DDTHH` where HH = `00` or `12` (snapped to UTC).
+**Fallback**: if current run_id returns 404, WeatherPage automatically retries the previous run.
 
 ## Auth
 
@@ -64,13 +76,17 @@ None — public app, no Cognito required.
 ## Directory
 
 `apps/weather-app/` — Vite + React, `amplify.yml` present.
-`apps/weather_app/` — Legacy local data directory (ensemble-plumes). NOT deployed.
+`apps/weather_app/` — Legacy Lambda source (ensemble-plumes). NOT deployed via this monorepo.
 
 ## Common Commands
 
 ```bash
 # Check weather data freshness
 aws s3 ls s3://jtamerius/grid_summary/ --profile jtam | tail -5
+
+# Verify CORS headers are working
+curl -si -H "Origin: https://weather.jtamerius.com" \
+  "https://d326hhew368icp.cloudfront.net/locations/manifest.json" | grep access-control
 
 # View Lambda logs
 aws logs tail /aws/lambda/jtamerius-weather-collector --profile jtam --follow
