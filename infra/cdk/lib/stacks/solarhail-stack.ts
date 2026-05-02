@@ -142,7 +142,7 @@ export class SolarHailStack extends cdk.Stack {
     const batchJobRole = new iam.Role(this, 'BatchJobRole', {
       roleName: `tools-solarhail-pipeline-${e}`,
       assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
-      description: `SolarHail pipeline task role — writes Parquet to S3 (${e})`,
+      description: `SolarHail pipeline task role - writes Parquet to S3 (${e})`,
     });
     dataBucket.grantReadWrite(batchJobRole);
 
