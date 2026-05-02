@@ -244,7 +244,7 @@ function buildTickerTraces(forecast, xRangeStart, xRangeEnd) {
       const t = tArrMt[i]
       if (t < xRangeStart || t > xRangeEnd) continue
       const c = counts[i]
-      if (c === 0) continue
+      if (c < n * 0.10) continue
       if (!groups.has(c)) groups.set(c, [])
       groups.get(c).push(t)
     }
@@ -466,7 +466,7 @@ export default function WeatherPage() {
 
   const STRIP_H   = 0.04
   const STRIP_GAP = 0.010
-  const X_LABEL_GAP = 0.09
+  const X_LABEL_GAP = 0.13
   const N = activeModels.length
   const totalStripArea  = N * STRIP_H + Math.max(N - 1, 0) * STRIP_GAP
   const mainChartBottom = N > 0 ? totalStripArea + X_LABEL_GAP : 0.13
