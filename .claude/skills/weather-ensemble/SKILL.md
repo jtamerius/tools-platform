@@ -18,12 +18,13 @@ EventBridge (cron 0,12 UTC)
             ├── s3://jtamerius/locations/manifest.json
             └── s3://jtamerius/weather/index.html                  (regenerated each run)
 
-CloudFront E15B1H9LICVP1J (www.jtamerius.com → jtamerius S3 bucket)
-  → serves /forecasts/, /grid_summary/, /weather/
+CloudFront E15B1H9LICVP1J (d326hhew368icp.cloudfront.net → jtamerius S3 bucket)
+  → serves /forecasts/, /grid_summary/, /locations/, /weather/
+  → CORS: Managed-CORS-With-Preflight on /forecasts/* + default behavior
 
 Amplify d19cuiv0dybz8y (weather.jtamerius.com)
-  → apps/weather-app/ React stub
-  → embeds <iframe src="https://www.jtamerius.com/weather/">
+  → apps/weather-app/ React app (native react-plotly.js, no iframe)
+  → fetches manifest + forecast JSON directly from d326hhew368icp.cloudfront.net
 ```
 
 **CRITICAL DNS NOTE:** `jtamerius.com` (bare) and `www.jtamerius.com` both → Amplify landing page (returns 404 for data).
@@ -236,6 +237,6 @@ aws lambda update-function-code \
 | Domain | Points to | Serves |
 |--------|-----------|--------|
 | `weather.jtamerius.com` | Amplify `d19cuiv0dybz8y` | React stub with iframe |
-| `www.jtamerius.com` | CloudFront `E15B1H9LICVP1J` → `jtamerius` S3 | Actual app + data |
+| `d326hhew368icp.cloudfront.net` | CloudFront `E15B1H9LICVP1J` → `jtamerius` S3 | Forecast JSON + weather HTML |
 | `jtamerius.com` (bare) | Amplify `d1eoywtcjjm80v` (landing page) | **404 for /forecasts/*** |
 | `tools.jtamerius.com` | Same Amplify as bare domain | Landing page |
