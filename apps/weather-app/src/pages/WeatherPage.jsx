@@ -32,10 +32,24 @@ const VAR_META = {
   surface_pressure:      { label: 'Surface Pressure', unit: 'hPa',   fmt: '.1f' },
 }
 
+const MAX_RUN_OFFSET = 19  // 10 days back (20 runs)
+
 function currentRunId() {
   const now = new Date()
   const h = now.getUTCHours() >= 12 ? 12 : 0
   return `${now.toISOString().slice(0, 10)}T${String(h).padStart(2, '0')}`
+}
+
+function runIdAtOffset(offset) {
+  let rid = currentRunId()
+  for (let i = 0; i < offset; i++) rid = prevRunId(rid)
+  return rid
+}
+
+function formatRunLabel(rid) {
+  const [date, hour] = rid.split('T')
+  const [, mm, dd] = date.split('-')
+  return `${mm}/${dd} ${hour}Z`
 }
 
 function prevRunId(runId) {
@@ -169,7 +183,7 @@ function buildShapesAndAnnotations(forecast) {
     })
     annotations.push({
       x: mid, y: 0.97, xref: 'x', yref: 'y domain',
-      text: `<b>Event ${ev.event_index}</b><br><span style="font-size:9px">${ev.duration_hours}h · peak ${ev.peak_rate.toFixed(3)} in/h</span>`,
+      text: `<b>E${ev.event_index}</b>`,
       showarrow: false, font: { size: 11, color: '#333' },
       bgcolor: 'rgba(255,255,255,0.82)',
       bordercolor: EVENT_BORDER[i % EVENT_BORDER.length].replace('0.6', '0.8'),
@@ -215,109 +229,91 @@ function evalKde(vals, bw, xGrid) {
   })
 }
 
-function buildKdeTracesAndLayout(forecast) {
+function buildKdeTracesAndLayout(forecast, evIdx = 0) {
   const members    = forecast.members
   const events     = forecast.events || []
   const meta       = forecast.meta || {}
   if (!members || !events.length) return null
 
+  const ev         = events[Math.min(evIdx, events.length - 1)]
   const timeArr    = members.time || []
   const precipData = members.precipitation || {}
   const ensModels  = meta.ensemble_models?.length ? meta.ensemble_models : Object.keys(precipData)
 
-  const traces  = []
-  const n       = events.length
-  const spacing = 0.06
-  const panelH  = (1 - spacing * Math.max(n - 1, 0)) / Math.max(n, 1)
-  const layout  = {
-    showlegend: true,
-    legend: { x: 1.02, y: 1, xanchor: 'left', yanchor: 'top' },
-    margin: { l: 60, r: 160, t: 80, b: 50 },
-    paper_bgcolor: '#f8faff',
-    annotations: [],
-    height: Math.max(300, n * 220),
-  }
+  const startIdx = timeArr.findIndex(t => t >= ev.start_time)
+  let endIdx = timeArr.findIndex(t => t > ev.end_time)
+  if (endIdx === -1) endIdx = timeArr.length
 
-  events.forEach((ev, evIdx) => {
-    const startIdx = timeArr.findIndex(t => t >= ev.start_time)
-    let endIdx = timeArr.findIndex(t => t > ev.end_time)
-    if (endIdx === -1) endIdx = timeArr.length
+  const allTotals   = []
+  const modelTotals = []
 
-    const xAxis = evIdx === 0 ? 'x'  : `x${evIdx + 1}`
-    const yAxis = evIdx === 0 ? 'y'  : `y${evIdx + 1}`
-    const xKey  = evIdx === 0 ? 'xaxis'  : `xaxis${evIdx + 1}`
-    const yKey  = evIdx === 0 ? 'yaxis'  : `yaxis${evIdx + 1}`
-    const anchor = evIdx === 0 ? '' : String(evIdx + 1)
-
-    const allTotals = []
-    const modelTotals = []
-
-    ensModels.forEach(model => {
-      const seriesList   = precipData[model] || []
-      const memberSeries = seriesList.length > 1 ? seriesList.slice(1) : seriesList
-      const totals = memberSeries.map(series => {
-        let sum = 0
-        for (let i = startIdx; i < endIdx; i++) {
-          const v = series[i]; sum += v == null ? 0 : Math.max(0, +v)
-        }
-        return sum
-      })
-      modelTotals.push(totals)
-      allTotals.push(...totals)
+  ensModels.forEach(model => {
+    const seriesList   = precipData[model] || []
+    const memberSeries = seriesList.length > 1 ? seriesList.slice(1) : seriesList
+    const totals = memberSeries.map(series => {
+      let sum = 0
+      for (let i = startIdx; i < endIdx; i++) {
+        const v = series[i]; sum += v == null ? 0 : Math.max(0, +v)
+      }
+      return sum
     })
+    modelTotals.push(totals)
+    allTotals.push(...totals)
+  })
 
-    if (!allTotals.length) return
+  if (!allTotals.length) return null
 
-    const xMin = Math.max(0, Math.min(...allTotals) - Math.max((Math.max(...allTotals) - Math.min(...allTotals)) * 0.15, 0.02))
-    const xMax = Math.max(...allTotals) + Math.max((Math.max(...allTotals) - Math.min(...allTotals)) * 0.15, 0.02)
-    const xGrid = Array.from({ length: 200 }, (_, i) => xMin + (xMax - xMin) * i / 199)
+  const span = Math.max(...allTotals) - Math.min(...allTotals)
+  const xMin = Math.max(0, Math.min(...allTotals) - Math.max(span * 0.15, 0.02))
+  const xMax = Math.max(...allTotals) + Math.max(span * 0.15, 0.02)
+  const xGrid = Array.from({ length: 200 }, (_, i) => xMin + (xMax - xMin) * i / 199)
 
-    ensModels.forEach((model, mIdx) => {
-      const color  = MODEL_COLORS[model] || FALLBACK_COLORS[mIdx % FALLBACK_COLORS.length]
-      const totals = modelTotals[mIdx]
-      if (!totals.length) return
-      const bw     = scottBandwidth(totals)
-      const yGrid  = evalKde(totals, bw, xGrid)
-      const mlabel = model === 'gfs_hrrr' ? 'GFS-HRRR' : model.split('_')[0].toUpperCase()
-      const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16)
-      traces.push({
-        type: 'scatter', mode: 'lines',
-        x: xGrid, y: yGrid,
-        name: `${mlabel} (n\u202f=\u202f${totals.length})`,
-        fill: 'tozeroy',
-        line: { color, width: 2 },
-        fillcolor: `rgba(${r},${g},${b},0.20)`,
-        legendgroup: model, showlegend: evIdx === 0,
-        xaxis: xAxis, yaxis: yAxis,
-        hovertemplate: `<b>${mlabel}</b><br>Accum: %{x:.2f} in<br>Density: %{y:.3f}<extra></extra>`,
-      })
-    })
-
-    const yBot = 1 - (evIdx + 1) * panelH - evIdx * spacing
-    const yTop = 1 - evIdx * panelH - evIdx * spacing
-    layout[xKey] = { title: { text: 'Accumulated Precip (in)' }, domain: [0, 1], anchor: 'y' + anchor, automargin: true }
-    layout[yKey] = { title: { text: 'Density', standoff: 15 }, domain: [yBot, yTop], anchor: 'x' + anchor }
-
-    const label = `Event ${ev.event_index}: ${ev.start_time.slice(5,10)} – ${ev.end_time.slice(5,10)} (${ev.duration_hours}h)`
-    layout.annotations.push({
-      text: label, xref: 'paper', yref: 'paper', x: 0.5, y: yTop,
-      xanchor: 'center', yanchor: 'bottom', showarrow: false,
-      font: { size: 11, color: '#555' },
+  const traces = []
+  ensModels.forEach((model, mIdx) => {
+    const color  = MODEL_COLORS[model] || FALLBACK_COLORS[mIdx % FALLBACK_COLORS.length]
+    const totals = modelTotals[mIdx]
+    if (!totals.length) return
+    const bw    = scottBandwidth(totals)
+    const yGrid = evalKde(totals, bw, xGrid)
+    const mlabel = model === 'gfs_hrrr' ? 'GFS-HRRR' : model.split('_')[0].toUpperCase()
+    const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16)
+    traces.push({
+      type: 'scatter', mode: 'lines',
+      x: xGrid, y: yGrid,
+      name: `${mlabel} (n\u202f=\u202f${totals.length})`,
+      fill: 'tozeroy',
+      line: { color, width: 2 },
+      fillcolor: `rgba(${r},${g},${b},0.20)`,
+      legendgroup: model,
+      hovertemplate: `<b>${mlabel}</b><br>Accum: %{x:.2f} in<br>Density: %{y:.3f}<extra></extra>`,
     })
   })
 
-  return { traces, layout }
+  const layout = {
+    showlegend: true,
+    legend: { x: 1.02, y: 1, xanchor: 'left', yanchor: 'top' },
+    margin: { l: 60, r: 160, t: 80, b: 60 },
+    paper_bgcolor: '#f8faff',
+    height: 400,
+    xaxis: { title: { text: 'Accumulated Precip (in)' }, automargin: true },
+    yaxis: { title: { text: 'Density' } },
+  }
+
+  return { traces, layout, ev }
 }
 
 export default function WeatherPage() {
   const [locations, setLocations]       = useState([])
   const [query, setQuery]               = useState('')
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [selectedLoc, setSelectedLoc]   = useState(null)
+  const [runOffset, setRunOffset]       = useState(0)
   const [forecast, setForecast]         = useState(null)
   const [loading, setLoading]           = useState(false)
   const [error, setError]               = useState(null)
-  const [variable, setVariable]         = useState('temperature_2m')
+  const [variable, setVariable]         = useState('precipitation')
   const [activeTab, setActiveTab]       = useState('var')
+  const [selectedEventIdx, setSelectedEventIdx] = useState(0)
   const wrapRef = useRef(null)
 
   const fetchForecast = useCallback(async (loc, runId) => {
@@ -336,10 +332,12 @@ export default function WeatherPage() {
   function selectLocation(loc, displayName) {
     setQuery(displayName)
     setShowSuggestions(false)
+    setSelectedLoc(loc)
     setLoading(true)
     setError(null)
     setForecast(null)
-    fetchForecast(loc, currentRunId())
+    setSelectedEventIdx(0)
+    fetchForecast(loc, runIdAtOffset(runOffset))
       .then(data => { setForecast(data); setLoading(false) })
       .catch(err  => { setError(err.message); setLoading(false) })
   }
@@ -357,6 +355,17 @@ export default function WeatherPage() {
       })
       .catch(() => setError('Failed to load locations.'))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!selectedLoc) return
+    setLoading(true)
+    setError(null)
+    setForecast(null)
+    setSelectedEventIdx(0)
+    fetchForecast(selectedLoc, runIdAtOffset(runOffset))
+      .then(data => { setForecast(data); setLoading(false) })
+      .catch(err  => { setError(err.message); setLoading(false) })
+  }, [runOffset]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function handleClick(e) {
@@ -381,7 +390,8 @@ export default function WeatherPage() {
   const meta     = forecast?.meta || {}
   const lon      = meta.lon || 0
   const lonLabel = lon < 0 ? `${Math.abs(lon).toFixed(4)}°W` : `${lon.toFixed(4)}°E`
-  const kdeResult = forecast ? buildKdeTracesAndLayout(forecast) : null
+  const kdeResult = forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null
+  const kdeEv     = kdeResult?.ev
 
   return (
     <div style={styles.page}>
@@ -418,6 +428,20 @@ export default function WeatherPage() {
           </div>
         </div>
 
+        {activeTab === 'kde' && (forecast?.events?.length ?? 0) > 0 && (
+          <div style={styles.varWrap}>
+            <label style={styles.label}>Event</label>
+            <select
+              style={styles.select}
+              value={selectedEventIdx}
+              onChange={e => setSelectedEventIdx(+e.target.value)}
+            >
+              {(forecast?.events || []).map((ev, i) => (
+                <option key={i} value={i}>E{ev.event_index}</option>
+              ))}
+            </select>
+          </div>
+        )}
         {activeTab === 'var' && (
           <div style={styles.varWrap}>
             <label style={styles.label}>Variable</label>
@@ -433,6 +457,20 @@ export default function WeatherPage() {
             </select>
           </div>
         )}
+
+        <div style={styles.runWrap}>
+          <label style={styles.label}>
+            Forecast run — {runOffset === 0 ? 'current' : formatRunLabel(runIdAtOffset(runOffset))}
+          </label>
+          <input
+            type="range"
+            min={0}
+            max={MAX_RUN_OFFSET}
+            value={runOffset}
+            onChange={e => setRunOffset(+e.target.value)}
+            style={styles.slider}
+          />
+        </div>
       </div>
 
       <div style={styles.tabBar}>
@@ -446,7 +484,7 @@ export default function WeatherPage() {
         >Storm KDE</button>
       </div>
 
-      <div style={activeTab === 'kde' ? styles.chartAreaScroll : styles.chartArea}>
+      <div style={styles.chartArea}>
         {loading && <div style={styles.status}>Loading forecast…</div>}
         {error   && <div style={styles.statusError}>{error}</div>}
         {forecast && activeTab === 'var' && (
@@ -480,7 +518,7 @@ export default function WeatherPage() {
                 layout={{
                   ...kdeResult.layout,
                   title: {
-                    text: `Storm KDE — Ensemble Precipitation Totals<br><sub>${meta.lat}°N, ${lonLabel} · Run: ${(meta.fetched_at || '').slice(0, 16)} UTC</sub>`,
+                    text: `Storm KDE — E${kdeEv?.event_index}: ${(kdeEv?.start_time || '').slice(5,10)}–${(kdeEv?.end_time || '').slice(5,10)} (${kdeEv?.duration_hours}h)<br><sub>${meta.lat}°N, ${lonLabel} · Run: ${(meta.fetched_at || '').slice(0, 16)} UTC</sub>`,
                     font: { size: 15 },
                   },
                   template: 'plotly_white',
@@ -530,6 +568,8 @@ const styles = {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
   },
   stateTag:    { fontSize: 11, color: '#888', marginLeft: 12 },
+  runWrap: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 180 },
+  slider:  { width: '100%', cursor: 'pointer', accentColor: '#1976d2' },
   tabBar: {
     display: 'flex', borderBottom: '1px solid var(--border-subtle, #dee2e6)',
     background: 'var(--bg-subtle, #f8f9fa)', padding: '0 16px',
