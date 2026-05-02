@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Plot from 'react-plotly.js'
 
 const CDN_BASE = 'https://d326hhew368icp.cloudfront.net'
@@ -216,50 +216,58 @@ function buildShapesAndAnnotations(forecast) {
 
 function buildTickerTraces(forecast, xRangeStart, xRangeEnd) {
   const members    = forecast.members
-  if (!members?.precipitation) return []
+  if (!members?.precipitation) return { traces: [], activeModels: [] }
   const timeArr    = members.time || []
   const precipData = members.precipitation
   const meta       = forecast.meta || {}
   const ensModels  = meta.ensemble_models?.length ? meta.ensemble_models : Object.keys(precipData)
 
-  const counts = new Array(timeArr.length).fill(0)
-  let totalMembers = 0
-  ensModels.forEach(model => {
+  const tArrMt     = timeArr.map(toMtIso)
+  const traces     = []
+  const activeModels = []
+
+  ensModels.forEach((model, mIdx) => {
     const seriesList   = precipData[model] || []
     const memberSeries = seriesList.length > 1 ? seriesList.slice(1) : seriesList
-    totalMembers += memberSeries.length
+    const n = memberSeries.length
+    if (n === 0) return
+
+    const counts = new Array(timeArr.length).fill(0)
     memberSeries.forEach(series => {
       for (let i = 0; i < series.length; i++) {
         if (series[i] != null && series[i] > 0) counts[i]++
       }
     })
-  })
-  if (totalMembers === 0) return []
 
-  const tArrMt    = timeArr.map(toMtIso)
-  const groups    = new Map()
-  for (let i = 0; i < tArrMt.length; i++) {
-    const t = tArrMt[i]
-    if (t < xRangeStart || t > xRangeEnd) continue
-    const c = counts[i]
-    if (c === 0) continue
-    if (!groups.has(c)) groups.set(c, [])
-    groups.get(c).push(t)
-  }
+    const groups = new Map()
+    for (let i = 0; i < tArrMt.length; i++) {
+      const t = tArrMt[i]
+      if (t < xRangeStart || t > xRangeEnd) continue
+      const c = counts[i]
+      if (c === 0) continue
+      if (!groups.has(c)) groups.set(c, [])
+      groups.get(c).push(t)
+    }
+    if (groups.size === 0) return
 
-  const traces = []
-  groups.forEach((times, count) => {
-    const xs = [], ys = []
-    times.forEach(t => { xs.push(t, t, null); ys.push(0, 1, null) })
-    traces.push({
-      type: 'scatter', mode: 'lines',
-      x: xs, y: ys,
-      line: { color: '#1976d2', width: 1 + (count / totalMembers) * 5 },
-      hoverinfo: 'skip', showlegend: false,
-      yaxis: 'y2',
+    const color  = MODEL_COLORS[model] || FALLBACK_COLORS[mIdx % FALLBACK_COLORS.length]
+    const yAxisId = `y${activeModels.length + 2}`
+    activeModels.push(model)
+
+    groups.forEach((times, count) => {
+      const xs = [], ys = []
+      times.forEach(t => { xs.push(t, t, null); ys.push(0, 1, null) })
+      traces.push({
+        type: 'scatter', mode: 'lines',
+        x: xs, y: ys,
+        line: { color, width: 1 + (count / n) * 4 },
+        hoverinfo: 'skip', showlegend: false,
+        yaxis: yAxisId,
+      })
     })
   })
-  return traces
+
+  return { traces, activeModels }
 }
 
 // ── KDE helpers ───────────────────────────────────────────────────────────────
@@ -360,6 +368,7 @@ export default function WeatherPage() {
   const [selectedLoc, setSelectedLoc]   = useState(null)
   const [runOffset, setRunOffset]       = useState(0)
   const [forecast, setForecast]         = useState(null)
+  const [baselineForecast, setBaselineForecast] = useState(null)
   const [loading, setLoading]           = useState(false)
   const [error, setError]               = useState(null)
   const [variable, setVariable]         = useState('precipitation')
@@ -389,7 +398,7 @@ export default function WeatherPage() {
     setForecast(null)
     setSelectedEventIdx(0)
     fetchForecast(loc, runIdAtOffset(runOffset))
-      .then(data => { setForecast(data); setLoading(false) })
+      .then(data => { setForecast(data); setBaselineForecast(data); setLoading(false) })
       .catch(err  => { setError(err.message); setLoading(false) })
   }
 
@@ -412,7 +421,11 @@ export default function WeatherPage() {
     setLoading(true)
     setError(null)
     fetchForecast(selectedLoc, runIdAtOffset(runOffset))
-      .then(data => { setForecast(data); setLoading(false) })
+      .then(data => {
+        setForecast(data)
+        if (runOffset === 0) setBaselineForecast(data)
+        setLoading(false)
+      })
       .catch(err  => { setError(err.message); setLoading(false) })
   }, [runOffset]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -444,8 +457,43 @@ export default function WeatherPage() {
     return toMtIso(d.toISOString())
   })()
 
-  const traces       = forecast ? buildTraces(forecast, variable, xRangeStart) : []
-  const tickerTraces = forecast ? buildTickerTraces(forecast, xRangeStart, xRangeEnd) : []
+  const traces = forecast ? buildTraces(forecast, variable, xRangeStart) : []
+
+  const { traces: tickerTraces, activeModels } = useMemo(
+    () => forecast ? buildTickerTraces(forecast, xRangeStart, xRangeEnd) : { traces: [], activeModels: [] },
+    [forecast, xRangeStart, xRangeEnd] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  const STRIP_H   = 0.04
+  const STRIP_GAP = 0.010
+  const X_LABEL_GAP = 0.09
+  const N = activeModels.length
+  const totalStripArea  = N * STRIP_H + Math.max(N - 1, 0) * STRIP_GAP
+  const mainChartBottom = N > 0 ? totalStripArea + X_LABEL_GAP : 0.13
+
+  const tickerLayout = {}
+  activeModels.forEach((_, i) => {
+    const stripTop    = totalStripArea - i * (STRIP_H + STRIP_GAP)
+    const stripBottom = stripTop - STRIP_H
+    tickerLayout[`yaxis${i + 2}`] = {
+      domain: [stripBottom, stripTop],
+      showticklabels: false, showgrid: false,
+      zeroline: false, fixedrange: true, range: [0, 1],
+    }
+  })
+
+  const yAxisRange = useMemo(() => {
+    if (!baselineForecast) return undefined
+    const bt = buildTraces(baselineForecast, variable, xRangeStart)
+    let mn = Infinity, mx = -Infinity
+    bt.forEach(t => (t.y || []).forEach(v => {
+      if (v != null && !isNaN(v)) { mn = Math.min(mn, v); mx = Math.max(mx, v) }
+    }))
+    if (!isFinite(mn)) return undefined
+    const pad = Math.max((mx - mn) * 0.05, 0.5)
+    return [mn - pad, mx + pad]
+  }, [baselineForecast, variable, xRangeStart]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const { shapes, annotations } = forecast
     ? buildShapesAndAnnotations(forecast)
     : { shapes: [], annotations: [] }
@@ -547,10 +595,10 @@ export default function WeatherPage() {
         {loading && !forecast && <div style={styles.status}>Loading forecast…</div>}
         {error   && <div style={styles.statusError}>{error}</div>}
         {forecast && activeTab === 'var' && (
-          <div style={{ opacity: loading ? 0.45 : 1, transition: 'opacity 0.15s' }}>
           <Plot
             data={[...traces, ...tickerTraces]}
             layout={{
+              ...tickerLayout,
               title: {
                 text: `${varInfo.label} — ${meta.lat}°N, ${lonLabel}<br><sub>Run: ${(meta.fetched_at || '').slice(0, 16)} UTC · ${(forecast.events || []).length} event(s)</sub>`,
                 font: { size: 15 },
@@ -561,8 +609,7 @@ export default function WeatherPage() {
               dragmode: 'pan',
               legend: { orientation: 'h', yanchor: 'top', y: -0.15, xanchor: 'center', x: 0.5, font: { size: 11 } },
               xaxis: { range: [xRangeStart, xRangeEnd], tickformat: '%a\n%b %d', gridcolor: 'rgba(200,200,200,0.4)' },
-              yaxis: { title: { text: `${varInfo.label} (${varInfo.unit})` }, gridcolor: 'rgba(200,200,200,0.4)', domain: [0.13, 1] },
-              yaxis2: { domain: [0, 0.08], showticklabels: false, showgrid: false, zeroline: false, fixedrange: true, range: [0, 1] },
+              yaxis: { title: { text: `${varInfo.label} (${varInfo.unit})` }, gridcolor: 'rgba(200,200,200,0.4)', domain: [mainChartBottom, 1], range: yAxisRange },
               margin: { t: 80, b: 80 },
               shapes,
               annotations,
@@ -571,7 +618,6 @@ export default function WeatherPage() {
             style={{ width: '100%' }}
             useResizeHandler
           />
-          </div>
         )}
         {forecast && activeTab === 'kde' && (
           kdeResult
