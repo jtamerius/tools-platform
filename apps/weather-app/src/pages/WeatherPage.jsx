@@ -180,7 +180,7 @@ function buildShapesAndAnnotations(forecast) {
     const x1 = toMtIso(ev.end_time)
 
     shapes.push({
-      type: 'rect', xref: 'x', yref: 'paper', x0, x1, y0: 0, y1: 1,
+      type: 'rect', xref: 'x', yref: 'y domain', x0, x1, y0: 0, y1: 1,
       fillcolor: EVENT_PALETTE[i % EVENT_PALETTE.length],
       line: { color: EVENT_BORDER[i % EVENT_BORDER.length], width: 1.5, dash: 'dot' },
       layer: 'below',
@@ -200,7 +200,7 @@ function buildShapesAndAnnotations(forecast) {
     const tNMt  = toMtIso(times[times.length - 1])
     if (nowMt > t0Mt && nowMt < tNMt) {
       shapes.push({
-        type: 'line', xref: 'x', yref: 'paper', x0: nowMt, x1: nowMt, y0: 0, y1: 1,
+        type: 'line', xref: 'x', yref: 'y domain', x0: nowMt, x1: nowMt, y0: 0, y1: 1,
         line: { color: 'black', width: 1.5, dash: 'dash' },
       })
       annotations.push({
@@ -212,6 +212,54 @@ function buildShapesAndAnnotations(forecast) {
   }
 
   return { shapes, annotations }
+}
+
+function buildTickerTraces(forecast, xRangeStart, xRangeEnd) {
+  const members    = forecast.members
+  if (!members?.precipitation) return []
+  const timeArr    = members.time || []
+  const precipData = members.precipitation
+  const meta       = forecast.meta || {}
+  const ensModels  = meta.ensemble_models?.length ? meta.ensemble_models : Object.keys(precipData)
+
+  const counts = new Array(timeArr.length).fill(0)
+  let totalMembers = 0
+  ensModels.forEach(model => {
+    const seriesList   = precipData[model] || []
+    const memberSeries = seriesList.length > 1 ? seriesList.slice(1) : seriesList
+    totalMembers += memberSeries.length
+    memberSeries.forEach(series => {
+      for (let i = 0; i < series.length; i++) {
+        if (series[i] != null && series[i] > 0) counts[i]++
+      }
+    })
+  })
+  if (totalMembers === 0) return []
+
+  const tArrMt    = timeArr.map(toMtIso)
+  const groups    = new Map()
+  for (let i = 0; i < tArrMt.length; i++) {
+    const t = tArrMt[i]
+    if (t < xRangeStart || t > xRangeEnd) continue
+    const c = counts[i]
+    if (c === 0) continue
+    if (!groups.has(c)) groups.set(c, [])
+    groups.get(c).push(t)
+  }
+
+  const traces = []
+  groups.forEach((times, count) => {
+    const xs = [], ys = []
+    times.forEach(t => { xs.push(t, t, null); ys.push(0, 1, null) })
+    traces.push({
+      type: 'scatter', mode: 'lines',
+      x: xs, y: ys,
+      line: { color: '#1976d2', width: 1 + (count / totalMembers) * 5 },
+      hoverinfo: 'skip', showlegend: false,
+      yaxis: 'y2',
+    })
+  })
+  return traces
 }
 
 // ── KDE helpers ───────────────────────────────────────────────────────────────
@@ -363,8 +411,6 @@ export default function WeatherPage() {
     if (!selectedLoc) return
     setLoading(true)
     setError(null)
-    setForecast(null)
-    setSelectedEventIdx(0)
     fetchForecast(selectedLoc, runIdAtOffset(runOffset))
       .then(data => { setForecast(data); setLoading(false) })
       .catch(err  => { setError(err.message); setLoading(false) })
@@ -398,7 +444,8 @@ export default function WeatherPage() {
     return toMtIso(d.toISOString())
   })()
 
-  const traces  = forecast ? buildTraces(forecast, variable, xRangeStart) : []
+  const traces       = forecast ? buildTraces(forecast, variable, xRangeStart) : []
+  const tickerTraces = forecast ? buildTickerTraces(forecast, xRangeStart, xRangeEnd) : []
   const { shapes, annotations } = forecast
     ? buildShapesAndAnnotations(forecast)
     : { shapes: [], annotations: [] }
@@ -497,23 +544,25 @@ export default function WeatherPage() {
       </div>
 
       <div style={styles.chartArea}>
-        {loading && <div style={styles.status}>Loading forecast…</div>}
+        {loading && !forecast && <div style={styles.status}>Loading forecast…</div>}
         {error   && <div style={styles.statusError}>{error}</div>}
         {forecast && activeTab === 'var' && (
+          <div style={{ opacity: loading ? 0.45 : 1, transition: 'opacity 0.15s' }}>
           <Plot
-            data={traces}
+            data={[...traces, ...tickerTraces]}
             layout={{
               title: {
                 text: `${varInfo.label} — ${meta.lat}°N, ${lonLabel}<br><sub>Run: ${(meta.fetched_at || '').slice(0, 16)} UTC · ${(forecast.events || []).length} event(s)</sub>`,
                 font: { size: 15 },
               },
               template: 'plotly_white',
-              height: 520,
+              height: 560,
               hovermode: 'x unified',
               dragmode: 'pan',
               legend: { orientation: 'h', yanchor: 'top', y: -0.15, xanchor: 'center', x: 0.5, font: { size: 11 } },
               xaxis: { range: [xRangeStart, xRangeEnd], tickformat: '%a\n%b %d', gridcolor: 'rgba(200,200,200,0.4)' },
-              yaxis: { title: { text: `${varInfo.label} (${varInfo.unit})` }, gridcolor: 'rgba(200,200,200,0.4)' },
+              yaxis: { title: { text: `${varInfo.label} (${varInfo.unit})` }, gridcolor: 'rgba(200,200,200,0.4)', domain: [0.13, 1] },
+              yaxis2: { domain: [0, 0.08], showticklabels: false, showgrid: false, zeroline: false, fixedrange: true, range: [0, 1] },
               margin: { t: 80, b: 80 },
               shapes,
               annotations,
@@ -522,6 +571,7 @@ export default function WeatherPage() {
             style={{ width: '100%' }}
             useResizeHandler
           />
+          </div>
         )}
         {forecast && activeTab === 'kde' && (
           kdeResult
