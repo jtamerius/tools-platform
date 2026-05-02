@@ -10,10 +10,11 @@ function buildReceivedMap(cells) {
   const map = {}
   for (const cell of cells) {
     if (!cell.date_received) continue
-    const [yr, mo, dy] = cell.date_received.split('-').map(Number)
-    const key = `${yr}-${mo - 1}`
+    const d = new Date(cell.date_received)
+    if (isNaN(d)) continue
+    const key = `${d.getFullYear()}-${d.getMonth()}`
     if (!map[key]) map[key] = []
-    map[key].push(dy)
+    map[key].push(d.getDate())
   }
   return map
 }
