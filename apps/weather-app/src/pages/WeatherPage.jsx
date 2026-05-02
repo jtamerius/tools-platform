@@ -260,7 +260,7 @@ function buildTickerTraces(forecast, xRangeStart, xRangeEnd) {
       traces.push({
         type: 'scatter', mode: 'lines',
         x: xs, y: ys,
-        line: { color, width: 1 + (count / n) * 4 },
+        line: { color, width: (1 + (count / n) * 4) * 0.25 },
         hoverinfo: 'skip', showlegend: false,
         yaxis: yAxisId,
       })
