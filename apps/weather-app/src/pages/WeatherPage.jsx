@@ -107,7 +107,7 @@ function colQuantile(matrix, q) {
   return out
 }
 
-function buildTraces(forecast, varKey) {
+function buildTraces(forecast, varKey, xRangeStart) {
   const members = forecast.members || {}
   const hourly  = forecast.hourly  || {}
   const meta    = forecast.meta    || {}
@@ -137,6 +137,14 @@ function buildTraces(forecast, varKey) {
       const vals = s.slice(0, vEnd).map(v => (v == null ? null : +v))
       return varKey === 'precipitation' ? cumsum(vals) : vals
     })
+
+    if (varKey === 'precipitation' && xRangeStart) {
+      const normIdx = Math.max(0, tArr.findIndex(t => t >= xRangeStart))
+      processed.forEach(s => {
+        const offset = s[normIdx] ?? 0
+        for (let i = 0; i < s.length; i++) { if (s[i] != null) s[i] -= offset }
+      })
+    }
 
     if (processed.length === 1) {
       traces.push({
@@ -378,15 +386,9 @@ export default function WeatherPage() {
     : []
 
   const varInfo = VAR_META[variable] || { label: variable, unit: '' }
-  const traces  = forecast ? buildTraces(forecast, variable) : []
-  const { shapes, annotations } = forecast
-    ? buildShapesAndAnnotations(forecast)
-    : { shapes: [], annotations: [] }
   const meta     = forecast?.meta || {}
   const lon      = meta.lon || 0
   const lonLabel = lon < 0 ? `${Math.abs(lon).toFixed(4)}°W` : `${lon.toFixed(4)}°E`
-  const kdeResult = forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null
-  const kdeEv     = kdeResult?.ev
 
   const currentRid  = runIdAtOffset(0)
   const xRangeStart = toMtIso(currentRid + ':00:00Z')
@@ -395,6 +397,13 @@ export default function WeatherPage() {
     d.setUTCDate(d.getUTCDate() + 10)
     return toMtIso(d.toISOString())
   })()
+
+  const traces  = forecast ? buildTraces(forecast, variable, xRangeStart) : []
+  const { shapes, annotations } = forecast
+    ? buildShapesAndAnnotations(forecast)
+    : { shapes: [], annotations: [] }
+  const kdeResult = forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null
+  const kdeEv     = kdeResult?.ev
 
   return (
     <div style={styles.page}>
