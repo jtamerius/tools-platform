@@ -2,6 +2,22 @@ import { useState, useEffect, useRef } from 'react';
 import { fetchPaymentGrid, setCellOverride } from '../services/api';
 import './PaymentGrid.css';
 
+function daysInMonth(year, month) {
+  return new Date(year, month + 1, 0).getDate()
+}
+
+function buildReceivedMap(cells) {
+  const map = {}
+  for (const cell of cells) {
+    if (!cell.date_received) continue
+    const [yr, mo, dy] = cell.date_received.split('-').map(Number)
+    const key = `${yr}-${mo - 1}`
+    if (!map[key]) map[key] = []
+    map[key].push(dy)
+  }
+  return map
+}
+
 const STATUS_OPTIONS = [
   { value: 'auto', label: 'Auto', icon: '↺' },
   { value: 'paid', label: 'Paid', icon: '✓' },
@@ -79,7 +95,9 @@ export default function PaymentGrid({ onSelectAccount, showClosed }) {
             </tr>
           </thead>
           <tbody>
-            {grid.rows.filter(row => showClosed || !row.is_closed).map(row => (
+            {grid.rows.filter(row => showClosed || !row.is_closed).map(row => {
+              const receivedMap = buildReceivedMap(row.cells)
+              return (
               <tr key={row.account_number}>
                 <td
                   className="sticky-col account-cell"
@@ -131,11 +149,31 @@ export default function PaymentGrid({ onSelectAccount, showClosed }) {
                       onClick={e => handleCellClick(e, row.account_number, cell)}
                     >
                       {icon}
+                      {(() => {
+                        const dots = receivedMap[`${cell.year}-${cell.month}`] || [];
+                        if (!dots.length) return null;
+                        const dim = daysInMonth(cell.year, cell.month);
+                        return (
+                          <div className="received-dots">
+                            {dots.map((day, di) => {
+                              const pct = dim > 1 ? (day - 1) / (dim - 1) : 0;
+                              return (
+                                <span
+                                  key={di}
+                                  className="received-dot"
+                                  style={{ left: `calc(3px + ${pct} * (100% - 6px))`, bottom: `${3 + di * 5}px` }}
+                                />
+                              );
+                            })}
+                          </div>
+                        );
+                      })()}
                     </td>
                   );
                 })}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </div>

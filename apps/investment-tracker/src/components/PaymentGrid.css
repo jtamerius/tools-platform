@@ -113,7 +113,27 @@ thead .sticky-col {
   font-weight: 600;
   width: 48px;
   min-width: 48px;
+  position: relative;
 }
+
+.received-dots {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  pointer-events: none;
+}
+
+.received-dot {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.cell-paid .received-dot    { background: rgba(6, 118, 71, 0.5); }
+.cell-missing .received-dot { background: rgba(180, 35, 24, 0.4); }
 
 .cell-paid {
   color: #067647;
