@@ -1,0 +1,259 @@
+import * as cdk from 'aws-cdk-lib';
+import * as s3 from 'aws-cdk-lib/aws-s3';
+import * as ssm from 'aws-cdk-lib/aws-ssm';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
+import * as ecs from 'aws-cdk-lib/aws-ecs';
+import * as glue from 'aws-cdk-lib/aws-glue';
+import * as athena from 'aws-cdk-lib/aws-athena';
+import * as batch from 'aws-cdk-lib/aws-batch';
+import { Construct } from 'constructs';
+import { ToolsEnvConfig } from '../config';
+
+export interface SolarHailStackProps extends cdk.StackProps {
+  cfg: ToolsEnvConfig;
+}
+
+export class SolarHailStack extends cdk.Stack {
+  public readonly dataBucketName: string;
+
+  constructor(scope: Construct, id: string, props: SolarHailStackProps) {
+    super(scope, id, props);
+    const { cfg } = props;
+    const e = cfg.env;
+    const isProd = e === 'production';
+
+    // ── S3: hail event Parquet + Athena query results ────────────────────────
+    const dataBucket = new s3.Bucket(this, 'DataBucket', {
+      bucketName: `tools-solarhail-${e}-${cfg.account}`,
+      encryption: s3.BucketEncryption.S3_MANAGED,
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      versioned: false,
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: !isProd,
+      lifecycleRules: [
+        {
+          id: 'ExpireAthenaResultsAfter7Days',
+          enabled: true,
+          prefix: 'athena-results/',
+          expiration: cdk.Duration.days(7),
+        },
+      ],
+    });
+
+    this.dataBucketName = dataBucket.bucketName;
+
+    // ── Glue catalog database ────────────────────────────────────────────────
+    const database = new glue.CfnDatabase(this, 'GlueDatabase', {
+      catalogId: this.account,
+      databaseInput: {
+        name: `solarhail_${e}`,
+        description: `SolarHail hail event data (${e})`,
+      },
+    });
+
+    // ── Glue table: hail_events with partition projection on event_date ──────
+    //
+    // S3 layout: parquet/hail-events/event_date=YYYY-MM-DD/{metro_id}.parquet
+    // Athena reads event_date from the path via partition projection — no manual
+    // MSCK REPAIR TABLE needed. metro_id is a regular column inside each file.
+    new glue.CfnTable(this, 'HailEventsTable', {
+      catalogId: this.account,
+      databaseName: database.ref,
+      tableInput: {
+        name: 'hail_events',
+        tableType: 'EXTERNAL_TABLE',
+        parameters: {
+          'classification': 'parquet',
+          'has_encrypted_data': 'false',
+          'projection.enabled': 'true',
+          'projection.event_date.type': 'date',
+          'projection.event_date.range': '2026-01-01,NOW+1',
+          'projection.event_date.format': 'yyyy-MM-dd',
+          'projection.event_date.interval': '1',
+          'projection.event_date.interval.unit': 'DAYS',
+          // eslint-disable-next-line no-template-curly-in-string
+          'storage.location.template': `s3://${dataBucket.bucketName}/parquet/hail-events/event_date=\${event_date}/`,
+        },
+        partitionKeys: [
+          { name: 'event_date', type: 'date' },
+        ],
+        storageDescriptor: {
+          location: `s3://${dataBucket.bucketName}/parquet/hail-events/`,
+          inputFormat: 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetInputFormat',
+          outputFormat: 'org.apache.hadoop.hive.ql.io.parquet.MapredParquetHiveOutputFormat',
+          serdeInfo: {
+            serializationLibrary: 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe',
+            parameters: { 'serialization.format': '1' },
+          },
+          compressed: false,
+          storedAsSubDirectories: false,
+          columns: [
+            { name: 'h3_index',              type: 'string' },
+            { name: 'max_mesh_mm',           type: 'float' },
+            { name: 'timestamp',             type: 'timestamp' },
+            { name: 'metro_id',              type: 'string' },
+            { name: 'solar_systems_exposed', type: 'float' },
+          ],
+        },
+      },
+    });
+
+    // ── Athena workgroup ─────────────────────────────────────────────────────
+    new athena.CfnWorkGroup(this, 'AthenaWorkgroup', {
+      name: `solarhail-wg-${e}`,
+      description: `SolarHail Athena workgroup (${e})`,
+      state: 'ENABLED',
+      workGroupConfiguration: {
+        resultConfiguration: {
+          outputLocation: `s3://${dataBucket.bucketName}/athena-results/`,
+        },
+        enforceWorkGroupConfiguration: true,
+        publishCloudWatchMetricsEnabled: false,
+        bytesScannedCutoffPerQuery: 1_073_741_824, // 1 GB per query safety limit
+      },
+    });
+
+    // ── ECR: pipeline container image ────────────────────────────────────────
+    const ecrRepo = new ecr.Repository(this, 'PipelineRepo', {
+      repositoryName: `tools-solarhail-pipeline-${e}`,
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      lifecycleRules: [
+        {
+          description: 'Keep last 10 images',
+          maxImageCount: 10,
+          rulePriority: 1,
+        },
+      ],
+    });
+
+    // ── IAM: Batch execution role (ECR pull + CloudWatch logs) ───────────────
+    const batchExecRole = new iam.Role(this, 'BatchExecutionRole', {
+      roleName: `tools-solarhail-batch-exec-${e}`,
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
+      ],
+    });
+    ecrRepo.grantPull(batchExecRole);
+
+    // ── IAM: Batch job role (S3 write for pipeline output) ───────────────────
+    const batchJobRole = new iam.Role(this, 'BatchJobRole', {
+      roleName: `tools-solarhail-pipeline-${e}`,
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+      description: `SolarHail pipeline task role — writes Parquet to S3 (${e})`,
+    });
+    dataBucket.grantReadWrite(batchJobRole);
+
+    // ── AWS Batch: Fargate Spot compute environment ──────────────────────────
+    // Uses the default VPC — context populated on first `cdk synth` with AWS creds.
+    const vpc = ec2.Vpc.fromLookup(this, 'DefaultVpc', { isDefault: true });
+    const computeEnv = new batch.FargateComputeEnvironment(this, 'ComputeEnv', {
+      computeEnvironmentName: `tools-solarhail-fargate-${e}`,
+      vpc,
+      spot: true,           // Fargate Spot — ~70% cost reduction vs on-demand
+      maxvCpus: 128,        // headroom for all 34 metros in parallel
+    });
+
+    // ── Batch job queue ──────────────────────────────────────────────────────
+    const jobQueue = new batch.JobQueue(this, 'JobQueue', {
+      jobQueueName: `tools-solarhail-queue-${e}`,
+      computeEnvironments: [
+        { computeEnvironment: computeEnv, order: 1 },
+      ],
+    });
+
+    // ── Batch job definition ─────────────────────────────────────────────────
+    // Image tag is overridden per-submission (latest used here as default).
+    // Container env vars are also overridden at submit time for METRO/dates.
+    const jobDef = new batch.EcsJobDefinition(this, 'JobDefinition', {
+      jobDefinitionName: `tools-solarhail-pipeline-${e}`,
+      container: new batch.EcsFargateContainerDefinition(this, 'ContainerDef', {
+        image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'),
+        cpu: 4,
+        memory: cdk.Size.mebibytes(16384),
+        executionRole: batchExecRole,
+        jobRole: batchJobRole,
+        environment: {
+          SOLARHAIL_ENV: e,
+          UPLOAD_S3: 'true',
+          OUT_DIR: '/tmp/solarhail_output',
+          DATA_DIR: '/tmp/solarhail_data',
+          LOG_LEVEL: 'INFO',
+        },
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: `solarhail-pipeline-${e}`,
+          logRetention: cdk.aws_logs.RetentionDays.TWO_WEEKS,
+        }),
+      }),
+    });
+
+    // ── SSM: publish resource names for pipeline, submit script, and API ─────
+    new ssm.StringParameter(this, 'SSMBucketName', {
+      parameterName: `/tools/${e}/solarhail/s3-bucket`,
+      stringValue: dataBucket.bucketName,
+      description: `SolarHail data bucket name (${e})`,
+    });
+
+    new ssm.StringParameter(this, 'SSMDatabaseName', {
+      parameterName: `/tools/${e}/solarhail/glue-database`,
+      stringValue: `solarhail_${e}`,
+      description: `SolarHail Glue database name (${e})`,
+    });
+
+    new ssm.StringParameter(this, 'SSMAthenaWorkgroup', {
+      parameterName: `/tools/${e}/solarhail/athena-workgroup`,
+      stringValue: `solarhail-wg-${e}`,
+      description: `SolarHail Athena workgroup (${e})`,
+    });
+
+    new ssm.StringParameter(this, 'SSMJobQueue', {
+      parameterName: `/tools/${e}/solarhail/batch-job-queue`,
+      stringValue: jobQueue.jobQueueArn,
+      description: `SolarHail Batch job queue ARN (${e})`,
+    });
+
+    new ssm.StringParameter(this, 'SSMJobDefinition', {
+      parameterName: `/tools/${e}/solarhail/batch-job-definition`,
+      stringValue: jobDef.jobDefinitionArn,
+      description: `SolarHail Batch job definition ARN (${e})`,
+    });
+
+    new ssm.StringParameter(this, 'SSMEcrRepo', {
+      parameterName: `/tools/${e}/solarhail/ecr-repo-uri`,
+      stringValue: ecrRepo.repositoryUri,
+      description: `SolarHail ECR repository URI (${e})`,
+    });
+
+    // ── Outputs ──────────────────────────────────────────────────────────────
+    new cdk.CfnOutput(this, 'DataBucketName', {
+      value: dataBucket.bucketName,
+      exportName: `tools-app-solarhail-${e}-DataBucket`,
+    });
+
+    new cdk.CfnOutput(this, 'GlueDatabaseName', {
+      value: `solarhail_${e}`,
+      exportName: `tools-app-solarhail-${e}-GlueDatabase`,
+    });
+
+    new cdk.CfnOutput(this, 'AthenaWorkgroupName', {
+      value: `solarhail-wg-${e}`,
+      exportName: `tools-app-solarhail-${e}-AthenaWorkgroup`,
+    });
+
+    new cdk.CfnOutput(this, 'EcrRepositoryUri', {
+      value: ecrRepo.repositoryUri,
+      exportName: `tools-app-solarhail-${e}-EcrRepoUri`,
+    });
+
+    new cdk.CfnOutput(this, 'BatchJobQueueArn', {
+      value: jobQueue.jobQueueArn,
+      exportName: `tools-app-solarhail-${e}-JobQueueArn`,
+    });
+
+    cdk.Tags.of(this).add('Environment', e);
+    cdk.Tags.of(this).add('Project', 'tools-platform');
+    cdk.Tags.of(this).add('App', 'solarhail');
+  }
+}

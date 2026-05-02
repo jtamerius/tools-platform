@@ -43,6 +43,8 @@ jobs:
       adventure-builder: ${{ steps.filter.outputs.adventure-builder }}
       infra-amplify-adventure-builder: ${{ steps.filter.outputs.infra-amplify-adventure-builder }}
       infra-adventure-builder: ${{ steps.filter.outputs.infra-adventure-builder }}
+      infra-solarhail: ${{ steps.filter.outputs.infra-solarhail }}
+      solarhail-pipeline: ${{ steps.filter.outputs.solarhail-pipeline }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -123,6 +125,16 @@ jobs:
               - 'infra/cdk/bin/app.ts'
               - 'infra/cdk/package.json'
               - 'infra/cdk/package-lock.json'
+            infra-solarhail:
+              - 'infra/cdk/lib/stacks/solarhail-stack.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+              - 'infra/cdk/package.json'
+              - 'infra/cdk/package-lock.json'
+            solarhail-pipeline:
+              - 'apps/solarhail/pipeline/Dockerfile'
+              - 'apps/solarhail/pipeline/requirements.txt'
+              - 'apps/solarhail/pipeline/src/**'
             news-scraper:
               - 'apps/news-scraper/**'
               - 'infra/cdk/lib/stacks/news-scraper-stack.ts'
@@ -986,3 +998,62 @@ jobs:
             esac
           done
           echo "Timed out."; exit 1
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy solarhail infra (S3, Glue, Athena, ECR, Batch)
+  # -----------------------------------------------------------------------
+  deploy-solarhail-production:
+    name: Deploy solarhail Infra — Production
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-solarhail == 'true'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-app-solarhail-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+
+  # -----------------------------------------------------------------------
+  # Job: Build and push SolarHail pipeline Docker image to ECR
+  # -----------------------------------------------------------------------
+  build-push-solarhail-pipeline-production:
+    name: Build & Push SolarHail Pipeline — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-solarhail-production
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.solarhail-pipeline == 'true' &&
+      (needs.deploy-solarhail-production.result == 'success' ||
+       needs.deploy-solarhail-production.result == 'skipped')
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        run: |
+          ECR_URI="606196119553.dkr.ecr.us-east-1.amazonaws.com/tools-solarhail-pipeline-production"
+          SHA="${{ github.sha }}"
+          docker build -t "$ECR_URI:$SHA" -t "$ECR_URI:latest" apps/solarhail/pipeline/
+          docker push "$ECR_URI:$SHA"
+          docker push "$ECR_URI:latest"

@@ -10,6 +10,7 @@ import { LandingPageStack } from '../lib/stacks/landing-page-stack';
 import { NewsScraperStack } from '../lib/stacks/news-scraper-stack';
 import { InvestmentTrackerStack } from '../lib/stacks/investment-tracker-stack';
 import { AdventureBuilderStack } from '../lib/stacks/adventure-builder-stack';
+import { SolarHailStack } from '../lib/stacks/solarhail-stack';
 
 const app = new cdk.App();
 
@@ -131,6 +132,12 @@ new InvestmentTrackerStack(app, `tools-app-investment-tracker-${envName}`, {
 
 // ── App: adventure-builder (DynamoDB + Lambda API + Bedrock) ─────────────────
 new AdventureBuilderStack(app, `tools-app-adventure-builder-${envName}`, {
+  cfg,
+  env: awsEnv,
+});
+
+// ── App: solarhail (S3 + Glue + Athena) ──────────────────────────────────────
+new SolarHailStack(app, `tools-app-solarhail-${envName}`, {
   cfg,
   env: awsEnv,
 });

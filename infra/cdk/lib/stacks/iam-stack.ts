@@ -203,6 +203,41 @@ export class IamStack extends cdk.Stack {
       resources: [`arn:aws:iam::${cfg.account}:role/jtamerius-*`],
     }));
 
+    // ECR push — for building and pushing the SolarHail pipeline Docker image
+    this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ECRGetAuthToken',
+      actions: ['ecr:GetAuthorizationToken'],
+      resources: ['*'],  // GetAuthorizationToken is always account-level
+    }));
+
+    this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ECRPushSolarHail',
+      actions: [
+        'ecr:BatchCheckLayerAvailability',
+        'ecr:GetDownloadUrlForLayer',
+        'ecr:BatchGetImage',
+        'ecr:PutImage',
+        'ecr:InitiateLayerUpload',
+        'ecr:UploadLayerPart',
+        'ecr:CompleteLayerUpload',
+        'ecr:DescribeRepositories',
+      ],
+      resources: [`arn:aws:ecr:${cfg.region}:${cfg.account}:repository/tools-solarhail-pipeline-${e}`],
+    }));
+
+    // PassRole to Batch execution and job roles (needed during CDK Batch stack deploy)
+    this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'PassRoleToBatch',
+      actions: ['iam:PassRole'],
+      resources: [
+        `arn:aws:iam::${cfg.account}:role/tools-solarhail-batch-exec-${e}`,
+        `arn:aws:iam::${cfg.account}:role/tools-solarhail-pipeline-${e}`,
+      ],
+      conditions: {
+        StringEquals: { 'iam:PassedToService': 'ecs-tasks.amazonaws.com' },
+      },
+    }));
+
     // CDK deploy roles — required after cdk bootstrap
     this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
       sid: 'CDKDeployRoles',
