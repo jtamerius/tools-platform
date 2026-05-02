@@ -500,6 +500,21 @@ export default function WeatherPage() {
   const kdeResult = forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null
   const kdeEv     = kdeResult?.ev
 
+  const baselineKdeResult = useMemo(
+    () => baselineForecast ? buildKdeTracesAndLayout(baselineForecast, selectedEventIdx) : null,
+    [baselineForecast, selectedEventIdx] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  let kdeXRange, kdeYRange
+  if (baselineKdeResult) {
+    let xMn = Infinity, xMx = -Infinity, yMx = 0
+    baselineKdeResult.traces.forEach(t => {
+      ;(t.x || []).forEach(v => { if (v != null && !isNaN(v)) { xMn = Math.min(xMn, v); xMx = Math.max(xMx, v) } })
+      ;(t.y || []).forEach(v => { if (v != null && !isNaN(v)) yMx = Math.max(yMx, v) })
+    })
+    if (isFinite(xMn)) kdeXRange = [xMn, xMx]
+    if (yMx > 0)       kdeYRange = [0, yMx * 1.1]
+  }
+
   return (
     <div style={styles.page}>
       <div style={styles.controls}>
@@ -630,6 +645,8 @@ export default function WeatherPage() {
                     font: { size: 15 },
                   },
                   template: 'plotly_white',
+                  xaxis: { ...kdeResult.layout.xaxis, range: kdeXRange },
+                  yaxis: { ...kdeResult.layout.yaxis, range: kdeYRange },
                 }}
                 config={{ scrollZoom: false, displayModeBar: 'hover', responsive: true }}
                 style={{ width: '100%' }}
