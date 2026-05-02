@@ -168,12 +168,8 @@ function buildShapesAndAnnotations(forecast) {
   const annotations = []
 
   events.forEach((ev, i) => {
-    const x0  = toMtIso(ev.start_time)
-    const x1  = toMtIso(ev.end_time)
-    const mid = toMtIso(new Date(
-      (new Date(ev.start_time.endsWith('Z') ? ev.start_time : ev.start_time + 'Z').getTime() +
-       new Date(ev.end_time.endsWith('Z')   ? ev.end_time   : ev.end_time   + 'Z').getTime()) / 2
-    ).toISOString())
+    const x0 = toMtIso(ev.start_time)
+    const x1 = toMtIso(ev.end_time)
 
     shapes.push({
       type: 'rect', xref: 'x', yref: 'paper', x0, x1, y0: 0, y1: 1,
@@ -182,12 +178,11 @@ function buildShapesAndAnnotations(forecast) {
       layer: 'below',
     })
     annotations.push({
-      x: mid, y: 0.97, xref: 'x', yref: 'y domain',
+      x: x0, y: 0.97, xref: 'x', yref: 'y domain',
       text: `<b>E${ev.event_index}</b>`,
-      showarrow: false, font: { size: 11, color: '#333' },
-      bgcolor: 'rgba(255,255,255,0.82)',
-      bordercolor: EVENT_BORDER[i % EVENT_BORDER.length].replace('0.6', '0.8'),
-      borderwidth: 1, borderpad: 4, yanchor: 'top',
+      showarrow: false,
+      font: { size: 16, color: EVENT_BORDER[i % EVENT_BORDER.length].replace('0.6', '1.0') },
+      xanchor: 'left', yanchor: 'top',
     })
   })
 
@@ -393,6 +388,14 @@ export default function WeatherPage() {
   const kdeResult = forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null
   const kdeEv     = kdeResult?.ev
 
+  const currentRid  = runIdAtOffset(0)
+  const xRangeStart = toMtIso(currentRid + ':00:00Z')
+  const xRangeEnd   = (() => {
+    const d = new Date(currentRid + ':00:00Z')
+    d.setUTCDate(d.getUTCDate() + 10)
+    return toMtIso(d.toISOString())
+  })()
+
   return (
     <div style={styles.page}>
       <div style={styles.controls}>
@@ -466,8 +469,8 @@ export default function WeatherPage() {
             type="range"
             min={0}
             max={MAX_RUN_OFFSET}
-            value={runOffset}
-            onChange={e => setRunOffset(+e.target.value)}
+            value={MAX_RUN_OFFSET - runOffset}
+            onChange={e => setRunOffset(MAX_RUN_OFFSET - +e.target.value)}
             style={styles.slider}
           />
         </div>
@@ -500,7 +503,7 @@ export default function WeatherPage() {
               hovermode: 'x unified',
               dragmode: 'pan',
               legend: { orientation: 'h', yanchor: 'top', y: -0.15, xanchor: 'center', x: 0.5, font: { size: 11 } },
-              xaxis: { tickformat: '%a\n%b %d', gridcolor: 'rgba(200,200,200,0.4)' },
+              xaxis: { range: [xRangeStart, xRangeEnd], tickformat: '%a\n%b %d', gridcolor: 'rgba(200,200,200,0.4)' },
               yaxis: { title: { text: `${varInfo.label} (${varInfo.unit})` }, gridcolor: 'rgba(200,200,200,0.4)' },
               margin: { t: 80, b: 80 },
               shapes,
