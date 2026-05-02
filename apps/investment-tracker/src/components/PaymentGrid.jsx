@@ -162,7 +162,7 @@ export default function PaymentGrid({ onSelectAccount, showClosed }) {
                                 <span
                                   key={di}
                                   className="received-dot"
-                                  style={{ left: `calc(3px + ${pct} * (100% - 6px))`, bottom: `${3 + di * 5}px` }}
+                                  style={{ left: `calc(3px + ${pct} * (100% - 6px))`, top: `${3 + di * 5}px` }}
                                 />
                               );
                             })}
