@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import Plot from 'react-plotly.js'
 
-const CDN_BASE = 'https://www.jtamerius.com'
+const CDN_BASE = 'https://d326hhew368icp.cloudfront.net'
 
 const MODEL_COLORS = {
   gfs_seamless:  '#1f77b4',
