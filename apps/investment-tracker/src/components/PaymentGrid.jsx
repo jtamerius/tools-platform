@@ -158,11 +158,12 @@ export default function PaymentGrid({ onSelectAccount, showClosed }) {
                           <div className="received-dots">
                             {dots.map((day, di) => {
                               const pct = dim > 1 ? (day - 1) / (dim - 1) : 0;
+                              const stackIndex = dots.slice(0, di).filter(d => d === day).length;
                               return (
                                 <span
                                   key={di}
                                   className="received-dot"
-                                  style={{ left: `calc(3px + ${pct} * (100% - 6px))`, top: `${3 + di * 5}px` }}
+                                  style={{ left: `calc(3px + ${pct} * (100% - 6px))`, top: `${3 + stackIndex * 5}px` }}
                                 />
                               );
                             })}

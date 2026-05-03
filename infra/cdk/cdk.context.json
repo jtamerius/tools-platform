@@ -2,5 +2,55 @@
   "ssm:account=606196119553:parameterName=/tools/production/cognito/user-pool-id:region=us-east-1": "us-east-1_2uleQ81er",
   "ssm:account=606196119553:parameterName=/tools/production/cognito/client-id:region=us-east-1": "6epcdrtkupskpeik9m10bb6i20",
   "ssm:account=606196119553:parameterName=/tools/staging/cognito/user-pool-id:region=us-east-1": "us-east-1_hKaIobmpm",
-  "ssm:account=606196119553:parameterName=/tools/staging/cognito/client-id:region=us-east-1": "d3bhlrhnpbiukg0upfjpuuq7f"
+  "ssm:account=606196119553:parameterName=/tools/staging/cognito/client-id:region=us-east-1": "d3bhlrhnpbiukg0upfjpuuq7f",
+  "vpc-provider:account=606196119553:filter.isDefault=true:region=us-east-1:returnAsymmetricSubnets=true": {
+    "vpcId": "vpc-0309881cf280830c6",
+    "vpcCidrBlock": "172.31.0.0/16",
+    "ownerAccountId": "606196119553",
+    "availabilityZones": [],
+    "subnetGroups": [
+      {
+        "name": "Public",
+        "type": "Public",
+        "subnets": [
+          {
+            "subnetId": "subnet-0c1d74265f110fc5a",
+            "cidr": "172.31.0.0/20",
+            "availabilityZone": "us-east-1a",
+            "routeTableId": "rtb-04a76a71631f52790"
+          },
+          {
+            "subnetId": "subnet-0594e41e36538efb8",
+            "cidr": "172.31.80.0/20",
+            "availabilityZone": "us-east-1b",
+            "routeTableId": "rtb-04a76a71631f52790"
+          },
+          {
+            "subnetId": "subnet-06bf0953609fae876",
+            "cidr": "172.31.16.0/20",
+            "availabilityZone": "us-east-1c",
+            "routeTableId": "rtb-04a76a71631f52790"
+          },
+          {
+            "subnetId": "subnet-0903d5d0a3a52849e",
+            "cidr": "172.31.32.0/20",
+            "availabilityZone": "us-east-1d",
+            "routeTableId": "rtb-04a76a71631f52790"
+          },
+          {
+            "subnetId": "subnet-068b7c7520de8fe98",
+            "cidr": "172.31.48.0/20",
+            "availabilityZone": "us-east-1e",
+            "routeTableId": "rtb-04a76a71631f52790"
+          },
+          {
+            "subnetId": "subnet-02e066428bb692c0e",
+            "cidr": "172.31.64.0/20",
+            "availabilityZone": "us-east-1f",
+            "routeTableId": "rtb-04a76a71631f52790"
+          }
+        ]
+      }
+    ]
+  }
 }
