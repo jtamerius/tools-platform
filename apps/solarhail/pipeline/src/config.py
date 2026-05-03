@@ -79,7 +79,7 @@ DEEPSOLAR_COUNT_COL = "Total PV system count"
 TIGER_BG_NATIONAL_URL = "https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_us_bg_500k.zip"
 
 # Overture release — pin to a specific release before building
-OVERTURE_RELEASE = "2024-09-18.0"
+OVERTURE_RELEASE = "2026-04-15.0"
 OVERTURE_BUCKET = "overturemaps-us-west-2"
 
 # Building class filter
