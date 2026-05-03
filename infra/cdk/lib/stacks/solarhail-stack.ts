@@ -147,14 +147,19 @@ export class SolarHailStack extends cdk.Stack {
     dataBucket.grantReadWrite(batchJobRole);
 
     // ── AWS Batch: Fargate Spot compute environment ──────────────────────────
-    // Uses the default VPC — context populated on first `cdk synth` with AWS creds.
+    // Uses the default VPC public subnets with public IP assignment so tasks
+    // can reach ECR and NOAA S3 without a NAT gateway or VPC endpoints.
     const vpc = ec2.Vpc.fromLookup(this, 'DefaultVpc', { isDefault: true });
     const computeEnv = new batch.FargateComputeEnvironment(this, 'ComputeEnv', {
       computeEnvironmentName: `tools-solarhail-fargate-${e}`,
       vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
       spot: true,           // Fargate Spot — ~70% cost reduction vs on-demand
-      maxvCpus: 128,        // headroom for all 34 metros in parallel
+      maxvCpus: 128,
     });
+    // Force public IP so tasks can reach ECR/S3 without NAT or VPC endpoints
+    (computeEnv.node.defaultChild as batch.CfnComputeEnvironment)
+      .addPropertyOverride('ComputeResources.AssignPublicIp', 'ENABLED');
 
     // ── Batch job queue ──────────────────────────────────────────────────────
     const jobQueue = new batch.JobQueue(this, 'JobQueue', {
