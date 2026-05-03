@@ -157,9 +157,6 @@ export class SolarHailStack extends cdk.Stack {
       spot: true,           // Fargate Spot — ~70% cost reduction vs on-demand
       maxvCpus: 128,
     });
-    // Force public IP so tasks can reach ECR/S3 without NAT or VPC endpoints
-    (computeEnv.node.defaultChild as batch.CfnComputeEnvironment)
-      .addPropertyOverride('ComputeResources.AssignPublicIp', 'ENABLED');
 
     // ── Batch job queue ──────────────────────────────────────────────────────
     const jobQueue = new batch.JobQueue(this, 'JobQueue', {
@@ -180,6 +177,7 @@ export class SolarHailStack extends cdk.Stack {
         memory: cdk.Size.mebibytes(16384),
         executionRole: batchExecRole,
         jobRole: batchJobRole,
+        assignPublicIp: true,  // required to reach ECR/S3 from public subnets without NAT
         environment: {
           SOLARHAIL_ENV: e,
           UPLOAD_S3: 'true',
