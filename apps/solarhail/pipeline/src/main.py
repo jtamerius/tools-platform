@@ -130,6 +130,10 @@ def run_metro_day(metro_id: str, date_: date, out_dir: Path, data_dir: Path, upl
     solar = assign_solar_to_h3(buildings, deepsolar_csv, tiger_shp)
     enriched = calculate_impact(daily, solar)
 
+    if enriched.empty:
+        logger.info("No solar overlap for %s on %s — no output", metro_id, date_)
+        return None
+
     import pyarrow as pa
     import pyarrow.parquet as pq
 
