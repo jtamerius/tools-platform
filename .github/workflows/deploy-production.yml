@@ -1025,6 +1025,31 @@ jobs:
           out=$(npx cdk deploy tools-app-solarhail-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
+  # Job: Run SolarHail pipeline tests (fast + slow integration)
+  # -----------------------------------------------------------------------
+  test-solarhail-pipeline-production:
+    name: Test SolarHail Pipeline — Production
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.solarhail-pipeline == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
+            libeccodes-dev libgeos-dev libproj-dev gcc g++
+      - name: Install Python dependencies
+        run: |
+          pip install --no-cache-dir -r apps/solarhail/pipeline/requirements.txt
+          pip install pytest
+      - name: Run tests
+        working-directory: apps/solarhail/pipeline
+        run: pytest tests/ -v --tb=short
+
+  # -----------------------------------------------------------------------
   # Job: Build and push SolarHail pipeline Docker image to ECR
   # -----------------------------------------------------------------------
   build-push-solarhail-pipeline-production:
@@ -1033,10 +1058,12 @@ jobs:
     needs:
       - detect-changes
       - deploy-solarhail-production
+      - test-solarhail-pipeline-production
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.solarhail-pipeline == 'true' &&
+      needs.test-solarhail-pipeline-production.result == 'success' &&
       (needs.deploy-solarhail-production.result == 'success' ||
        needs.deploy-solarhail-production.result == 'skipped')
     environment: production
