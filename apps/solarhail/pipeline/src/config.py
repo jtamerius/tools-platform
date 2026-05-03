@@ -82,10 +82,8 @@ TIGER_BG_NATIONAL_URL = "https://www2.census.gov/geo/tiger/GENZ2023/shp/cb_2023_
 OVERTURE_RELEASE = "2026-04-15.0"
 OVERTURE_BUCKET = "overturemaps-us-west-2"
 
-# Building class filter
+# Building class filter (NULL class = unclassified buildings, ~94% of Overture data)
 OVERTURE_CLASSES = ("residential", "commercial")
-BUILDING_AREA_MIN_SQM = 4.6    # 50 sq ft
-BUILDING_AREA_MAX_SQM = 929.0  # 10,000 sq ft
 
 # Overrideable via env vars — defaults match the staging CDK stack.
 # In production set SOLARHAIL_ENV=production (or set each var explicitly).

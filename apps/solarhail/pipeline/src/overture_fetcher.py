@@ -8,8 +8,6 @@ import duckdb
 import pandas as pd
 
 from .config import (
-    BUILDING_AREA_MAX_SQM,
-    BUILDING_AREA_MIN_SQM,
     H3_RESOLUTION,
     METROS,
     OVERTURE_BUCKET,
@@ -49,6 +47,8 @@ def fetch_buildings(metro_id: str) -> pd.DataFrame:
 
     logger.info("Querying Overture buildings for metro %s", metro_id)
 
+    # class IS NULL covers the ~94% of Overture buildings with no classification tag;
+    # ST_Area is omitted because OGC:CRS84 geometry returns sq-degrees, not sq-meters.
     query = f"""
         SELECT
             ST_X(ST_Centroid(geometry)) AS centroid_lon,
@@ -58,8 +58,7 @@ def fetch_buildings(metro_id: str) -> pd.DataFrame:
           AND bbox.xmax <= {lon_max}
           AND bbox.ymin >= {lat_min}
           AND bbox.ymax <= {lat_max}
-          AND class IN ({classes_sql})
-          AND ST_Area(geometry) BETWEEN {BUILDING_AREA_MIN_SQM} AND {BUILDING_AREA_MAX_SQM}
+          AND (class IS NULL OR class IN ({classes_sql}))
     """
 
     buildings = con.execute(query).df()
