@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { METROS, BACKFILL_START, BACKFILL_END } from './config/metros';
+import { useState, useMemo } from 'react';
+import { METRO_LIST, BACKFILL_START, BACKFILL_END } from './config/metros';
 import { useHailData } from './hooks/useHailData';
 import { MetroSelector } from './components/MetroSelector';
 import { DateRangeSlider } from './components/DateRangeSlider';
@@ -8,14 +8,17 @@ import { Legend } from './components/Legend';
 import { HailMap } from './components/HailMap';
 import styles from './App.module.css';
 
-const DEFAULT_METRO = METROS[0];
-
 export function App() {
-  const [selectedMetro, setSelectedMetro] = useState(DEFAULT_METRO);
+  const [selectedMetroId, setSelectedMetroId] = useState(METRO_LIST[0].id);
   const [startDate, setStartDate] = useState(BACKFILL_START);
   const [endDate, setEndDate] = useState(BACKFILL_END);
 
-  const { cells, stats, loading, error } = useHailData(selectedMetro, startDate, endDate);
+  const selectedMetro = useMemo(
+    () => METRO_LIST.find(m => m.id === selectedMetroId),
+    [selectedMetroId],
+  );
+
+  const { cells, stats, loading, error } = useHailData(selectedMetroId, startDate, endDate);
 
   return (
     <div className={styles.layout}>
@@ -26,17 +29,14 @@ export function App() {
         </header>
 
         <section className={styles.section}>
-          <MetroSelector metros={METROS} value={selectedMetro} onChange={setSelectedMetro} />
+          <MetroSelector value={selectedMetroId} onChange={setSelectedMetroId} />
         </section>
 
         <section className={styles.section}>
           <DateRangeSlider
-            min={BACKFILL_START}
-            max={BACKFILL_END}
-            start={startDate}
-            end={endDate}
-            onStartChange={setStartDate}
-            onEndChange={setEndDate}
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(start, end) => { setStartDate(start); setEndDate(end); }}
           />
         </section>
 

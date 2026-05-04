@@ -54,14 +54,14 @@ logger = logging.getLogger(__name__)
 
 
 def upload_to_s3(local_path: Path, metro_id: str, event_date: date) -> str:
-    """Upload a local Parquet file to S3 under the Hive partition path.
+    """Upload a local JSON.gz file to S3 under the Hive partition path.
 
-    S3 key: parquet/hail-events/event_date=YYYY-MM-DD/{metro_id}.parquet
+    S3 key: parquet/hail-events/event_date=YYYY-MM-DD/{metro_id}.json.gz
 
     Returns:
         Full s3:// URI of the uploaded object.
     """
-    key = f"{S3_PARQUET_PREFIX}/event_date={event_date.strftime('%Y-%m-%d')}/{metro_id}.parquet"
+    key = f"{S3_PARQUET_PREFIX}/event_date={event_date.strftime('%Y-%m-%d')}/{metro_id}.json.gz"
     s3 = boto3.client("s3")
     s3.upload_file(str(local_path), S3_BUCKET, key)
     uri = f"s3://{S3_BUCKET}/{key}"
@@ -134,14 +134,11 @@ def run_metro_day(metro_id: str, date_: date, out_dir: Path, data_dir: Path, upl
         logger.info("No solar overlap for %s on %s — no output", metro_id, date_)
         return None
 
-    import pyarrow as pa
-    import pyarrow.parquet as pq
-
-    out_path = out_dir / f"{metro_id}_{date_.strftime('%Y%m%d')}.parquet"
+    out_path = out_dir / f"{metro_id}_{date_.strftime('%Y%m%d')}.json.gz"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    # Write final enriched schema (5 columns) — not the Module 2 schema from write_parquet
-    table = pa.Table.from_pandas(enriched, preserve_index=False)
-    pq.write_table(table, str(out_path))
+    enriched[["h3_index", "max_mesh_mm", "solar_systems_exposed"]].to_json(
+        out_path, orient="records", lines=True,
+    )
     logger.info("Wrote %d rows to %s", len(enriched), out_path)
 
     if upload_s3:

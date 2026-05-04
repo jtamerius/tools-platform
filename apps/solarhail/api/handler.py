@@ -2,12 +2,12 @@
 
 GET /api/events?metro=<id>&start=YYYY-MM-DD&end=YYYY-MM-DD
 
-Reads Parquet files from S3 using S3 Select (no extra dependencies beyond boto3).
-One file per metro per event_date under parquet/hail-events/event_date=YYYY-MM-DD/.
+Reads newline-delimited JSON.gz files from S3 (one per metro per event_date).
 Files that don't exist (no-hail days) are silently skipped.
 """
 from __future__ import annotations
 
+import gzip
 import json
 import logging
 import os
@@ -71,7 +71,7 @@ def _list_keys(metro: str, start_d: date, end_d: date) -> list[tuple[str, str]]:
     for page in paginator.paginate(Bucket=BUCKET, Prefix=f"{PREFIX}/"):
         for obj in page.get("Contents", []):
             key = obj["Key"]
-            if not key.endswith(f"/{metro}.parquet"):
+            if not key.endswith(f"/{metro}.json.gz"):
                 continue
             try:
                 date_str = key.split("event_date=")[1].split("/")[0]
@@ -83,27 +83,20 @@ def _list_keys(metro: str, start_d: date, end_d: date) -> list[tuple[str, str]]:
     return results
 
 
-def _select_file(event_date: str, key: str) -> list[dict]:
+def _read_file(event_date: str, key: str) -> list[dict]:
     try:
-        resp = s3.select_object_content(
-            Bucket=BUCKET,
-            Key=key,
-            ExpressionType="SQL",
-            Expression="SELECT h3_index, max_mesh_mm, solar_systems_exposed FROM S3Object",
-            InputSerialization={"Parquet": {}},
-            OutputSerialization={"JSON": {"RecordDelimiter": "\n"}},
-        )
-        rows = []
-        for chunk in resp["Payload"]:
-            if "Records" in chunk:
-                for line in chunk["Records"]["Payload"].decode("utf-8").strip().split("\n"):
-                    if line:
-                        row = json.loads(line)
-                        row["event_date"] = event_date
-                        rows.append(row)
+        resp = s3.get_object(Bucket=BUCKET, Key=key)
+        with gzip.open(resp["Body"], "rt") as f:
+            rows = []
+            for line in f:
+                line = line.strip()
+                if line:
+                    row = json.loads(line)
+                    row["event_date"] = event_date
+                    rows.append(row)
         return rows
     except Exception as exc:
-        logger.warning("S3 Select failed for %s: %s", key, exc)
+        logger.warning("Failed to read %s: %s", key, exc)
         return []
 
 
@@ -112,7 +105,7 @@ def _fetch_parallel(keys: list[tuple[str, str]]) -> list[dict]:
         return []
     rows: list[dict] = []
     with ThreadPoolExecutor(max_workers=min(len(keys), 20)) as pool:
-        futures = {pool.submit(_select_file, ed, k): ed for ed, k in keys}
+        futures = {pool.submit(_read_file, ed, k): ed for ed, k in keys}
         for fut in as_completed(futures):
             rows.extend(fut.result())
     return rows
