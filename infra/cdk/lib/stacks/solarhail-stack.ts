@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
@@ -8,6 +9,9 @@ import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as glue from 'aws-cdk-lib/aws-glue';
 import * as athena from 'aws-cdk-lib/aws-athena';
 import * as batch from 'aws-cdk-lib/aws-batch';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import { Construct } from 'constructs';
 import { ToolsEnvConfig } from '../config';
 
@@ -192,6 +196,72 @@ export class SolarHailStack extends cdk.Stack {
       }),
     });
 
+    // ── Lambda: public API (S3 Select — no auth, no external deps) ──────────
+    const apiFn = new lambda.Function(this, 'ApiFunction', {
+      functionName: `tools-solarhail-api-${e}`,
+      description: `SolarHail public API — reads hail event Parquet via S3 Select (${e})`,
+      runtime: lambda.Runtime.PYTHON_3_12,
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/solarhail/api')),
+      handler: 'handler.handler',
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      environment: {
+        S3_BUCKET: dataBucket.bucketName,
+        S3_PREFIX: 'parquet/hail-events',
+      },
+      logRetention: logs.RetentionDays.ONE_MONTH,
+    });
+
+    dataBucket.grantRead(apiFn);
+
+    // ── API Gateway v2 (HTTP API, no auth — public site) ────────────────────
+    const httpApi = new apigwv2.CfnApi(this, 'HttpApi', {
+      name: `tools-solarhail-api-${e}`,
+      description: `SolarHail public hail data API (${e})`,
+      protocolType: 'HTTP',
+      corsConfiguration: {
+        allowOrigins: ['*'],
+        allowMethods: ['GET', 'OPTIONS'],
+        allowHeaders: ['Content-Type'],
+        allowCredentials: false,
+        maxAge: 300,
+      },
+    });
+
+    const integration = new apigwv2.CfnIntegration(this, 'ApiIntegration', {
+      apiId: httpApi.ref,
+      integrationType: 'AWS_PROXY',
+      integrationUri: apiFn.functionArn,
+      payloadFormatVersion: '2.0',
+    });
+
+    new apigwv2.CfnRoute(this, 'EventsRoute', {
+      apiId: httpApi.ref,
+      routeKey: 'GET /api/events',
+      target: `integrations/${integration.ref}`,
+    });
+
+    new apigwv2.CfnRoute(this, 'OptionsRoute', {
+      apiId: httpApi.ref,
+      routeKey: 'OPTIONS /api/events',
+      target: `integrations/${integration.ref}`,
+    });
+
+    new apigwv2.CfnStage(this, 'ApiStage', {
+      apiId: httpApi.ref,
+      stageName: '$default',
+      autoDeploy: true,
+    });
+
+    new lambda.CfnPermission(this, 'ApiInvokePermission', {
+      functionName: apiFn.functionArn,
+      action: 'lambda:InvokeFunction',
+      principal: 'apigateway.amazonaws.com',
+      sourceArn: `arn:aws:execute-api:${cfg.region}:${cfg.account}:${httpApi.ref}/*/*`,
+    });
+
+    const apiUrl = `https://${httpApi.ref}.execute-api.${cfg.region}.amazonaws.com`;
+
     // ── SSM: publish resource names for pipeline, submit script, and API ─────
     new ssm.StringParameter(this, 'SSMBucketName', {
       parameterName: `/tools/${e}/solarhail/s3-bucket`,
@@ -229,6 +299,12 @@ export class SolarHailStack extends cdk.Stack {
       description: `SolarHail ECR repository URI (${e})`,
     });
 
+    new ssm.StringParameter(this, 'SSMApiUrl', {
+      parameterName: `/tools/${e}/solarhail/api-url`,
+      stringValue: apiUrl,
+      description: `SolarHail public API URL (${e})`,
+    });
+
     // ── Outputs ──────────────────────────────────────────────────────────────
     new cdk.CfnOutput(this, 'DataBucketName', {
       value: dataBucket.bucketName,
@@ -253,6 +329,11 @@ export class SolarHailStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'BatchJobQueueArn', {
       value: jobQueue.jobQueueArn,
       exportName: `tools-app-solarhail-${e}-JobQueueArn`,
+    });
+
+    new cdk.CfnOutput(this, 'ApiUrl', {
+      value: apiUrl,
+      exportName: `tools-app-solarhail-${e}-ApiUrl`,
     });
 
     cdk.Tags.of(this).add('Environment', e);

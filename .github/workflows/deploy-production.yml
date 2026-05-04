@@ -45,6 +45,8 @@ jobs:
       infra-adventure-builder: ${{ steps.filter.outputs.infra-adventure-builder }}
       infra-solarhail: ${{ steps.filter.outputs.infra-solarhail }}
       solarhail-pipeline: ${{ steps.filter.outputs.solarhail-pipeline }}
+      solarhail-frontend: ${{ steps.filter.outputs.solarhail-frontend }}
+      infra-amplify-solarhail: ${{ steps.filter.outputs.infra-amplify-solarhail }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -127,6 +129,7 @@ jobs:
               - 'infra/cdk/package-lock.json'
             infra-solarhail:
               - 'infra/cdk/lib/stacks/solarhail-stack.ts'
+              - 'apps/solarhail/api/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
               - 'infra/cdk/package.json'
@@ -135,6 +138,13 @@ jobs:
               - 'apps/solarhail/pipeline/Dockerfile'
               - 'apps/solarhail/pipeline/requirements.txt'
               - 'apps/solarhail/pipeline/src/**'
+            solarhail-frontend:
+              - 'apps/solarhail/frontend/**'
+            infra-amplify-solarhail:
+              - 'infra/cdk/lib/stacks/amplify-stack.ts'
+              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
             news-scraper:
               - 'apps/news-scraper/**'
               - 'infra/cdk/lib/stacks/news-scraper-stack.ts'
@@ -1084,3 +1094,120 @@ jobs:
           docker build -t "$ECR_URI:$SHA" -t "$ECR_URI:latest" apps/solarhail/pipeline/
           docker push "$ECR_URI:$SHA"
           docker push "$ECR_URI:latest"
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy SolarHail Amplify hosting stack
+  # -----------------------------------------------------------------------
+  deploy-amplify-solarhail-production:
+    name: Deploy Amplify (solarhail) — Production
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-amplify-solarhail == 'true'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-amplify-solarhail-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy SolarHail frontend via Amplify
+  # -----------------------------------------------------------------------
+  deploy-solarhail-frontend-production:
+    name: Deploy SolarHail Frontend — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-solarhail-production
+      - deploy-amplify-solarhail-production
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.solarhail-frontend == 'true' &&
+      (needs.deploy-solarhail-production.result == 'success' ||
+       needs.deploy-solarhail-production.result == 'skipped') &&
+      (needs.deploy-amplify-solarhail-production.result == 'success' ||
+       needs.deploy-amplify-solarhail-production.result == 'skipped')
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Fetch build env vars from SSM
+        run: |
+          echo "VITE_API_URL=$(aws ssm get-parameter \
+            --name /tools/production/solarhail/api-url \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+
+      - name: Install and build
+        working-directory: apps/solarhail/frontend
+        run: |
+          npm install --ignore-scripts
+          npm run build
+
+      - name: Package and deploy to Amplify
+        id: deploy
+        run: |
+          AMPLIFY_APP_ID=$(aws cloudformation describe-stacks \
+            --stack-name tools-shared-amplify-solarhail-production \
+            --query "Stacks[0].Outputs[?OutputKey=='AmplifyAppId'].OutputValue | [0]" \
+            --output text --no-cli-pager)
+
+          cd apps/solarhail/frontend/dist
+          zip -r ../dist.zip .
+          cd ..
+
+          RESULT=$(aws amplify create-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name main --output json --no-cli-pager)
+
+          JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
+          ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
+
+          curl --fail -T dist.zip "$ZIP_URL"
+
+          aws amplify start-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name main --job-id "$JOB_ID" --no-cli-pager
+
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "amplify_app_id=$AMPLIFY_APP_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for deployment to complete
+        run: |
+          JOB_ID="${{ steps.deploy.outputs.job_id }}"
+          APP_ID="${{ steps.deploy.outputs.amplify_app_id }}"
+          BRANCH="main"
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(aws amplify get-job \
+              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text --no-cli-pager)
+            echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
+            esac
+          done
+          echo "Timed out."; exit 1

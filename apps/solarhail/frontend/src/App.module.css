@@ -1,0 +1,64 @@
+.layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background: #0b0d18;
+  color: #e8eaf0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+}
+
+.sidebar {
+  width: 300px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: #0e1120;
+  border-right: 1px solid #1e2540;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.sidebarHeader {
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid #1e2540;
+}
+
+.appTitle {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e8eaf0;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.appSubtitle {
+  font-size: 12px;
+  color: #5b6480;
+  margin: 4px 0 0;
+}
+
+.section {
+  padding: 16px 20px;
+  border-bottom: 1px solid #1e2540;
+}
+
+.legendSection {
+  padding: 16px 20px;
+  margin-top: auto;
+}
+
+.error {
+  font-size: 13px;
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.08);
+  border: 1px solid rgba(255, 107, 107, 0.2);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.mapArea {
+  flex: 1;
+  position: relative;
+  min-width: 0;
+}

@@ -101,6 +101,15 @@ const adventureBuilderAmplify = new AmplifyStack(app, `tools-shared-amplify-adve
   env: awsEnv,
 });
 
+const solarHailAmplify = new AmplifyStack(app, `tools-shared-amplify-solarhail-${envName}`, {
+  cfg,
+  appName: 'solarhail',
+  subdomain: 'solarhail',
+  amplifyServiceRoleArn,
+  exportPrefix: 'tools-shared-amplify-solarhail',
+  env: awsEnv,
+});
+
 // ── Shared: Monitoring ───────────────────────────────────────────────────────
 new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
   cfg,
@@ -110,6 +119,7 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
     financeAmplify.appId,
     investmentTrackerAmplify.appId,
     adventureBuilderAmplify.appId,
+    solarHailAmplify.appId,
   ],
   env: awsEnv,
 });
@@ -136,7 +146,7 @@ new AdventureBuilderStack(app, `tools-app-adventure-builder-${envName}`, {
   env: awsEnv,
 });
 
-// ── App: solarhail (S3 + Glue + Athena) ──────────────────────────────────────
+// ── App: solarhail (S3 + Glue + Athena + Batch + Lambda API) ─────────────────
 new SolarHailStack(app, `tools-app-solarhail-${envName}`, {
   cfg,
   env: awsEnv,
