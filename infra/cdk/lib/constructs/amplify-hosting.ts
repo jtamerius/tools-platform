@@ -89,6 +89,7 @@ export class AmplifyHosting extends Construct {
         ],
       });
       if (legacyDomainLogicalId) domain.overrideLogicalId(legacyDomainLogicalId);
+      domain.node.addDependency(branch);
     }
 
     this.appId = app.attrAppId;
