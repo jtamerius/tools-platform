@@ -1,6 +1,7 @@
 """SolarHail API — Lambda handler.
 
 GET /api/events?metro=<id>&start=YYYY-MM-DD&end=YYYY-MM-DD
+GET /api/solar?metro=<id>
 
 Reads newline-delimited JSON.gz files from S3 (one per metro per event_date).
 Files that don't exist (no-hail days) are silently skipped.
@@ -36,7 +37,12 @@ def handler(event, context):  # noqa: ARG001
     if method == "OPTIONS":
         return {"statusCode": 200, "headers": CORS, "body": ""}
 
+    path = (event.get("requestContext") or {}).get("http", {}).get("path", "") or event.get("rawPath", "")
     params = event.get("queryStringParameters") or {}
+
+    if path.rstrip("/").endswith("/solar"):
+        return _handle_solar(params)
+
     metro = params.get("metro", "").strip().lower()
     start = params.get("start", "")
     end = params.get("end", "")
@@ -109,6 +115,27 @@ def _fetch_parallel(keys: list[tuple[str, str]]) -> list[dict]:
         for fut in as_completed(futures):
             rows.extend(fut.result())
     return rows
+
+
+def _handle_solar(params: dict) -> dict:
+    metro = params.get("metro", "").strip().lower()
+    if not metro:
+        return _error(400, "metro is required")
+    key = f"solar/{metro}.json.gz"
+    try:
+        resp = s3.get_object(Bucket=BUCKET, Key=key)
+        with gzip.open(resp["Body"], "rt") as f:
+            cells = [json.loads(line) for line in f if line.strip()]
+    except s3.exceptions.NoSuchKey:
+        cells = []
+    except Exception as exc:
+        logger.warning("Failed to read solar basemap %s: %s", key, exc)
+        cells = []
+    return {
+        "statusCode": 200,
+        "headers": {**CORS, "Content-Type": "application/json"},
+        "body": json.dumps({"metro": metro, "cells": cells}),
+    }
 
 
 def _error(code: int, msg: str) -> dict:

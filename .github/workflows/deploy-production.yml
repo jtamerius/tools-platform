@@ -1171,9 +1171,7 @@ jobs:
             --query "Stacks[0].Outputs[?OutputKey=='AmplifyAppId'].OutputValue | [0]" \
             --output text --no-cli-pager)
 
-          cd apps/solarhail/frontend/dist
-          zip -r ../dist.zip .
-          cd ..
+          cd apps/solarhail/frontend/dist && zip -r ../dist.zip . && cd ..
 
           RESULT=$(aws amplify create-deployment \
             --app-id "$AMPLIFY_APP_ID" \

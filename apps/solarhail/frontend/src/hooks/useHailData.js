@@ -67,6 +67,12 @@ export function useHailData(metro, startDate, endDate) {
       maxMeshMm:         cells.length ? Math.max(...cells.map(c => c.maxMeshMm)) : 0,
       totalSolarExposed: cells.reduce((s, c) => s + c.totalSolarExposed, 0),
       cellsAffected:     cells.length,
+      // Cells by peak MESH bucket: moderate 25–35, significant 35–50, severe 50+
+      cellsBySize: {
+        moderate:    cells.filter(c => c.maxMeshMm >= 25 && c.maxMeshMm < 35).length,
+        significant: cells.filter(c => c.maxMeshMm >= 35 && c.maxMeshMm < 50).length,
+        severe:      cells.filter(c => c.maxMeshMm >= 50).length,
+      },
     };
 
     return { cells, stats };

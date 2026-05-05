@@ -17,6 +17,38 @@
   border-right: 1px solid #1e2540;
   overflow-y: auto;
   overflow-x: hidden;
+  transition: width 0.2s ease;
+  position: relative;
+}
+
+.sidebarCollapsed {
+  width: 32px;
+  overflow: hidden;
+}
+
+.collapseBtn {
+  position: absolute;
+  bottom: 16px;
+  right: 6px;
+  width: 20px;
+  height: 36px;
+  background: #1e2540;
+  border: 1px solid #2a3050;
+  border-radius: 4px;
+  color: #8b93a8;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.collapseBtn:hover {
+  background: #2a3050;
+  color: #e8eaf0;
 }
 
 .sidebarHeader {
@@ -55,6 +87,36 @@
   border: 1px solid rgba(255, 107, 107, 0.2);
   border-radius: 6px;
   padding: 10px 12px;
+}
+
+.toggleBtn {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px 12px;
+  background: #1a1e2e;
+  border: 1px solid #2a3050;
+  border-radius: 6px;
+  color: #8b93a8;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.toggleBtn:hover {
+  background: #2a3050;
+  color: #e8eaf0;
+}
+
+.toggleBtnActive {
+  background: #0d2a2a;
+  border-color: #00b4b4;
+  color: #00d4d4;
+}
+
+.toggleBtnActive:hover {
+  background: #0f3333;
 }
 
 .mapArea {

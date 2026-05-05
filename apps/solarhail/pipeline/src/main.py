@@ -53,6 +53,27 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 logger = logging.getLogger(__name__)
 
 
+def upload_solar_basemap(solar_df: "pd.DataFrame", metro_id: str) -> str:
+    """Upload per-metro solar basemap to S3.
+
+    S3 key: solar/{metro_id}.json.gz
+    Columns written: h3_index, estimated_solar_systems
+    """
+    import gzip, io
+    buf = io.BytesIO()
+    with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
+        solar_df[["h3_index", "estimated_solar_systems"]].to_json(
+            gz, orient="records", lines=True,
+        )
+    buf.seek(0)
+    key = f"solar/{metro_id}.json.gz"
+    s3 = boto3.client("s3")
+    s3.upload_fileobj(buf, S3_BUCKET, key)
+    uri = f"s3://{S3_BUCKET}/{key}"
+    logger.info("Uploaded solar basemap → %s (%d cells)", uri, len(solar_df))
+    return uri
+
+
 def upload_to_s3(local_path: Path, metro_id: str, event_date: date) -> str:
     """Upload a local JSON.gz file to S3 under the Hive partition path.
 
@@ -85,14 +106,24 @@ def list_mrms_keys_for_date(s3_client, date_: date, metro_id: str) -> list[str]:
     return keys
 
 
-def run_metro_day(metro_id: str, date_: date, out_dir: Path, data_dir: Path, upload_s3: bool = False) -> Path | None:
+def run_metro_day(
+    metro_id: str,
+    date_: date,
+    out_dir: Path,
+    data_dir: Path,
+    solar: "pd.DataFrame | None" = None,
+    upload_s3: bool = False,
+) -> Path | None:
     """Run full pipeline (Modules 1-5) for one metro on one day.
 
-    Caller is responsible for pre-filter gating — this function always processes
-    the given date unconditionally.
+    Args:
+        solar: Pre-computed solar DataFrame from assign_solar_to_h3(). When
+               run_backfill calls this in a loop it passes solar once so
+               fetch_buildings / assign_solar_to_h3 aren't repeated per date.
+               Pass None for standalone single-day invocations.
 
     Returns:
-        Path to output Parquet, or None if no hail above threshold found.
+        Path to output JSON.gz, or None if no hail above threshold found.
     """
     from botocore import UNSIGNED
     from botocore.config import Config
@@ -125,9 +156,10 @@ def run_metro_day(metro_id: str, date_: date, out_dir: Path, data_dir: Path, upl
         metro_id=("metro_id", "first"),
     )
 
-    buildings = fetch_buildings(metro_id)
-    deepsolar_csv, tiger_shp = fetch_all(data_dir)
-    solar = assign_solar_to_h3(buildings, deepsolar_csv, tiger_shp)
+    if solar is None:
+        buildings = fetch_buildings(metro_id)
+        deepsolar_csv, tiger_shp = fetch_all(data_dir)
+        solar = assign_solar_to_h3(buildings, deepsolar_csv, tiger_shp)
     enriched = calculate_impact(daily, solar)
 
     if enriched.empty:
@@ -185,11 +217,17 @@ def run_backfill(
             skipped, len(warning_dates),
         )
 
+    buildings = fetch_buildings(metro_id)
+    deepsolar_csv, tiger_shp = fetch_all(data_dir)
+    solar = assign_solar_to_h3(buildings, deepsolar_csv, tiger_shp)
+    if upload_s3:
+        upload_solar_basemap(solar, metro_id)
+
     for d in sorted(dates):
         if d not in warning_dates:
             continue
         stats["processed"] += 1
-        result = run_metro_day(metro_id, d, out_dir, data_dir, upload_s3=upload_s3)
+        result = run_metro_day(metro_id, d, out_dir, data_dir, solar=solar, upload_s3=upload_s3)
         if result is not None:
             stats["produced_output"] += 1
 
