@@ -43,7 +43,7 @@ from .config import (
 )
 from .data_downloader import DEFAULT_DATA_DIR, fetch_all
 from .deepsolar_joiner import assign_solar_to_h3
-from .h3_snapper import snap_to_h3, write_parquet
+from .h3_snapper import snap_to_h3
 from .iem_prefilter import build_warning_index
 from .impact_calculator import calculate_impact
 from .mrms_reader import read_mrms_pixels
