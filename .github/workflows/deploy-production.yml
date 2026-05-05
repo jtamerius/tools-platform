@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 # Ensure only one production deployment runs at a time.
 # Never cancel an in-progress production deploy; queue the next one instead.
@@ -47,6 +48,7 @@ jobs:
       solarhail-pipeline: ${{ steps.filter.outputs.solarhail-pipeline }}
       solarhail-frontend: ${{ steps.filter.outputs.solarhail-frontend }}
       infra-amplify-solarhail: ${{ steps.filter.outputs.infra-amplify-solarhail }}
+      is-manual: ${{ github.event_name == 'workflow_dispatch' }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -1017,7 +1019,7 @@ jobs:
     name: Deploy solarhail Infra — Production
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.infra-solarhail == 'true'
+    if: needs.detect-changes.outputs.infra-solarhail == 'true' || needs.detect-changes.outputs.is-manual == 'true'
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -1042,7 +1044,7 @@ jobs:
     name: Test SolarHail Pipeline — Production
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.solarhail-pipeline == 'true'
+    if: needs.detect-changes.outputs.solarhail-pipeline == 'true' || needs.detect-changes.outputs.is-manual == 'true'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -1073,7 +1075,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
-      needs.detect-changes.outputs.solarhail-pipeline == 'true' &&
+      (needs.detect-changes.outputs.solarhail-pipeline == 'true' || needs.detect-changes.outputs.is-manual == 'true') &&
       needs.test-solarhail-pipeline-production.result == 'success' &&
       (needs.deploy-solarhail-production.result == 'success' ||
        needs.deploy-solarhail-production.result == 'skipped')
@@ -1103,7 +1105,7 @@ jobs:
     name: Deploy Amplify (solarhail) — Production
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: needs.detect-changes.outputs.infra-amplify-solarhail == 'true'
+    if: needs.detect-changes.outputs.infra-amplify-solarhail == 'true' || needs.detect-changes.outputs.is-manual == 'true'
     environment: production
     steps:
       - uses: actions/checkout@v4
@@ -1134,7 +1136,7 @@ jobs:
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
-      needs.detect-changes.outputs.solarhail-frontend == 'true' &&
+      (needs.detect-changes.outputs.solarhail-frontend == 'true' || needs.detect-changes.outputs.is-manual == 'true') &&
       (needs.deploy-solarhail-production.result == 'success' ||
        needs.deploy-solarhail-production.result == 'skipped') &&
       (needs.deploy-amplify-solarhail-production.result == 'success' ||

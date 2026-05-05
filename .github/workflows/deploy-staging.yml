@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - staging
+  workflow_dispatch:
 
 permissions:
   id-token: write      # Required for OIDC token exchange

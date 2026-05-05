@@ -1,4 +1,4 @@
-"""Module 2: Snap hail pixels to H3 res-8 cells, take max MESH per cell, write Parquet.
+"""Module 2: Snap hail pixels to H3 res-8 cells, take max MESH per cell.
 
 Each MRMS pixel covers a 0.01° × 0.01° area (~0.91×1.11 km at 35°N), which is
 larger than a single H3 res-8 cell (~0.74 km²). Using only the pixel centroid
