@@ -2,7 +2,7 @@
 
 GET /api/events?metro=<id>&start=YYYY-MM-DD&end=YYYY-MM-DD
 GET /api/solar?metro=<id>
-GET /api/summary  — total estimated_solar_systems per metro (for dropdown sorting)
+GET /api/summary  — total solar_systems_exposed per metro (for dropdown sorting)
 
 Reads newline-delimited JSON.gz files from S3 (one per metro per event_date).
 Files that don't exist (no-hail days) are silently skipped.
