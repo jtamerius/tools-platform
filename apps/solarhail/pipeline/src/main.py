@@ -235,6 +235,14 @@ def run_backfill(
         "Backfill complete for %s: %d/%d dates processed, %d Parquet files produced",
         metro_id, stats["processed"], stats["total_dates"], stats["produced_output"],
     )
+
+    if upload_s3 and stats["produced_output"] > 0:
+        try:
+            boto3.client("s3").delete_object(Bucket=S3_BUCKET, Key="summary/metro_totals.json")
+            logger.info("Invalidated summary cache after %s backfill", metro_id)
+        except Exception:
+            pass
+
     return stats
 
 

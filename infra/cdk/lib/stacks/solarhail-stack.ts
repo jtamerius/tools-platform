@@ -203,7 +203,7 @@ export class SolarHailStack extends cdk.Stack {
       runtime: lambda.Runtime.PYTHON_3_12,
       code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/solarhail/api')),
       handler: 'handler.handler',
-      timeout: cdk.Duration.seconds(30),
+      timeout: cdk.Duration.seconds(60),
       memorySize: 512,
       environment: {
         S3_BUCKET: dataBucket.bucketName,

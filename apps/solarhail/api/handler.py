@@ -26,15 +26,7 @@ BUCKET = os.environ["S3_BUCKET"]
 PREFIX = os.environ.get("S3_PREFIX", "parquet/hail-events")
 MAX_DAYS = 92
 
-METRO_IDS = [
-    "dfw", "houston", "san_antonio", "austin", "lubbock", "amarillo",
-    "okc", "tulsa", "wichita", "kc", "omaha", "lincoln", "denver",
-    "colorado_springs", "sioux_falls", "fargo", "minneapolis",
-    "st_louis", "des_moines", "chicago", "indianapolis", "columbus",
-    "cincinnati", "cleveland", "dayton", "louisville", "nashville",
-    "memphis", "little_rock", "shreveport", "new_orleans", "baton_rouge",
-    "jackson_ms", "birmingham",
-]
+SUMMARY_KEY = "summary/metro_totals.json"
 
 CORS = {
     "Access-Control-Allow-Origin": "*",
@@ -132,23 +124,66 @@ def _fetch_parallel(keys: list[tuple[str, str]]) -> list[dict]:
 
 
 def _handle_summary() -> dict:
-    def _read_metro_total(metro_id: str) -> tuple[str, float]:
-        key = f"solar/{metro_id}.json.gz"
-        try:
-            resp = s3.get_object(Bucket=BUCKET, Key=key)
-            with gzip.open(resp["Body"], "rt") as f:
-                total = sum(json.loads(line).get("estimated_solar_systems", 0) for line in f if line.strip())
-            return metro_id, float(total)
-        except Exception:
-            return metro_id, 0.0
+    # Return cached result if available
+    try:
+        resp = s3.get_object(Bucket=BUCKET, Key=SUMMARY_KEY)
+        cached = json.loads(resp["Body"].read())
+        logger.info("Returning cached summary (%d metros)", len(cached.get("totals", {})))
+        return {
+            "statusCode": 200,
+            "headers": {**CORS, "Content-Type": "application/json"},
+            "body": json.dumps(cached),
+        }
+    except Exception:
+        pass  # Cache miss — compute below
 
-    with ThreadPoolExecutor(max_workers=len(METRO_IDS)) as pool:
-        results = dict(pool.map(_read_metro_total, METRO_IDS))
+    # List all hail event keys grouped by metro
+    paginator = s3.get_paginator("list_objects_v2")
+    metro_keys: dict[str, list[str]] = {}
+    for page in paginator.paginate(Bucket=BUCKET, Prefix=f"{PREFIX}/"):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            if not key.endswith(".json.gz"):
+                continue
+            metro_id = key.split("/")[-1].replace(".json.gz", "")
+            metro_keys.setdefault(metro_id, []).append(key)
+
+    def _sum_metro(item: tuple[str, list[str]]) -> tuple[str, float]:
+        metro_id, keys = item
+        total = 0.0
+        for key in keys:
+            try:
+                resp = s3.get_object(Bucket=BUCKET, Key=key)
+                with gzip.open(resp["Body"], "rt") as f:
+                    for line in f:
+                        if line.strip():
+                            total += json.loads(line).get("solar_systems_exposed", 0)
+            except Exception as exc:
+                logger.warning("Failed reading %s: %s", key, exc)
+        return metro_id, float(total)
+
+    totals: dict[str, float] = {}
+    with ThreadPoolExecutor(max_workers=min(len(metro_keys), 34)) as pool:
+        for metro_id, total in pool.map(_sum_metro, metro_keys.items()):
+            totals[metro_id] = total
+
+    result = {"totals": totals}
+
+    # Write cache to S3
+    try:
+        s3.put_object(
+            Bucket=BUCKET, Key=SUMMARY_KEY,
+            Body=json.dumps(result).encode(),
+            ContentType="application/json",
+        )
+        logger.info("Wrote summary cache: %d metros", len(totals))
+    except Exception as exc:
+        logger.warning("Failed to write summary cache: %s", exc)
 
     return {
         "statusCode": 200,
         "headers": {**CORS, "Content-Type": "application/json"},
-        "body": json.dumps({"totals": results}),
+        "body": json.dumps(result),
     }
 
 
