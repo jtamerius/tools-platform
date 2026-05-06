@@ -2,6 +2,7 @@
 
 GET /api/events?metro=<id>&start=YYYY-MM-DD&end=YYYY-MM-DD
 GET /api/solar?metro=<id>
+GET /api/summary  — total estimated_solar_systems per metro (for dropdown sorting)
 
 Reads newline-delimited JSON.gz files from S3 (one per metro per event_date).
 Files that don't exist (no-hail days) are silently skipped.
@@ -25,6 +26,16 @@ BUCKET = os.environ["S3_BUCKET"]
 PREFIX = os.environ.get("S3_PREFIX", "parquet/hail-events")
 MAX_DAYS = 92
 
+METRO_IDS = [
+    "dfw", "houston", "san_antonio", "austin", "lubbock", "amarillo",
+    "okc", "tulsa", "wichita", "kc", "omaha", "lincoln", "denver",
+    "colorado_springs", "sioux_falls", "fargo", "minneapolis",
+    "st_louis", "des_moines", "chicago", "indianapolis", "columbus",
+    "cincinnati", "cleveland", "dayton", "louisville", "nashville",
+    "memphis", "little_rock", "shreveport", "new_orleans", "baton_rouge",
+    "jackson_ms", "birmingham",
+]
+
 CORS = {
     "Access-Control-Allow-Origin": "*",
     "Access-Control-Allow-Headers": "Content-Type",
@@ -39,6 +50,9 @@ def handler(event, context):  # noqa: ARG001
 
     path = (event.get("requestContext") or {}).get("http", {}).get("path", "") or event.get("rawPath", "")
     params = event.get("queryStringParameters") or {}
+
+    if path.rstrip("/").endswith("/summary"):
+        return _handle_summary()
 
     if path.rstrip("/").endswith("/solar"):
         return _handle_solar(params)
@@ -115,6 +129,27 @@ def _fetch_parallel(keys: list[tuple[str, str]]) -> list[dict]:
         for fut in as_completed(futures):
             rows.extend(fut.result())
     return rows
+
+
+def _handle_summary() -> dict:
+    def _read_metro_total(metro_id: str) -> tuple[str, float]:
+        key = f"solar/{metro_id}.json.gz"
+        try:
+            resp = s3.get_object(Bucket=BUCKET, Key=key)
+            with gzip.open(resp["Body"], "rt") as f:
+                total = sum(json.loads(line).get("estimated_solar_systems", 0) for line in f if line.strip())
+            return metro_id, float(total)
+        except Exception:
+            return metro_id, 0.0
+
+    with ThreadPoolExecutor(max_workers=len(METRO_IDS)) as pool:
+        results = dict(pool.map(_read_metro_total, METRO_IDS))
+
+    return {
+        "statusCode": 200,
+        "headers": {**CORS, "Content-Type": "application/json"},
+        "body": json.dumps({"totals": results}),
+    }
 
 
 def _handle_solar(params: dict) -> dict:
