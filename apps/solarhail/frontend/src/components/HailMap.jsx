@@ -86,7 +86,7 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
         filled: true,
         stroked: false,
         opacity,
-        pickable: false,
+        pickable: true,
         updateTriggers: { getFillColor: solarCells },
       })
     : null,
@@ -105,6 +105,8 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
     pickable: true,
     updateTriggers: { getFillColor: cells },
   }), [cells, opacity]);
+
+  useEffect(() => { setTooltip(null); }, [showSolar]);
 
   const onHover = useCallback(({ object, x, y }) => {
     setTooltip(object ? { object, x, y } : null);
@@ -127,18 +129,27 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
           className={styles.tooltip}
           style={{ left: tooltip.x + 12, top: tooltip.y - 10 }}
         >
-          <div className={styles.tooltipRow}>
-            <span>Max MESH</span>
-            <strong>{tooltip.object.maxMeshMm.toFixed(1)} mm</strong>
-          </div>
-          <div className={styles.tooltipRow}>
-            <span>Solar systems</span>
-            <strong>{tooltip.object.totalSolarExposed.toFixed(2)}</strong>
-          </div>
-          <div className={styles.tooltipRow}>
-            <span>Hail days</span>
-            <strong>{tooltip.object.hailDays}</strong>
-          </div>
+          {showSolar ? (
+            <div className={styles.tooltipRow}>
+              <span>Est. solar systems</span>
+              <strong>{tooltip.object.estimated_solar_systems.toFixed(1)}</strong>
+            </div>
+          ) : (
+            <>
+              <div className={styles.tooltipRow}>
+                <span>Max MESH</span>
+                <strong>{tooltip.object.maxMeshMm.toFixed(1)} mm</strong>
+              </div>
+              <div className={styles.tooltipRow}>
+                <span>Solar systems</span>
+                <strong>{tooltip.object.totalSolarExposed.toFixed(2)}</strong>
+              </div>
+              <div className={styles.tooltipRow}>
+                <span>Hail days</span>
+                <strong>{tooltip.object.hailDays}</strong>
+              </div>
+            </>
+          )}
         </div>
       )}
 
