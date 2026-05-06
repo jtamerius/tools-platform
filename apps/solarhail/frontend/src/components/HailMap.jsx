@@ -2,7 +2,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
 import { FlyToInterpolator } from 'deck.gl';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
-import { Map } from 'react-map-gl';
+import { Map } from 'react-map-gl/mapbox';
 import styles from './HailMap.module.css';
 
 const MAP_STYLE = 'mapbox://styles/mapbox/satellite-streets-v12';
