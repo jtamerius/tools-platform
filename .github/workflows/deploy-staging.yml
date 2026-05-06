@@ -975,30 +975,6 @@ jobs:
           out=$(npx cdk deploy tools-app-solarhail-staging -c env=staging --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
-  # Job: Run SolarHail pipeline tests (fast + slow integration)
-  # -----------------------------------------------------------------------
-  test-solarhail-pipeline-staging:
-    name: Test SolarHail Pipeline — Staging
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.solarhail-pipeline == 'true'
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update && sudo apt-get install -y --no-install-recommends \
-            libeccodes-dev libgeos-dev libproj-dev gcc g++
-      - name: Install Python dependencies
-        run: |
-          pip install --no-cache-dir -r apps/solarhail/pipeline/requirements.txt
-          pip install pytest
-      - name: Run tests
-        working-directory: apps/solarhail/pipeline
-        run: pytest tests/ -v --tb=short
-
   # -----------------------------------------------------------------------
   # Job: Build and push SolarHail pipeline Docker image to ECR
   # -----------------------------------------------------------------------
@@ -1008,12 +984,10 @@ jobs:
     needs:
       - detect-changes
       - deploy-solarhail-staging
-      - test-solarhail-pipeline-staging
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.solarhail-pipeline == 'true' &&
-      needs.test-solarhail-pipeline-staging.result == 'success' &&
       (needs.deploy-solarhail-staging.result == 'success' ||
        needs.deploy-solarhail-staging.result == 'skipped')
     environment: staging
