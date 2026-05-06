@@ -104,7 +104,7 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
     opacity,
     pickable: true,
     updateTriggers: { getFillColor: cells },
-  }), [cells, opacity]);
+  }), [cells, opacity, showSolar]);
 
   useEffect(() => { setTooltip(null); }, [showSolar]);
 
