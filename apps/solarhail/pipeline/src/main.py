@@ -24,6 +24,7 @@ NWS pre-filter:
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -88,6 +89,52 @@ def upload_to_s3(local_path: Path, metro_id: str, event_date: date) -> str:
     uri = f"s3://{S3_BUCKET}/{key}"
     logger.info("Uploaded %s → %s", local_path.name, uri)
     return uri
+
+
+CHECKPOINT_PREFIX = "checkpoints"
+
+
+def _read_checkpoint(
+    s3_client,
+    metro_id: str,
+    start_date: date,
+    end_date: date,
+) -> date | None:
+    key = f"{CHECKPOINT_PREFIX}/{metro_id}.json"
+    try:
+        resp = s3_client.get_object(Bucket=S3_BUCKET, Key=key)
+        data = json.loads(resp["Body"].read())
+        if (
+            data.get("start_date") == str(start_date)
+            and data.get("end_date") == str(end_date)
+        ):
+            return date.fromisoformat(data["last_completed_date"])
+    except Exception:
+        pass
+    return None
+
+
+def _write_checkpoint(
+    s3_client,
+    metro_id: str,
+    completed_date: date,
+    start_date: date,
+    end_date: date,
+) -> None:
+    key = f"{CHECKPOINT_PREFIX}/{metro_id}.json"
+    try:
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=key,
+            Body=json.dumps({
+                "last_completed_date": str(completed_date),
+                "start_date": str(start_date),
+                "end_date": str(end_date),
+            }).encode(),
+            ContentType="application/json",
+        )
+    except Exception as exc:
+        logger.warning("Failed to write checkpoint for %s at %s: %s", metro_id, completed_date, exc)
 
 
 def list_mrms_keys_for_date(s3_client, date_: date, metro_id: str) -> list[str]:
@@ -186,6 +233,7 @@ def run_backfill(
     data_dir: Path,
     use_prefilter: bool = True,
     upload_s3: bool = False,
+    ignore_checkpoint: bool = False,
 ) -> dict[str, int]:
     """Run the pipeline for a metro over a list of dates with optional IEM pre-filter.
 
@@ -220,28 +268,59 @@ def run_backfill(
     buildings = fetch_buildings(metro_id)
     deepsolar_csv, tiger_shp = fetch_all(data_dir)
     solar = assign_solar_to_h3(buildings, deepsolar_csv, tiger_shp)
+
+    s3_client = boto3.client("s3")
+
     if upload_s3:
         upload_solar_basemap(solar, metro_id)
 
+    start_date = min(dates)
+    end_date   = max(dates)
+    last_completed: date | None = None
+
+    if upload_s3 and not ignore_checkpoint:
+        last_completed = _read_checkpoint(s3_client, metro_id, start_date, end_date)
+        if last_completed:
+            skipped = sum(1 for d in dates if d <= last_completed)
+            logger.info(
+                "Resuming %s from checkpoint %s — skipping %d/%d already-completed dates",
+                metro_id, last_completed, skipped, len(dates),
+            )
+
     for d in sorted(dates):
-        if d not in warning_dates:
+        if last_completed and d <= last_completed:
             continue
+
+        if d not in warning_dates:
+            if upload_s3 and not ignore_checkpoint:
+                _write_checkpoint(s3_client, metro_id, d, start_date, end_date)
+            continue
+
         stats["processed"] += 1
         result = run_metro_day(metro_id, d, out_dir, data_dir, solar=solar, upload_s3=upload_s3)
         if result is not None:
             stats["produced_output"] += 1
 
+        if upload_s3 and not ignore_checkpoint:
+            _write_checkpoint(s3_client, metro_id, d, start_date, end_date)
+
     logger.info(
-        "Backfill complete for %s: %d/%d dates processed, %d Parquet files produced",
+        "Backfill complete for %s: %d/%d dates processed, %d files produced",
         metro_id, stats["processed"], stats["total_dates"], stats["produced_output"],
     )
 
-    if upload_s3 and stats["produced_output"] > 0:
+    if upload_s3:
         try:
-            boto3.client("s3").delete_object(Bucket=S3_BUCKET, Key="summary/metro_totals.json")
-            logger.info("Invalidated summary cache after %s backfill", metro_id)
+            s3_client.delete_object(Bucket=S3_BUCKET, Key=f"{CHECKPOINT_PREFIX}/{metro_id}.json")
         except Exception:
             pass
+
+        if stats["produced_output"] > 0:
+            try:
+                s3_client.delete_object(Bucket=S3_BUCKET, Key="summary/metro_totals.json")
+                logger.info("Invalidated summary cache after %s backfill", metro_id)
+            except Exception:
+                pass
 
     return stats
 
@@ -261,6 +340,9 @@ def main() -> None:
     parser.add_argument("--upload-s3", action="store_true",
                         default=os.environ.get("UPLOAD_S3", "").lower() in ("1", "true"),
                         help="Upload output Parquet to S3 after writing locally")
+    parser.add_argument("--ignore-checkpoint", action="store_true",
+                        default=os.environ.get("IGNORE_CHECKPOINT", "").lower() in ("1", "true"),
+                        help="Ignore any existing checkpoint and process all dates from scratch")
     args = parser.parse_args()
 
     if not args.metro:
@@ -295,6 +377,7 @@ def main() -> None:
         data_dir=data_dir,
         use_prefilter=use_prefilter,
         upload_s3=args.upload_s3,
+        ignore_checkpoint=args.ignore_checkpoint,
     )
 
 
