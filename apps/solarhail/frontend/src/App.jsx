@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { METRO_LIST, BACKFILL_START, BACKFILL_END } from './config/metros';
 import { useHailData } from './hooks/useHailData';
 import { useSolarData } from './hooks/useSolarData';
@@ -25,7 +25,15 @@ export function App() {
 
   const { cells, stats, loading, error } = useHailData(selectedMetroId, startDate, endDate);
   const { solarCells } = useSolarData(selectedMetroId);
-  const { sortedMetros } = useMetroSummary();
+  const { sortedMetros, isResolved } = useMetroSummary();
+  const autoSelectedRef = useRef(false);
+
+  useEffect(() => {
+    if (isResolved && !autoSelectedRef.current && sortedMetros.length > 0) {
+      autoSelectedRef.current = true;
+      setSelectedMetroId(sortedMetros[0].id);
+    }
+  }, [isResolved, sortedMetros]);
 
   return (
     <div className={styles.layout}>

@@ -35,14 +35,18 @@ function loadSummary() {
 
 export function useMetroSummary() {
   const [sortedMetros, setSortedMetros] = useState(METRO_LIST);
+  const [isResolved, setIsResolved] = useState(!!cachedResult);
 
   useEffect(() => {
     if (cachedResult) {
       setSortedMetros(cachedResult);
+      setIsResolved(true);
       return;
     }
-    loadSummary().then(sorted => setSortedMetros(sorted)).catch(() => {});
+    loadSummary()
+      .then(sorted => { setSortedMetros(sorted); setIsResolved(true); })
+      .catch(() => setIsResolved(true));
   }, []);
 
-  return { sortedMetros };
+  return { sortedMetros, isResolved };
 }
