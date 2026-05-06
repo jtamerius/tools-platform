@@ -175,6 +175,10 @@ export class SolarHailStack extends cdk.Stack {
     // Container env vars are also overridden at submit time for METRO/dates.
     const jobDef = new batch.EcsJobDefinition(this, 'JobDefinition', {
       jobDefinitionName: `tools-solarhail-pipeline-${e}`,
+      retryAttempts: 3,
+      retryStrategies: [
+        batch.RetryStrategy.of(batch.Action.RETRY, batch.Reason.SPOT_INSTANCE_RECLAIMED),
+      ],
       container: new batch.EcsFargateContainerDefinition(this, 'ContainerDef', {
         image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'),
         cpu: 4,
