@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
+import { FlyToInterpolator } from 'deck.gl';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
 import { Map } from 'react-map-gl/maplibre';
 import styles from './HailMap.module.css';
@@ -70,7 +71,8 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
         longitude: metro.lon,
         latitude: metro.lat,
         zoom: 9,
-        transitionDuration: 600,
+        transitionDuration: 800,
+        transitionInterpolator: new FlyToInterpolator(),
       }));
     }
   }, [metro?.lon, metro?.lat]);
@@ -121,7 +123,7 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
         layers={showSolar ? [solarLayer].filter(Boolean) : [hailLayer]}
         onHover={onHover}
       >
-        <Map mapStyle={MAP_STYLE} />
+        <Map reuseMaps mapStyle={MAP_STYLE} />
       </DeckGL>
 
       {tooltip && (
