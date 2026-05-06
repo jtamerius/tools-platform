@@ -241,6 +241,18 @@ export class SolarHailStack extends cdk.Stack {
       target: `integrations/${integration.ref}`,
     });
 
+    new apigwv2.CfnRoute(this, 'SummaryRoute', {
+      apiId: httpApi.ref,
+      routeKey: 'GET /api/summary',
+      target: `integrations/${integration.ref}`,
+    });
+
+    new apigwv2.CfnRoute(this, 'SolarRoute', {
+      apiId: httpApi.ref,
+      routeKey: 'GET /api/solar',
+      target: `integrations/${integration.ref}`,
+    });
+
     new apigwv2.CfnRoute(this, 'OptionsRoute', {
       apiId: httpApi.ref,
       routeKey: 'OPTIONS /api/events',
