@@ -4,7 +4,18 @@ import { H3HexagonLayer } from '@deck.gl/geo-layers';
 import { Map } from 'react-map-gl/maplibre';
 import styles from './HailMap.module.css';
 
-const MAP_STYLE = 'https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json';
+const MAP_STYLE = {
+  version: 8,
+  sources: {
+    satellite: {
+      type: 'raster',
+      tiles: ['https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tileSize: 256,
+      attribution: 'Esri, Maxar, Earthstar Geographics',
+    },
+  },
+  layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
+};
 
 const LOG_CAP = Math.log(51); // log(51) ≈ 3.93 — ~50 systems = full opacity
 
@@ -32,7 +43,7 @@ function meshToColor(mm, alpha = 200) {
   return [r, g, b, alpha];
 }
 
-export function HailMap({ cells, metro, solarCells = [], showSolar = false }) {
+export function HailMap({ cells, metro, solarCells = [], showSolar = false, opacity = 0.8 }) {
   const [tooltip, setTooltip] = useState(null);
 
   const initialViewState = useMemo(() => ({
@@ -68,12 +79,12 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false }) {
         extruded: false,
         filled: true,
         stroked: false,
-        opacity: 1,
+        opacity,
         pickable: false,
         updateTriggers: { getFillColor: solarCells },
       })
     : null,
-  [solarCells, showSolar]);
+  [solarCells, showSolar, opacity]);
 
   const hailLayer = useMemo(() => new H3HexagonLayer({
     id: 'hail-hex',
@@ -84,10 +95,10 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false }) {
     extruded: false,
     filled: true,
     stroked: false,
-    opacity: 1,
+    opacity,
     pickable: true,
     updateTriggers: { getFillColor: cells },
-  }), [cells]);
+  }), [cells, opacity]);
 
   const onHover = useCallback(({ object, x, y }) => {
     setTooltip(object ? { object, x, y } : null);

@@ -11,8 +11,8 @@ function Stat({ label, value, sub, children }) {
   );
 }
 
-function SizeBuckets({ cellsBySize }) {
-  const { moderate, significant, severe } = cellsBySize;
+function SolarBuckets({ solarBySize }) {
+  const { moderate, significant, severe } = solarBySize;
   const total = moderate + significant + severe;
   if (total === 0) return null;
   return (
@@ -21,21 +21,21 @@ function SizeBuckets({ cellsBySize }) {
         <div className={styles.bucket}>
           <span className={styles.bucketDot} style={{ background: '#cc4400' }} />
           <span className={styles.bucketLabel}>Severe (≥50mm)</span>
-          <span className={styles.bucketCount}>{severe.toLocaleString()}</span>
+          <span className={styles.bucketCount}>{severe.toFixed(1)}</span>
         </div>
       )}
       {significant > 0 && (
         <div className={styles.bucket}>
           <span className={styles.bucketDot} style={{ background: '#ff8800' }} />
           <span className={styles.bucketLabel}>Significant (35–50mm)</span>
-          <span className={styles.bucketCount}>{significant.toLocaleString()}</span>
+          <span className={styles.bucketCount}>{significant.toFixed(1)}</span>
         </div>
       )}
       {moderate > 0 && (
         <div className={styles.bucket}>
           <span className={styles.bucketDot} style={{ background: '#ffe500' }} />
           <span className={styles.bucketLabel}>Moderate (25–35mm)</span>
-          <span className={styles.bucketCount}>{moderate.toLocaleString()}</span>
+          <span className={styles.bucketCount}>{moderate.toFixed(1)}</span>
         </div>
       )}
     </div>
@@ -51,7 +51,7 @@ export function StatsPanel({ stats, loading }) {
     );
   }
 
-  const { hailDays, maxMeshMm, totalSolarExposed, cellsAffected, cellsBySize } = stats;
+  const { hailDays, maxMeshMm, totalSolarExposed, cellsAffected, solarBySize } = stats;
 
   return (
     <div className={styles.wrapper}>
@@ -59,20 +59,19 @@ export function StatsPanel({ stats, loading }) {
       <Stat
         label="Max Hail Size"
         value={maxMeshMm > 0 ? `${maxMeshMm.toFixed(1)} mm` : '—'}
-        sub={maxMeshMm >= 50 ? 'severe' : maxMeshMm >= 35 ? 'significant' : maxMeshMm > 0 ? 'moderate' : undefined}
       />
       <Stat
         label="H3 Cells Affected"
         value={cellsAffected > 0 ? cellsAffected.toLocaleString() : '—'}
         sub="~0.7 km² each"
-      >
-        {cellsBySize && <SizeBuckets cellsBySize={cellsBySize} />}
-      </Stat>
+      />
       <Stat
         label="Solar Systems Exposed"
         value={totalSolarExposed > 0 ? totalSolarExposed.toFixed(1) : '—'}
         sub="estimated systems at risk"
-      />
+      >
+        {solarBySize && <SolarBuckets solarBySize={solarBySize} />}
+      </Stat>
     </div>
   );
 }
