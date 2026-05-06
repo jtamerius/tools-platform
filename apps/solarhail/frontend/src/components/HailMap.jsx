@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
+import { PolygonLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/maplibre';
 import styles from './HailMap.module.css';
 
@@ -69,6 +70,22 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
     }
   }, [metro?.lon, metro?.lat]);
 
+  const metroOutlineLayer = useMemo(() => {
+    if (!metro) return null;
+    const { latMin, latMax, lonMin, lonMax } = metro;
+    return new PolygonLayer({
+      id: 'metro-outline',
+      data: [{ polygon: [[lonMin, latMin], [lonMax, latMin], [lonMax, latMax], [lonMin, latMax]] }],
+      getPolygon: d => d.polygon,
+      stroked: true,
+      filled: false,
+      getLineColor: [255, 255, 255, 160],
+      getLineWidth: 2,
+      lineWidthUnits: 'pixels',
+      lineWidthMinPixels: 1,
+    });
+  }, [metro]);
+
   const solarLayer = useMemo(() => showSolar && solarCells.length > 0
     ? new H3HexagonLayer({
         id: 'solar-hex',
@@ -110,7 +127,7 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(vs)}
         controller={true}
-        layers={[solarLayer, hailLayer].filter(Boolean)}
+        layers={[metroOutlineLayer, solarLayer, hailLayer].filter(Boolean)}
         onHover={onHover}
       >
         <Map mapStyle={MAP_STYLE} />
