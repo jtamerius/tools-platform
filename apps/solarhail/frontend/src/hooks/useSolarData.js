@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 
+const BASE = import.meta.env.VITE_API_URL ?? '';
 const cache = new Map();
 
 export function useSolarData(metroId) {
@@ -17,7 +18,7 @@ export function useSolarData(metroId) {
     let cancelled = false;
     setLoading(true);
 
-    fetch(`/api/solar?metro=${encodeURIComponent(metroId)}`)
+    fetch(`${BASE}/api/solar?metro=${encodeURIComponent(metroId)}`)
       .then(r => r.json())
       .then(data => {
         if (cancelled) return;
