@@ -66,7 +66,7 @@ export function App() {
             </section>
 
             <section className={styles.legendSection}>
-              <Legend />
+              <Legend showSolar={showSolar} />
               <button
                 className={`${styles.toggleBtn} ${showSolar ? styles.toggleBtnActive : ''}`}
                 onClick={() => setShowSolar(s => !s)}
