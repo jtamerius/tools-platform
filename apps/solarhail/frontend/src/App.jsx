@@ -71,7 +71,7 @@ export function App() {
                 className={`${styles.toggleBtn} ${showSolar ? styles.toggleBtnActive : ''}`}
                 onClick={() => setShowSolar(s => !s)}
               >
-                {showSolar ? 'Hide' : 'Show'} Solar Density
+                {showSolar ? '← Hail Events' : 'Solar Density →'}
               </button>
               <div className={styles.sliderRow}>
                 <span className={styles.sliderLabel}>Opacity</span>

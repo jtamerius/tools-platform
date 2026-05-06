@@ -17,12 +17,18 @@ const MAP_STYLE = {
   layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
 };
 
-const LOG_CAP = Math.log(51); // log(51) ≈ 3.93 — ~50 systems = full opacity
+const LOG_CAP = Math.log(21); // saturates at ~20 systems
 
-/** Teal color scaled by log(estimated_solar_systems), capped at ~50 systems */
+/** Green→blue gradient scaled by log(estimated_solar_systems) */
 function solarToColor(systems) {
-  const alpha = Math.round(Math.min(Math.log(systems + 1) / LOG_CAP, 1) * 180);
-  return [0, 180, 160, alpha];
+  const t = Math.min(Math.log(systems + 1) / LOG_CAP, 1);
+  const alpha = Math.round(120 + t * 135); // 120→255, always visible
+  return [
+    Math.round(t * 20),        // R: 0→20
+    Math.round(200 - t * 100), // G: 200→100
+    Math.round(80 + t * 175),  // B: 80→255
+    alpha,
+  ];
 }
 
 /** Map MESH mm (25–60+) to RGBA [r,g,b,a] */
@@ -110,7 +116,7 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
         viewState={viewState}
         onViewStateChange={({ viewState: vs }) => setViewState(vs)}
         controller={true}
-        layers={[solarLayer, hailLayer].filter(Boolean)}
+        layers={showSolar ? [solarLayer].filter(Boolean) : [hailLayer]}
         onHover={onHover}
       >
         <Map mapStyle={MAP_STYLE} />

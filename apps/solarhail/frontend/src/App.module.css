@@ -110,13 +110,13 @@
 }
 
 .toggleBtnActive {
-  background: #0d2a2a;
-  border-color: #00b4b4;
-  color: #00d4d4;
+  background: #0a2a16;
+  border-color: #00c864;
+  color: #00e87a;
 }
 
 .toggleBtnActive:hover {
-  background: #0f3333;
+  background: #0d3520;
 }
 
 .sliderRow {
