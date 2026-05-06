@@ -1130,6 +1130,9 @@ jobs:
           echo "VITE_API_URL=$(aws ssm get-parameter \
             --name /tools/production/solarhail/api-url \
             --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_MAPBOX_TOKEN=$(aws ssm get-parameter \
+            --name /tools/production/solarhail/mapbox \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
 
       - name: Install and build
         working-directory: apps/solarhail/frontend

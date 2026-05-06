@@ -2,21 +2,11 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import DeckGL from '@deck.gl/react';
 import { FlyToInterpolator } from 'deck.gl';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
-import { Map } from 'react-map-gl/maplibre';
+import { Map } from 'react-map-gl';
 import styles from './HailMap.module.css';
 
-const MAP_STYLE = {
-  version: 8,
-  sources: {
-    satellite: {
-      type: 'raster',
-      tiles: ['https://server.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256,
-      attribution: 'Esri, Maxar, Earthstar Geographics',
-    },
-  },
-  layers: [{ id: 'satellite', type: 'raster', source: 'satellite' }],
-};
+const MAP_STYLE = 'mapbox://styles/mapbox/satellite-streets-v12';
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const LOG_CAP = Math.log(21); // saturates at ~20 systems
 
@@ -123,7 +113,7 @@ export function HailMap({ cells, metro, solarCells = [], showSolar = false, opac
         layers={showSolar ? [solarLayer].filter(Boolean) : [hailLayer]}
         onHover={onHover}
       >
-        <Map reuseMaps mapStyle={MAP_STYLE} />
+        <Map reuseMaps mapStyle={MAP_STYLE} mapboxAccessToken={MAPBOX_TOKEN} />
       </DeckGL>
 
       {tooltip && (
