@@ -1,14 +1,14 @@
 ---
 name: app-solarhail
-description: Reference for the SolarHail-AI app — architecture, pipeline modules, AWS resources, phase status, and operational runbook.
+description: Reference for the SolarHail app — architecture, pipeline modules, AWS resources, phase status, and operational runbook.
 allowed-tools: Bash(aws *), Bash(python *)
 ---
 
-# SolarHail-AI — Reference & Build Guide
+# SolarHail — Reference & Build Guide
 
 ## What It Is
 
-Historical hail risk dashboard for 34 U.S. metros spanning hail alley and the midwest (ND to Louisiana, CO to Ohio). Users select a metro and time window to see H3-hex hail exposure with estimated solar system counts exposed.
+Historical hail risk dashboard for 34 U.S. metros spanning hail alley and the midwest (ND to Louisiana, CO to Ohio). Users select a metro and time window to see H3-hex hail exposure with estimated solar system counts exposed. Toggles between hail intensity view and solar density overlay.
 
 Portfolio piece — historical data only, no live ingestion. Backfill window: **2026-02-02 to 2026-05-01**.
 
@@ -22,14 +22,15 @@ NOAA noaa-mrms-pds (public S3, us-east-1)
             ├─ h3_snapper.py        → H3 res-8 cells, max MESH per cell
             ├─ overture_fetcher.py  → building counts per cell (DuckDB → Overture S3)
             ├─ deepsolar_joiner.py  → block-group solar disaggregated to cells
-            ├─ impact_calculator.py → final enriched Parquet (solar_systems_exposed)
+            ├─ impact_calculator.py → final enriched output (solar_systems_exposed)
             └─ data_downloader.py   → fetches DeepSolar CSV + TIGER BG shapefile
 
-Parquet → s3://tools-solarhail-production-606196119553/parquet/hail-events/event_date=YYYY-MM-DD/{metro_id}.parquet
+JSON.gz → s3://tools-solarhail-production-606196119553/parquet/hail-events/event_date=YYYY-MM-DD/{metro_id}.json.gz
+Solar basemap → s3://tools-solarhail-production-606196119553/solar/{metro_id}.json.gz
 Glue catalog → solarhail_production.hail_events (partition projection on event_date)
 Athena workgroup → solarhail-wg-production
-API Gateway + Lambda → GET /metrics   (Phase 4 — not built)
-React + Deck.gl + MapLibre → S3+CloudFront  (Phase 5 — not built)
+API Gateway HTTP v2 + Lambda → GET /api/events, /api/summary, /api/solar
+React + Deck.gl + Mapbox → Amplify (CI/CD deploy)
 ```
 
 ## Directory
@@ -47,13 +48,22 @@ apps/solarhail/
 │   │   ├── overture_fetcher.py  Module 3
 │   │   ├── deepsolar_joiner.py  Module 4
 │   │   ├── impact_calculator.py Module 5
-│   │   └── main.py              CLI/Batch entrypoint
+│   │   └── main.py              CLI/Batch entrypoint (with S3 checkpoint/resume)
 │   ├── tests/                   pytest suite (fast unit + slow integration)
 │   └── scripts/
 │       └── submit_backfill.py   submit one Batch job per metro
-├── api/        (Phase 4 — not built)
-└── frontend/   (Phase 5 — not built)
-infra/cdk/lib/stacks/solarhail-stack.ts   CDK stack (S3, Glue, Athena, ECR, Batch)
+├── api/
+│   └── handler.py               Lambda handler — /api/events, /api/summary, /api/solar
+└── frontend/
+    ├── src/
+    │   ├── App.jsx              Root layout — desktop sidebar + mobile bottom sheet
+    │   ├── App.module.css       Responsive layout (768px breakpoint)
+    │   ├── config/metros.js     34 metro list with lat/lon
+    │   ├── hooks/               useHailData, useSolarData, useMetroSummary
+    │   └── components/          HailMap, MetroSelector, DateRangeSlider, StatsPanel, Legend
+    ├── vite.config.js
+    └── package.json
+infra/cdk/lib/stacks/solarhail-stack.ts   CDK stack (S3, Glue, Athena, ECR, Batch, Lambda, API GW)
 ```
 
 ## Locked Decisions
@@ -71,8 +81,10 @@ infra/cdk/lib/stacks/solarhail-stack.ts   CDK stack (S3, Glue, Athena, ECR, Batc
 | Solar data | DeepSolar-3M block-group level (rajanieprabha/DeepSolar-3M, GitHub) |
 | Solar disaggregation | Proportional to building count per cell within census block group |
 | Census BG shapefile | TIGER 2023 national, 500k scale (~97 MB) |
-| Impact metric | `solar_systems_exposed` — simple inner join of hail cells × solar cells, no damage probability |
+| Impact metric | `solar_systems_exposed` — inner join of hail cells × solar cells, no damage probability |
 | Backfill window | 2026-02-02 to 2026-05-01 |
+| Output format | JSON.gz (newline-delimited JSON), S3 prefix `parquet/hail-events/` |
+| Basemap | Mapbox `satellite-streets-v12` — token in SSM `/tools/production/solarhail/mapbox` |
 | Region | `us-east-1` |
 
 ## AWS Resources (Production)
@@ -84,16 +96,18 @@ infra/cdk/lib/stacks/solarhail-stack.ts   CDK stack (S3, Glue, Athena, ECR, Batc
 | Glue table | `hail_events` (partition projection on `event_date`) |
 | Athena workgroup | `solarhail-wg-production` |
 | ECR repo | `tools-solarhail-pipeline-production` |
-| Batch compute env | `tools-solarhail-fargate-production` (Fargate Spot, public subnets) |
+| Batch compute env | `tools-solarhail-fargate-production` (Fargate Spot, public subnets, max 128 vCPU) |
 | Batch job queue | `tools-solarhail-queue-production` |
-| Batch job definition | `tools-solarhail-pipeline-production` |
+| Batch job definition | `tools-solarhail-pipeline-production` (retryAttempts: 3, Spot retry strategy) |
 | Batch exec role | `tools-solarhail-batch-exec-production` |
 | Batch job role | `tools-solarhail-pipeline-production` |
+| Lambda function | `tools-solarhail-api-production` |
+| API Gateway | HTTP v2 — `GET /api/events`, `GET /api/summary`, `GET /api/solar` |
 | CDK stack | `tools-app-solarhail-production` |
 | CloudWatch log group | `tools-app-solarhail-production-ContainerDefLogGroup2ABC7679-Y9WKfuoJend1` |
 
 SSM parameters (all under `/tools/production/solarhail/`):
-`s3-bucket`, `glue-database`, `athena-workgroup`, `batch-job-queue`, `batch-job-definition`, `ecr-repo-uri`
+`s3-bucket`, `glue-database`, `athena-workgroup`, `batch-job-queue`, `batch-job-definition`, `ecr-repo-uri`, `api-url`, `mapbox`
 
 ## Metros (34 total)
 
@@ -109,9 +123,9 @@ SSM parameters (all under `/tools/production/solarhail/`):
 |-------|-------------|--------|
 | 1 | Local pipeline (Modules 1–5) | **Complete** — 46 fast + 8 slow integration tests |
 | 2 | S3 + Glue + Athena (CDK) | **Complete** — deployed to production |
-| 3 | ECR + Batch backfill (CDK) | **Complete** — deployed; OKC test job in progress |
-| 4 | API (Lambda + API Gateway) | Not started |
-| 5 | Frontend (React + Deck.gl) | Not started |
+| 3 | ECR + Batch backfill (CDK) | **Complete** — backfill running; ~22/34 metros done |
+| 4 | API (Lambda + API Gateway HTTP v2) | **Complete** — deployed to production |
+| 5 | Frontend (React + Deck.gl + Mapbox) | **Complete** — deployed via Amplify, mobile-responsive |
 
 ## Operational Runbook
 
@@ -120,8 +134,11 @@ SSM parameters (all under `/tools/production/solarhail/`):
 ```bash
 cd apps/solarhail/pipeline
 
-# Single metro test
+# Single metro
 AWS_PROFILE=jtam python scripts/submit_backfill.py --env production --metros okc
+
+# Subset
+AWS_PROFILE=jtam python scripts/submit_backfill.py --env production --metros dfw houston chicago
 
 # All 34 metros
 AWS_PROFILE=jtam python scripts/submit_backfill.py --env production
@@ -130,20 +147,53 @@ AWS_PROFILE=jtam python scripts/submit_backfill.py --env production
 AWS_PROFILE=jtam python scripts/submit_backfill.py --env production --dry-run
 ```
 
+Default date range: `2026-02-02` → `2026-05-01`. Jobs checkpoint to S3 (`checkpoints/{metro_id}.json`) after each date — Spot interruptions auto-resume on retry.
+
 ### Check Batch job status
 
 ```bash
+# List running
+AWS_PROFILE=jtam aws batch list-jobs \
+  --job-queue tools-solarhail-queue-production \
+  --job-status RUNNING \
+  --region us-east-1 --no-cli-pager
+
+# List succeeded
+AWS_PROFILE=jtam aws batch list-jobs \
+  --job-queue tools-solarhail-queue-production \
+  --job-status SUCCEEDED \
+  --query "jobSummaryList[].jobName" --output text \
+  --region us-east-1 --no-cli-pager
+
+# Describe specific job
 AWS_PROFILE=jtam aws batch describe-jobs \
   --jobs <job-id> \
   --region us-east-1 \
   --query 'jobs[0].{status:status,statusReason:statusReason}' \
   --no-cli-pager
+```
 
-# List running jobs
-AWS_PROFILE=jtam aws batch list-jobs \
-  --job-queue tools-solarhail-queue-production \
-  --job-status RUNNING \
-  --region us-east-1 --no-cli-pager
+### Check S3 output
+
+```bash
+# Which metros have hail event data
+AWS_PROFILE=jtam aws s3 ls s3://tools-solarhail-production-606196119553/parquet/hail-events/ \
+  --recursive | awk '{print $4}' | sed 's|.*event_date=[^/]*/||; s|\.json\.gz||' | sort -u
+
+# Which metros have solar basemaps (written at job start — indicates job began)
+AWS_PROFILE=jtam aws s3 ls s3://tools-solarhail-production-606196119553/solar/
+
+# Active checkpoint files (metros currently in-progress or interrupted)
+AWS_PROFILE=jtam aws s3 ls s3://tools-solarhail-production-606196119553/checkpoints/
+```
+
+### Terminate a running Batch job
+
+```bash
+AWS_PROFILE=jtam aws batch terminate-job \
+  --job-id <job-id> \
+  --reason "reason text" \
+  --region us-east-1
 ```
 
 ### View CloudWatch logs
@@ -155,14 +205,6 @@ AWS_PROFILE=jtam aws logs filter-log-events \
   --filter-pattern "?ERROR ?Traceback ?Exception" \
   --region us-east-1 --no-cli-pager \
   --query 'events[*].message' --output text
-```
-
-### Check S3 output
-
-```bash
-AWS_PROFILE=jtam aws s3 ls \
-  s3://tools-solarhail-production-606196119553/parquet/hail-events/ \
-  --recursive --human-readable --no-cli-pager | head -20
 ```
 
 ### Overture Maps release rotation
@@ -177,9 +219,9 @@ Update `OVERTURE_RELEASE` in `apps/solarhail/pipeline/src/config.py` and push. C
 
 ### CI pipeline
 
-- `test-solarhail-pipeline-production` runs all pytest tests (fast + slow) on every `apps/solarhail/pipeline/src/**` change
-- `build-push-solarhail-pipeline-production` only runs if tests pass
-- Docker image tagged with commit SHA and `latest`
+- `test-solarhail-pipeline-production` — runs all pytest tests on every `apps/solarhail/pipeline/src/**` change
+- `build-push-solarhail-pipeline-production` — runs if tests pass; tags Docker image with commit SHA + `latest`
+- Frontend deploy — runs on `apps/solarhail/frontend/**` changes; fetches `VITE_MAPBOX_TOKEN` from SSM at build time
 
 ## Data Sources
 
@@ -196,4 +238,4 @@ Update `OVERTURE_RELEASE` in `apps/solarhail/pipeline/src/config.py` and push. C
 - Overture S3: ~$0.09/GB (us-west-2→us-east-1 egress; small per metro)
 - Batch backfill (34 metros): ~$2–5 one-time
 - Athena + S3 ongoing: <$1/month
-- CloudFront (Phase 5): free tier for portfolio traffic
+- Amplify + CloudFront: free tier for portfolio traffic

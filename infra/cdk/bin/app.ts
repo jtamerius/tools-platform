@@ -104,7 +104,7 @@ const adventureBuilderAmplify = new AmplifyStack(app, `tools-shared-amplify-adve
 const solarHailAmplify = new AmplifyStack(app, `tools-shared-amplify-solarhail-${envName}`, {
   cfg,
   appName: 'solarhail',
-  subdomain: 'solarhail',
+  subdomain: 'hail-no',
   amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify-solarhail',
   env: awsEnv,
