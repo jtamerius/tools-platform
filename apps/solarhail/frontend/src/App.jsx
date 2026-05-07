@@ -38,6 +38,21 @@ export function App() {
   return (
     <div className={styles.layout}>
       <aside className={`${styles.sidebar} ${sidebarOpen ? '' : styles.sidebarCollapsed}`}>
+        <button
+          className={styles.collapseBtn}
+          onClick={() => setSidebarOpen(o => !o)}
+          title={sidebarOpen ? 'Collapse panel' : 'Expand panel'}
+        >
+          <span className={styles.collapseBtnDesktopIcon}>{sidebarOpen ? '‹' : '›'}</span>
+          <span className={styles.collapseBtnMobileIcon}>{sidebarOpen ? '↓' : '↑'}</span>
+        </button>
+
+        {!sidebarOpen && (
+          <div className={styles.collapsedSummary}>
+            <span className={styles.collapsedMetroName}>{selectedMetro?.name ?? '—'}</span>
+          </div>
+        )}
+
         {sidebarOpen && (
           <>
             <header className={styles.sidebarHeader}>
@@ -89,14 +104,6 @@ export function App() {
             </section>
           </>
         )}
-
-        <button
-          className={styles.collapseBtn}
-          onClick={() => setSidebarOpen(o => !o)}
-          title={sidebarOpen ? 'Collapse panel' : 'Expand panel'}
-        >
-          {sidebarOpen ? '‹' : '›'}
-        </button>
       </aside>
 
       <main className={styles.mapArea}>

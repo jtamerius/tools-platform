@@ -44,3 +44,10 @@
   font-size: 14px;
   pointer-events: none;
 }
+
+@media (max-width: 767px) {
+  .tooltip {
+    max-width: calc(100vw - 24px);
+    font-size: 12px;
+  }
+}

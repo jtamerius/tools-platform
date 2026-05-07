@@ -145,3 +145,83 @@
   position: relative;
   min-width: 0;
 }
+
+/* ── Mobile icon visibility (desktop shows ‹/›, mobile shows ↑/↓) ───── */
+.collapseBtnMobileIcon { display: none; }
+.collapsedSummary      { display: none; }
+
+/* ── Mobile: bottom sheet layout ──────────────────────────────────────── */
+@media (max-width: 767px) {
+  .layout { flex-direction: column; }
+
+  .mapArea {
+    position: fixed;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+    flex: none;
+  }
+
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100% !important;
+    height: 58vh;
+    max-height: 58vh;
+    border-right: none;
+    border-top: 1px solid #1e2540;
+    border-radius: 16px 16px 0 0;
+    transition: height 0.3s ease;
+    z-index: 100;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .sidebarCollapsed {
+    width: 100% !important;
+    height: 64px;
+    overflow: hidden;
+  }
+
+  .collapseBtn {
+    position: static;
+    width: 100%;
+    height: 40px;
+    border-radius: 16px 16px 0 0;
+    border-left: none;
+    border-right: none;
+    border-top: none;
+    border-bottom: 1px solid #1e2540;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .collapseBtnDesktopIcon { display: none; }
+  .collapseBtnMobileIcon  { display: block; }
+
+  .collapsedSummary {
+    display: flex;
+    align-items: center;
+    padding: 4px 20px 0;
+  }
+
+  .collapsedMetroName {
+    font-size: 13px;
+    font-weight: 600;
+    color: #e8eaf0;
+  }
+
+  .toggleBtn {
+    padding: 12px 16px;
+    font-size: 14px;
+    min-height: 44px;
+  }
+
+  .slider { height: 28px; }
+
+  .sliderLabel { font-size: 12px; }
+
+  .section        { padding: 12px 16px; }
+  .legendSection  { padding: 12px 16px; }
+}
