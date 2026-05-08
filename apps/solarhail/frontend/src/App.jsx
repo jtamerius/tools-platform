@@ -56,7 +56,7 @@ export function App() {
         {sidebarOpen && (
           <>
             <header className={styles.sidebarHeader}>
-              <h1 className={styles.appTitle}>Hail-No</h1>
+              <h1 className={styles.appTitle}>Hailstoned</h1>
               <p className={styles.appSubtitle}>Hail exposure for solar portfolios</p>
             </header>
 
