@@ -17,6 +17,7 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [showSolar, setShowSolar] = useState(false);
   const [opacity, setOpacity] = useState(0.8);
+  const [minMeshMm, setMinMeshMm] = useState(25);
 
   const selectedMetro = useMemo(
     () => METRO_LIST.find(m => m.id === selectedMetroId),
@@ -34,6 +35,34 @@ export function App() {
       setSelectedMetroId(sortedMetros[0].id);
     }
   }, [isResolved, sortedMetros]);
+
+  const filteredCells = useMemo(
+    () => cells.filter(c => c.maxMeshMm >= minMeshMm),
+    [cells, minMeshMm],
+  );
+
+  const filteredSolarCells = useMemo(() => {
+    const hailSet = new Set(filteredCells.map(c => c.h3_index));
+    return solarCells.filter(s => hailSet.has(s.h3_index));
+  }, [solarCells, filteredCells]);
+
+  const filteredStats = useMemo(() => {
+    if (!filteredCells.length) return {
+      hailDays: 0, maxMeshMm: 0, totalSolarExposed: 0, cellsAffected: 0,
+      solarBySize: { moderate: 0, significant: 0, severe: 0 },
+    };
+    return {
+      hailDays:          stats.hailDays,
+      maxMeshMm:         Math.max(...filteredCells.map(c => c.maxMeshMm)),
+      totalSolarExposed: filteredCells.reduce((s, c) => s + c.totalSolarExposed, 0),
+      cellsAffected:     filteredCells.length,
+      solarBySize: {
+        moderate:    filteredCells.filter(c => c.maxMeshMm >= 25 && c.maxMeshMm < 35).reduce((s, c) => s + c.totalSolarExposed, 0),
+        significant: filteredCells.filter(c => c.maxMeshMm >= 35 && c.maxMeshMm < 50).reduce((s, c) => s + c.totalSolarExposed, 0),
+        severe:      filteredCells.filter(c => c.maxMeshMm >= 50).reduce((s, c) => s + c.totalSolarExposed, 0),
+      },
+    };
+  }, [filteredCells, stats.hailDays]);
 
   return (
     <div className={styles.layout}>
@@ -76,7 +105,7 @@ export function App() {
               {error ? (
                 <div className={styles.error}>{error}</div>
               ) : (
-                <StatsPanel stats={stats} loading={loading} />
+                <StatsPanel stats={filteredStats} loading={loading} />
               )}
             </section>
 
@@ -88,6 +117,19 @@ export function App() {
               >
                 {showSolar ? '← Hail Events' : 'Solar Density →'}
               </button>
+              <div className={styles.sliderRow}>
+                <span className={styles.sliderLabel}>Min Hail Size</span>
+                <span className={styles.sliderLabel}>≥{minMeshMm} mm</span>
+              </div>
+              <input
+                type="range"
+                min="25"
+                max="65"
+                step="5"
+                value={minMeshMm}
+                onChange={e => setMinMeshMm(Number(e.target.value))}
+                className={styles.slider}
+              />
               <div className={styles.sliderRow}>
                 <span className={styles.sliderLabel}>Opacity</span>
                 <span className={styles.sliderLabel}>{Math.round(opacity * 100)}%</span>
@@ -107,7 +149,7 @@ export function App() {
       </aside>
 
       <main className={styles.mapArea}>
-        <HailMap cells={cells} metro={selectedMetro} solarCells={solarCells} showSolar={showSolar} opacity={opacity} />
+        <HailMap cells={filteredCells} metro={selectedMetro} solarCells={filteredSolarCells} showSolar={showSolar} opacity={opacity} />
       </main>
     </div>
   );
