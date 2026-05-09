@@ -160,7 +160,6 @@ if (envName === 'production') {
   new SolarHailPrecomputeStack(app, 'tools-app-solarhail-precompute-production', {
     cfg,
     dataBucketName: solarHailStack.dataBucketName,
-    ecrRepoUri: `${cfg.account}.dkr.ecr.us-east-1.amazonaws.com/tools-solarhail-pipeline-${envName}`,
     env: { account: cfg.account, region: 'us-west-2' },
   });
 }

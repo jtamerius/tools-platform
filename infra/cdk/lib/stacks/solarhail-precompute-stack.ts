@@ -2,6 +2,7 @@
 import * as cdk from 'aws-cdk-lib';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
@@ -12,8 +13,6 @@ export interface SolarHailPrecomputeStackProps extends cdk.StackProps {
   cfg: ToolsEnvConfig;
   /** Name of the production data S3 bucket (cross-region write target). */
   dataBucketName: string;
-  /** Full URI of the ECR repo in us-east-1 (cross-region pull). */
-  ecrRepoUri: string;
 }
 
 /**
@@ -41,6 +40,14 @@ export class SolarHailPrecomputeStack extends cdk.Stack {
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonECSTaskExecutionRolePolicy'),
       ],
+    });
+
+    // Cross-region ECR reference — repo lives in us-east-1, task runs in us-west-2.
+    // fromEcrRepository() satisfies CDK's policy check; AmazonECSTaskExecutionRolePolicy
+    // already grants the necessary ecr:* permissions with resource=*.
+    const ecrRepo = ecr.Repository.fromRepositoryAttributes(this, 'EcrRepo', {
+      repositoryArn: `arn:aws:ecr:us-east-1:${this.account}:repository/tools-solarhail-pipeline-${e}`,
+      repositoryName: `tools-solarhail-pipeline-${e}`,
     });
 
     // ── IAM: job role (S3 write to production bucket in us-east-1) ──────────
@@ -73,12 +80,11 @@ export class SolarHailPrecomputeStack extends cdk.Stack {
     });
 
     // ── Batch: job definition ────────────────────────────────────────────────
-    // fromRegistry() is used because the ECR repo lives in a different region.
     new batch.EcsJobDefinition(this, 'JobDefinition', {
       jobDefinitionName: `tools-solarhail-precompute-${e}`,
       retryAttempts: 1,
       container: new batch.EcsFargateContainerDefinition(this, 'ContainerDef', {
-        image: ecs.ContainerImage.fromRegistry(`${props.ecrRepoUri}:latest`),
+        image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'),
         command: ['scripts/precompute_buildings.py', '--workers', '8'],
         cpu: 8,
         memory: cdk.Size.mebibytes(16384),
