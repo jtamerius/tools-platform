@@ -105,6 +105,8 @@ export class IamStack extends cdk.Stack {
         `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/tools/${e}/*`,
         `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/finance-tracker`,
         `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/cdk-bootstrap/hnb659fds/version`,
+        // us-west-2 bootstrap version check (needed for solarhail-precompute stack)
+        `arn:aws:ssm:us-west-2:${cfg.account}:parameter/cdk-bootstrap/hnb659fds/version`,
       ],
     }));
 
@@ -232,6 +234,8 @@ export class IamStack extends cdk.Stack {
       resources: [
         `arn:aws:iam::${cfg.account}:role/tools-solarhail-batch-exec-${e}`,
         `arn:aws:iam::${cfg.account}:role/tools-solarhail-pipeline-${e}`,
+        `arn:aws:iam::${cfg.account}:role/tools-solarhail-precompute-exec-${e}`,
+        `arn:aws:iam::${cfg.account}:role/tools-solarhail-precompute-job-${e}`,
       ],
       conditions: {
         StringEquals: { 'iam:PassedToService': 'ecs-tasks.amazonaws.com' },
@@ -246,6 +250,10 @@ export class IamStack extends cdk.Stack {
         `arn:aws:iam::${cfg.account}:role/cdk-hnb659fds-deploy-role-${cfg.account}-${cfg.region}`,
         `arn:aws:iam::${cfg.account}:role/cdk-hnb659fds-file-publishing-role-${cfg.account}-${cfg.region}`,
         `arn:aws:iam::${cfg.account}:role/cdk-hnb659fds-lookup-role-${cfg.account}-${cfg.region}`,
+        // us-west-2 bootstrap roles (solarhail-precompute stack)
+        `arn:aws:iam::${cfg.account}:role/cdk-hnb659fds-deploy-role-${cfg.account}-us-west-2`,
+        `arn:aws:iam::${cfg.account}:role/cdk-hnb659fds-file-publishing-role-${cfg.account}-us-west-2`,
+        `arn:aws:iam::${cfg.account}:role/cdk-hnb659fds-lookup-role-${cfg.account}-us-west-2`,
       ],
     }));
 
