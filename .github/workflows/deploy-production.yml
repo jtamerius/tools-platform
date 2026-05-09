@@ -129,6 +129,7 @@ jobs:
               - 'infra/cdk/package-lock.json'
             infra-solarhail:
               - 'infra/cdk/lib/stacks/solarhail-stack.ts'
+              - 'infra/cdk/lib/stacks/solarhail-precompute-stack.ts'
               - 'apps/solarhail/api/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
@@ -1034,6 +1035,9 @@ jobs:
       - run: |
           cd infra/cdk
           out=$(npx cdk deploy tools-app-solarhail-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-app-solarhail-precompute-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # -----------------------------------------------------------------------
