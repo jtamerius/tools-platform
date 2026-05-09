@@ -1,4 +1,4 @@
-// us-west-2 precompute stack — co-located with Overture Maps S3
+// us-west-2 precompute stack — co-located with Overture Maps S3 (us-west-2)
 import * as cdk from 'aws-cdk-lib';
 import * as batch from 'aws-cdk-lib/aws-batch';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
