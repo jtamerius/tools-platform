@@ -11,6 +11,7 @@ import { NewsScraperStack } from '../lib/stacks/news-scraper-stack';
 import { InvestmentTrackerStack } from '../lib/stacks/investment-tracker-stack';
 import { AdventureBuilderStack } from '../lib/stacks/adventure-builder-stack';
 import { SolarHailStack } from '../lib/stacks/solarhail-stack';
+import { SolarHailPrecomputeStack } from '../lib/stacks/solarhail-precompute-stack';
 
 const app = new cdk.App();
 
@@ -147,8 +148,20 @@ new AdventureBuilderStack(app, `tools-app-adventure-builder-${envName}`, {
 });
 
 // ── App: solarhail (S3 + Glue + Athena + Batch + Lambda API) ─────────────────
-new SolarHailStack(app, `tools-app-solarhail-${envName}`, {
+const solarHailStack = new SolarHailStack(app, `tools-app-solarhail-${envName}`, {
   cfg,
   env: awsEnv,
 });
+
+// ── App: solarhail precompute (Batch in us-west-2, co-located with Overture) ─
+// Production only — one-time CONUS buildings precompute job.
+// Prerequisite: cdk bootstrap aws://606196119553/us-west-2  (run once manually)
+if (envName === 'production') {
+  new SolarHailPrecomputeStack(app, 'tools-app-solarhail-precompute-production', {
+    cfg,
+    dataBucketName: solarHailStack.dataBucketName,
+    ecrRepoUri: `${cfg.account}.dkr.ecr.us-east-1.amazonaws.com/tools-solarhail-pipeline-${envName}`,
+    env: { account: cfg.account, region: 'us-west-2' },
+  });
+}
 
