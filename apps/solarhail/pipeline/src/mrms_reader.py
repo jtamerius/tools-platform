@@ -37,27 +37,27 @@ def _parse_timestamp(msg) -> datetime:
 
 def read_mrms_pixels(
     s3_key: str,
-    metro_id: str,
+    metro_id: str | None,
     threshold_mm: float = MESH_THRESHOLDS_MM["medium"],
     s3_client=None,
 ) -> list[HailPixel]:
-    """Stream one MRMS GRIB2 file from NOAA S3, return pixels above threshold within metro bbox.
+    """Stream one MRMS GRIB2 file from NOAA S3, return pixels above threshold.
 
     Files are never written to disk — streamed directly from S3 into memory.
 
     Args:
         s3_key: S3 key under noaa-mrms-pds, e.g. CONUS/MESH_Max_30min_00.50/20260415/MRMS_MESH_Max_30min_00.50_20260415-120000.grib2.gz
-        metro_id: Key from config.METROS dict.
+        metro_id: Key from config.METROS dict, or None for full CONUS (no bbox filter).
         threshold_mm: Minimum MESH value to include.
         s3_client: Optional pre-configured boto3 S3 client (unsigned for public bucket).
 
     Returns:
-        List of HailPixel for cells above threshold within the metro bbox.
+        List of HailPixel for cells above threshold (within metro bbox if metro_id given).
     """
-    if metro_id not in METROS:
-        raise ValueError(f"Unknown metro_id: {metro_id}")
-
-    lat_min, lat_max, lon_min, lon_max = metro_bbox(metro_id)
+    if metro_id is not None:
+        if metro_id not in METROS:
+            raise ValueError(f"Unknown metro_id: {metro_id}")
+        lat_min, lat_max, lon_min, lon_max = metro_bbox(metro_id)
 
     if s3_client is None:
         from botocore import UNSIGNED
@@ -91,17 +91,18 @@ def read_mrms_pixels(
 
     timestamp = _parse_timestamp(msg)
 
-    # Bbox mask
-    lat_mask = (lats >= lat_min) & (lats <= lat_max)
-    lon_mask = (lons >= lon_min) & (lons <= lon_max)
-    bbox_mask = lat_mask & lon_mask
+    # Spatial mask — full CONUS when metro_id is None
+    if metro_id is not None:
+        spatial_mask = (lats >= lat_min) & (lats <= lat_max) & (lons >= lon_min) & (lons <= lon_max)
+    else:
+        spatial_mask = np.ones(lats.shape, dtype=bool)
 
     # Threshold mask (handle masked arrays)
     if isinstance(values, np.ma.MaskedArray):
-        valid_mask = ~values.mask & bbox_mask & (values.data >= threshold_mm)
+        valid_mask = ~values.mask & spatial_mask & (values.data >= threshold_mm)
         flat_vals = values.data[valid_mask]
     else:
-        valid_mask = bbox_mask & (values >= threshold_mm)
+        valid_mask = spatial_mask & (values >= threshold_mm)
         flat_vals = values[valid_mask]
 
     flat_lats = lats[valid_mask]
@@ -113,5 +114,6 @@ def read_mrms_pixels(
         for i in range(len(flat_vals))
     ]
 
-    logger.info("Metro %s: %d pixels above %.1f mm at %s", metro_id, len(pixels), threshold_mm, timestamp)
+    label = metro_id or "CONUS"
+    logger.info("%s: %d pixels above %.1f mm at %s", label, len(pixels), threshold_mm, timestamp)
     return pixels

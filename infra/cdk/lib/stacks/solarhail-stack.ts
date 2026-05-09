@@ -181,6 +181,7 @@ export class SolarHailStack extends cdk.Stack {
       ],
       container: new batch.EcsFargateContainerDefinition(this, 'ContainerDef', {
         image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'),
+        command: ['-m', 'src.main'],
         cpu: 4,
         memory: cdk.Size.mebibytes(16384),
         executionRole: batchExecRole,
@@ -195,6 +196,37 @@ export class SolarHailStack extends cdk.Stack {
         },
         logging: new ecs.AwsLogDriver({
           streamPrefix: `solarhail-pipeline-${e}`,
+          logRetention: cdk.aws_logs.RetentionDays.TWO_WEEKS,
+        }),
+      }),
+    });
+
+    // ── Batch job definition: CONUS single-day pipeline ──────────────────────
+    // Runs scripts/run_conus_day.py for one date. Submit with:
+    //   --parameters event_date=2026-04-15
+    // Smaller than per-metro job — no live Overture query (uses precomputed file).
+    const conusJobDef = new batch.EcsJobDefinition(this, 'ConusJobDefinition', {
+      jobDefinitionName: `tools-solarhail-conus-${e}`,
+      parameters: { event_date: '2026-01-01' },
+      retryAttempts: 2,
+      retryStrategies: [
+        batch.RetryStrategy.of(batch.Action.RETRY, batch.Reason.SPOT_INSTANCE_RECLAIMED),
+      ],
+      container: new batch.EcsFargateContainerDefinition(this, 'ConusContainerDef', {
+        image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'),
+        command: ['scripts/run_conus_day.py', '--date', 'Ref::event_date'],
+        cpu: 2,
+        memory: cdk.Size.mebibytes(4096),
+        executionRole: batchExecRole,
+        jobRole: batchJobRole,
+        assignPublicIp: true,
+        environment: {
+          SOLARHAIL_ENV: e,
+          DATA_DIR: '/tmp/solarhail_data',
+          LOG_LEVEL: 'INFO',
+        },
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: `solarhail-conus-${e}`,
           logRetention: cdk.aws_logs.RetentionDays.TWO_WEEKS,
         }),
       }),
@@ -309,6 +341,12 @@ export class SolarHailStack extends cdk.Stack {
       description: `SolarHail Batch job definition ARN (${e})`,
     });
 
+    new ssm.StringParameter(this, 'SSMConusJobDefinition', {
+      parameterName: `/tools/${e}/solarhail/batch-conus-job-definition`,
+      stringValue: conusJobDef.jobDefinitionArn,
+      description: `SolarHail CONUS Batch job definition ARN (${e})`,
+    });
+
     new ssm.StringParameter(this, 'SSMEcrRepo', {
       parameterName: `/tools/${e}/solarhail/ecr-repo-uri`,
       stringValue: ecrRepo.repositoryUri,
@@ -345,6 +383,11 @@ export class SolarHailStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'BatchJobQueueArn', {
       value: jobQueue.jobQueueArn,
       exportName: `tools-app-solarhail-${e}-JobQueueArn`,
+    });
+
+    new cdk.CfnOutput(this, 'ConusJobDefinitionArn', {
+      value: conusJobDef.jobDefinitionArn,
+      exportName: `tools-app-solarhail-${e}-ConusJobDefArn`,
     });
 
     new cdk.CfnOutput(this, 'ApiUrl', {

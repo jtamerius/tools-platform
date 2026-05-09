@@ -174,6 +174,51 @@ def _load_warnings(start: date, end: date) -> gpd.GeoDataFrame:
     return combined
 
 
+def get_conus_warning_windows(
+    date_: date,
+    data_dir: "Path | None" = None,
+    force_refresh: bool = False,
+) -> list[tuple[datetime, datetime]]:
+    """Return all (ISSUED_utc, EXPIRED_utc) SVR/TOR warning windows active on date_.
+
+    Covers all metro states. Used to filter MRMS keys before GRIB2 decoding.
+    Cached as JSON in data_dir. Returns empty list if no warnings found — caller
+    falls back to processing all keys.
+    """
+    from .data_downloader import DEFAULT_DATA_DIR
+    if data_dir is None:
+        data_dir = DEFAULT_DATA_DIR
+
+    cache_path = data_dir / f"conus_windows_{date_}.json"
+    if cache_path.exists() and not force_refresh:
+        logger.info("Loading CONUS warning windows from cache: %s", cache_path)
+        with open(cache_path) as f:
+            raw = json.load(f)
+        return [(datetime.fromisoformat(w[0]), datetime.fromisoformat(w[1])) for w in raw]
+
+    warnings_gdf = _load_warnings(date_, date_)
+    if warnings_gdf.empty:
+        logger.info("No SVR/TOR warnings on %s — no time-window filter applied", date_)
+        return []
+
+    issued_dts  = gpd.pd.to_datetime(warnings_gdf["ISSUED"],  utc=True, errors="coerce")
+    expired_dts = gpd.pd.to_datetime(warnings_gdf["EXPIRED"], utc=True, errors="coerce")
+
+    windows: list[tuple[datetime, datetime]] = []
+    for issued, expired in zip(issued_dts, expired_dts):
+        if gpd.pd.isna(issued) or gpd.pd.isna(expired):
+            continue
+        if issued.date() == date_ or expired.date() == date_:
+            windows.append((issued.to_pydatetime(), expired.to_pydatetime()))
+
+    data_dir.mkdir(parents=True, exist_ok=True)
+    with open(cache_path, "w") as f:
+        json.dump([[w[0].isoformat(), w[1].isoformat()] for w in windows], f)
+
+    logger.info("CONUS warning windows for %s: %d active windows", date_, len(windows))
+    return windows
+
+
 def build_warning_index(
     start_date: date,
     end_date: date,

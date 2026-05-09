@@ -7,7 +7,7 @@ H3_RESOLUTION = 8
 
 MESH_THRESHOLDS_MM = {
     "low": 20.0,
-    "medium": 25.0,
+    "medium": 38.0,
     "high": 40.0,
 }
 

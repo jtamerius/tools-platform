@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import duckdb
 import pandas as pd
@@ -23,21 +24,17 @@ _BUILDINGS_PATH = (
 )
 
 
-def fetch_buildings(metro_id: str) -> pd.DataFrame:
-    """Query Overture S3 for filtered residential/commercial buildings within metro bbox.
+def _fetch_buildings_for_bbox(
+    lat_min: float,
+    lat_max: float,
+    lon_min: float,
+    lon_max: float,
+    label: str = "",
+) -> pd.DataFrame:
+    """Query Overture S3 for buildings within a lat/lon bbox, snap centroids to H3 res 8.
 
-    Uses DuckDB with spatial extension — no local download. Centroids snapped to H3 res 8.
-
-    Args:
-        metro_id: Key from config.METROS.
-
-    Returns:
-        DataFrame with columns: h3_index, building_count.
+    Returns DataFrame with columns: h3_index, building_count.
     """
-    if metro_id not in METROS:
-        raise ValueError(f"Unknown metro_id: {metro_id}")
-
-    lat_min, lat_max, lon_min, lon_max = metro_bbox(metro_id)
     classes_sql = ", ".join(f"'{c}'" for c in OVERTURE_CLASSES)
 
     con = duckdb.connect()
@@ -45,7 +42,7 @@ def fetch_buildings(metro_id: str) -> pd.DataFrame:
     con.execute("INSTALL httpfs; LOAD httpfs;")
     con.execute("SET s3_region='us-west-2';")
 
-    logger.info("Querying Overture buildings for metro %s", metro_id)
+    logger.info("Querying Overture buildings%s", f" for {label}" if label else "")
 
     # class IS NULL covers the ~94% of Overture buildings with no classification tag;
     # ST_Area is omitted because OGC:CRS84 geometry returns sq-degrees, not sq-meters.
@@ -65,7 +62,7 @@ def fetch_buildings(metro_id: str) -> pd.DataFrame:
     con.close()
 
     if buildings.empty:
-        logger.warning("No buildings found for metro %s", metro_id)
+        logger.warning("No buildings found%s", f" for {label}" if label else "")
         return pd.DataFrame(columns=["h3_index", "building_count"])
 
     import h3
@@ -74,5 +71,71 @@ def fetch_buildings(metro_id: str) -> pd.DataFrame:
     )
 
     counts = buildings.groupby("h3_index", as_index=False).size().rename(columns={"size": "building_count"})
-    logger.info("Metro %s: %d buildings → %d H3 cells", metro_id, len(buildings), len(counts))
+    logger.info("%d buildings → %d H3 cells%s", len(buildings), len(counts), f" ({label})" if label else "")
     return counts
+
+
+def fetch_buildings(metro_id: str) -> pd.DataFrame:
+    """Query Overture S3 for buildings within a metro bbox, snap centroids to H3 res 8.
+
+    Args:
+        metro_id: Key from config.METROS.
+
+    Returns:
+        DataFrame with columns: h3_index, building_count.
+    """
+    if metro_id not in METROS:
+        raise ValueError(f"Unknown metro_id: {metro_id}")
+    lat_min, lat_max, lon_min, lon_max = metro_bbox(metro_id)
+    return _fetch_buildings_for_bbox(lat_min, lat_max, lon_min, lon_max, label=f"metro {metro_id}")
+
+
+def fetch_buildings_bbox(bbox: tuple[float, float, float, float]) -> pd.DataFrame:
+    """Query Overture S3 for buildings within an arbitrary lat/lon bbox.
+
+    Args:
+        bbox: (lat_min, lat_max, lon_min, lon_max)
+
+    Returns:
+        DataFrame with columns: h3_index, building_count.
+    """
+    lat_min, lat_max, lon_min, lon_max = bbox
+    return _fetch_buildings_for_bbox(lat_min, lat_max, lon_min, lon_max, label=f"bbox {lat_min:.2f}–{lat_max:.2f}, {lon_min:.2f}–{lon_max:.2f}")
+
+
+_PRECOMPUTED_S3_KEY = "buildings/conus_h3_building_counts.parquet"
+_PRECOMPUTED_LOCAL_NAME = "conus_h3_building_counts.parquet"
+
+
+def load_precomputed_buildings(
+    data_dir: "Path | None" = None,
+    s3_client=None,
+) -> "pd.DataFrame | None":
+    """Load precomputed CONUS building counts from local cache or S3.
+
+    Returns DataFrame with columns h3_index, building_count, or None if not found.
+    Run scripts/precompute_buildings.py once to create this file.
+    """
+    from .data_downloader import DEFAULT_DATA_DIR
+    if data_dir is None:
+        data_dir = DEFAULT_DATA_DIR
+
+    local_path = Path(data_dir) / _PRECOMPUTED_LOCAL_NAME
+
+    if local_path.exists():
+        logger.info("Loading precomputed buildings from local cache: %s", local_path)
+        return pd.read_parquet(local_path)
+
+    try:
+        from .config import S3_BUCKET
+        import boto3
+        if s3_client is None:
+            s3_client = boto3.client("s3")
+        logger.info("Downloading precomputed buildings from s3://%s/%s", S3_BUCKET, _PRECOMPUTED_S3_KEY)
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        s3_client.download_file(S3_BUCKET, _PRECOMPUTED_S3_KEY, str(local_path))
+        logger.info("Cached precomputed buildings locally: %s", local_path)
+        return pd.read_parquet(local_path)
+    except Exception as e:
+        logger.warning("Could not load precomputed buildings from S3: %s", e)
+        return None
