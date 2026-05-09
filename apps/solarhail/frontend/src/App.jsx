@@ -99,6 +99,19 @@ export function App() {
                 endDate={endDate}
                 onChange={(start, end) => { setStartDate(start); setEndDate(end); }}
               />
+              <div className={styles.sliderRow} style={{ marginTop: 12 }}>
+                <span className={styles.sliderLabel}>Min Hail Size</span>
+                <span className={styles.sliderLabel}>≥{minMeshMm} mm</span>
+              </div>
+              <input
+                type="range"
+                min="25"
+                max="65"
+                step="5"
+                value={minMeshMm}
+                onChange={e => setMinMeshMm(Number(e.target.value))}
+                className={styles.slider}
+              />
             </section>
 
             <section className={styles.section}>
@@ -117,19 +130,6 @@ export function App() {
               >
                 {showSolar ? '← Hail Events' : 'Solar Density →'}
               </button>
-              <div className={styles.sliderRow}>
-                <span className={styles.sliderLabel}>Min Hail Size</span>
-                <span className={styles.sliderLabel}>≥{minMeshMm} mm</span>
-              </div>
-              <input
-                type="range"
-                min="25"
-                max="65"
-                step="5"
-                value={minMeshMm}
-                onChange={e => setMinMeshMm(Number(e.target.value))}
-                className={styles.slider}
-              />
               <div className={styles.sliderRow}>
                 <span className={styles.sliderLabel}>Opacity</span>
                 <span className={styles.sliderLabel}>{Math.round(opacity * 100)}%</span>
