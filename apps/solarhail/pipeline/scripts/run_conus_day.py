@@ -42,6 +42,21 @@ from src.impact_calculator import calculate_impact
 from src.mrms_reader import read_mrms_pixels
 from src.overture_fetcher import fetch_buildings_bbox, load_precomputed_buildings
 
+USPVDB_S3_KEY = "commercial-solar/uspvdb_h3_aggregated.parquet"
+
+
+def load_commercial_solar(s3_client, data_dir: Path) -> pd.DataFrame | None:
+    """Load USPVDB H3-aggregated commercial solar parquet from S3 (cached locally)."""
+    cache = data_dir / "uspvdb_h3_aggregated.parquet"
+    if not cache.exists():
+        try:
+            s3_client.download_file(S3_BUCKET, USPVDB_S3_KEY, str(cache))
+            logger.info("Downloaded USPVDB commercial solar parquet from S3")
+        except Exception as e:
+            logger.warning("Could not load USPVDB commercial solar data: %s", e)
+            return None
+    return pd.read_parquet(cache)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(name)s — %(message)s",
@@ -131,13 +146,14 @@ def run(date_: date, data_dir: Path) -> None:
         logger.warning("Precomputed buildings not found — falling back to live Overture query (slow)")
         buildings = fetch_buildings_bbox(bbox)
     solar = assign_solar_to_h3(buildings, deepsolar_csv, tiger_shp)
-    output = calculate_impact(daily, solar)
+    commercial = load_commercial_solar(s3, data_dir)
+    output = calculate_impact(daily, solar, commercial_cells=commercial)
 
-    logger.info("Output cells: %d (all hail cells, solar_systems_exposed=0 where no solar data)", len(output))
+    logger.info("Output cells: %d (all hail cells, zeros where no solar data)", len(output))
 
     buf = io.BytesIO()
     with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
-        output[["h3_index", "max_mesh_mm", "solar_systems_exposed"]].to_json(
+        output[["h3_index", "max_mesh_mm", "solar_systems_exposed", "commercial_capacity_mwdc"]].to_json(
             gz, orient="records", lines=True,
         )
     buf.seek(0)
