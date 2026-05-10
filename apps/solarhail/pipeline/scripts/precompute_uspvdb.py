@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 USPVDB utility-scale solar precompute.
 
