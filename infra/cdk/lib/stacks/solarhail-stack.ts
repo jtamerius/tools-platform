@@ -234,6 +234,22 @@ export class SolarHailStack extends cdk.Stack {
       }),
     });
 
+    // ── Batch: small on-demand compute environment for maintenance jobs ──────
+    // Separate from the main Spot queue so short maintenance tasks (USPVDB
+    // precompute, etc.) never compete with or get preempted by Spot reclaims.
+    const onDemandComputeEnv = new batch.FargateComputeEnvironment(this, 'OnDemandComputeEnv', {
+      computeEnvironmentName: `tools-solarhail-ondemand-${e}`,
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      spot: false,
+      maxvCpus: 4,
+    });
+
+    const onDemandQueue = new batch.JobQueue(this, 'OnDemandJobQueue', {
+      jobQueueName: `tools-solarhail-ondemand-queue-${e}`,
+      computeEnvironments: [{ computeEnvironment: onDemandComputeEnv, order: 1 }],
+    });
+
     // ── Batch job definition: USPVDB commercial solar precompute ────────────
     // Downloads USGS utility-scale solar database, snaps to H3 res-8, writes
     // two parquet files to s3://{bucket}/commercial-solar/. ETag-based change
@@ -241,10 +257,7 @@ export class SolarHailStack extends cdk.Stack {
     // Triggered monthly by EventBridge; can also be submitted manually.
     const uspvdbJobDef = new batch.EcsJobDefinition(this, 'UspvdbJobDefinition', {
       jobDefinitionName: `tools-solarhail-uspvdb-${e}`,
-      retryAttempts: 2,
-      retryStrategies: [
-        batch.RetryStrategy.of(batch.Action.RETRY, batch.Reason.SPOT_INSTANCE_RECLAIMED),
-      ],
+      retryAttempts: 1,
       container: new batch.EcsFargateContainerDefinition(this, 'UspvdbContainerDef', {
         image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'),
         command: ['scripts/precompute_uspvdb.py'],
@@ -266,26 +279,14 @@ export class SolarHailStack extends cdk.Stack {
 
     // Monthly EventBridge schedule: 1st of each month at 06:00 UTC.
     // Uses ETag check — no-op if USGS hasn't updated since last run.
-    const uspvdbScheduleRole = new iam.Role(this, 'UspvdbScheduleRole', {
-      roleName: `tools-solarhail-uspvdb-schedule-${e}`,
-      assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
-    });
-    uspvdbScheduleRole.addToPolicy(new iam.PolicyStatement({
-      actions: ['batch:SubmitJob'],
-      resources: [
-        jobQueue.jobQueueArn,
-        uspvdbJobDef.jobDefinitionArn,
-      ],
-    }));
-
     new events.Rule(this, 'UspvdbMonthlyRule', {
       ruleName: `tools-solarhail-uspvdb-monthly-${e}`,
       description: `Monthly USPVDB commercial solar precompute (${e})`,
       schedule: events.Schedule.cron({ day: '1', hour: '6', minute: '0' }),
       targets: [
         new targets.BatchJob(
-          jobQueue.jobQueueArn,
-          jobQueue,
+          onDemandQueue.jobQueueArn,
+          onDemandQueue,
           uspvdbJobDef.jobDefinitionArn,
           uspvdbJobDef,
           { jobName: `uspvdb-monthly-${e}` },
@@ -424,6 +425,12 @@ export class SolarHailStack extends cdk.Stack {
       parameterName: `/tools/${e}/solarhail/batch-uspvdb-job-definition`,
       stringValue: uspvdbJobDef.jobDefinitionArn,
       description: `SolarHail USPVDB precompute Batch job definition ARN (${e})`,
+    });
+
+    new ssm.StringParameter(this, 'SSMOnDemandJobQueue', {
+      parameterName: `/tools/${e}/solarhail/batch-ondemand-queue`,
+      stringValue: onDemandQueue.jobQueueArn,
+      description: `SolarHail on-demand Batch job queue ARN — for maintenance jobs (${e})`,
     });
 
     // ── Outputs ──────────────────────────────────────────────────────────────

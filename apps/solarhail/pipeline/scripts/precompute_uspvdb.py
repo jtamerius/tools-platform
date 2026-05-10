@@ -50,16 +50,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Stable USGS USPVDB download URL — USGS keeps this path consistent across versions
-USPVDB_URL = "https://eerscmap.usgs.gov/uspvdb/assets/data/uspvdb_csv.zip"
+# USGS USPVDB stable download URL (GeoJSON package, updated ~quarterly)
+USPVDB_URL = "https://energy.usgs.gov/uspvdb/assets/data/uspvdbGeoJSON.zip"
 
 # S3 keys within the bucket
 S3_H3_KEY = "commercial-solar/uspvdb_h3_aggregated.parquet"
 S3_FACILITIES_KEY = "commercial-solar/uspvdb_facilities.parquet"
 S3_META_KEY = "commercial-solar/uspvdb_meta.json"
 
-# Columns we keep from the raw CSV
-_KEEP_COLS = ["case_id", "p_name", "p_state", "p_county", "ylat", "xlong", "p_cap_dc"]
+# Properties we extract from each GeoJSON feature
+_KEEP_PROPS = ["case_id", "p_name", "p_state", "p_county", "ylat", "xlong", "p_cap_dc"]
 
 
 def _load_meta(s3: Any) -> dict:
@@ -101,22 +101,40 @@ def _fetch_uspvdb(force: bool, last_etag: str) -> tuple[bytes | None, str]:
     return content, etag
 
 
-def _parse_csv(content: bytes) -> pd.DataFrame:
-    """Extract and parse the USPVDB CSV from a zip archive."""
-    with zipfile.ZipFile(io.BytesIO(content)) as zf:
-        csv_names = [n for n in zf.namelist() if n.endswith(".csv")]
-        if not csv_names:
-            raise ValueError("No CSV found in USPVDB zip")
-        csv_name = csv_names[0]
-        logger.info("Parsing %s", csv_name)
-        with zf.open(csv_name) as f:
-            df = pd.read_csv(f, low_memory=False, usecols=lambda c: c in _KEEP_COLS)
+def _parse_geojson(content: bytes) -> pd.DataFrame:
+    """Extract and parse the USPVDB GeoJSON from a zip archive.
 
-    # Normalize
+    Prefers properties ylat/xlong when present (they mirror the geometry
+    coordinates and are more convenient); falls back to geometry coordinates.
+    """
+    with zipfile.ZipFile(io.BytesIO(content)) as zf:
+        json_names = [n for n in zf.namelist() if n.endswith((".geojson", ".json"))]
+        if not json_names:
+            raise ValueError(f"No GeoJSON file found in USPVDB zip. Contents: {zf.namelist()}")
+        json_name = json_names[0]
+        logger.info("Parsing %s", json_name)
+        with zf.open(json_name) as f:
+            data = json.load(f)
+
+    features = data.get("features", [])
+    rows = []
+    for feat in features:
+        props = feat.get("properties") or {}
+        row = {k: props.get(k) for k in _KEEP_PROPS}
+        # Fall back to geometry coordinates if ylat/xlong missing from properties
+        if row["ylat"] is None or row["xlong"] is None:
+            geom = feat.get("geometry") or {}
+            if geom.get("type") == "Point":
+                lon, lat = geom["coordinates"][:2]
+                row["ylat"] = lat
+                row["xlong"] = lon
+        rows.append(row)
+
+    df = pd.DataFrame(rows)
     df = df.rename(columns={"p_cap_dc": "capacity_mwdc"})
     df = df.dropna(subset=["ylat", "xlong"])
     df["capacity_mwdc"] = pd.to_numeric(df["capacity_mwdc"], errors="coerce").fillna(0.0)
-    df["case_id"] = df["case_id"].astype(str)
+    df["case_id"] = df["case_id"].fillna("").astype(str)
     df["p_name"] = df["p_name"].fillna("").astype(str)
     df["p_state"] = df["p_state"].fillna("").astype(str)
     df["p_county"] = df["p_county"].fillna("").astype(str)
@@ -169,12 +187,12 @@ def run(force: bool = False) -> dict:
     if content is None:
         return {"status": "up_to_date", "etag": etag, "row_count": meta.get("row_count")}
 
-    df = _parse_csv(content)
+    df = _parse_geojson(content)
     df = _snap_to_h3(df)
 
     # Facility-level parquet (metadata for table view)
-    facilities = df[["h3_index"] + [c for c in _KEEP_COLS if c != "p_cap_dc"] + ["capacity_mwdc"]].copy()
-    facilities = facilities.rename(columns={})  # already renamed above
+    keep = ["h3_index"] + [c for c in _KEEP_PROPS if c != "p_cap_dc"] + ["capacity_mwdc"]
+    facilities = df[keep].copy()
 
     # H3-aggregated parquet (join key for hail exposure)
     aggregated = _build_aggregated(df)
