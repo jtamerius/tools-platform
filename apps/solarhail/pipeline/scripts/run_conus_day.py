@@ -131,24 +131,20 @@ def run(date_: date, data_dir: Path) -> None:
         logger.warning("Precomputed buildings not found — falling back to live Overture query (slow)")
         buildings = fetch_buildings_bbox(bbox)
     solar = assign_solar_to_h3(buildings, deepsolar_csv, tiger_shp)
-    enriched = calculate_impact(daily, solar)
+    output = calculate_impact(daily, solar)
 
-    if enriched.empty:
-        logger.info("No solar overlap for %s — no output", date_)
-        return
-
-    logger.info("Enriched cells: %d", len(enriched))
+    logger.info("Output cells: %d (all hail cells, solar_systems_exposed=0 where no solar data)", len(output))
 
     buf = io.BytesIO()
     with gzip.GzipFile(fileobj=buf, mode="wb") as gz:
-        enriched[["h3_index", "max_mesh_mm", "solar_systems_exposed"]].to_json(
+        output[["h3_index", "max_mesh_mm", "solar_systems_exposed"]].to_json(
             gz, orient="records", lines=True,
         )
     buf.seek(0)
 
     key = f"{S3_PARQUET_PREFIX}/event_date={date_.strftime('%Y-%m-%d')}/conus.json.gz"
     s3.upload_fileobj(buf, S3_BUCKET, key)
-    logger.info("Uploaded → s3://%s/%s  (%d rows)", S3_BUCKET, key, len(enriched))
+    logger.info("Uploaded → s3://%s/%s  (%d rows)", S3_BUCKET, key, len(output))
 
 
 if __name__ == "__main__":

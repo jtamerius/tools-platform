@@ -33,12 +33,14 @@ def calculate_impact(
         number of systems in the cell at the time of the hail event.
         Cells not matched to solar data are dropped.
     """
-    merged = hail_cells.merge(solar_cells, on="h3_index", how="inner")
+    merged = hail_cells.merge(solar_cells, on="h3_index", how="left")
     merged = merged.rename(columns={"estimated_solar_systems": "solar_systems_exposed"})
+    merged["solar_systems_exposed"] = merged["solar_systems_exposed"].fillna(0)
 
     result = merged[FINAL_SCHEMA].copy()
+    matched = (result["solar_systems_exposed"] > 0).sum()
     logger.info(
-        "Exposure: %d hail cells → %d cells with solar data (%.1f%% matched)",
-        len(hail_cells), len(result), 100 * len(result) / max(len(hail_cells), 1),
+        "Exposure: %d hail cells, %d with solar data (%.1f%% matched)",
+        len(result), matched, 100 * matched / max(len(result), 1),
     )
     return result
