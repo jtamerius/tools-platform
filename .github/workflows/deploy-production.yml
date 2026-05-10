@@ -139,6 +139,7 @@ jobs:
               - 'apps/solarhail/pipeline/Dockerfile'
               - 'apps/solarhail/pipeline/requirements.txt'
               - 'apps/solarhail/pipeline/src/**'
+              - 'apps/solarhail/pipeline/scripts/**'
               - 'apps/solarhail/pipeline/tests/**'
             solarhail-frontend:
               - 'apps/solarhail/frontend/**'
