@@ -119,16 +119,6 @@ def _load_warnings(start: date, end: date) -> gpd.GeoDataFrame:
     gdfs: list[gpd.GeoDataFrame] = []
     current_year = _current_year()
 
-    # Collect unique years in range
-    years_needed: set[int] = set()
-    d = start
-    while d <= end:
-        years_needed.add(d.year)
-        d = date(d.year + (1 if d.month == 12 and d.day == 31 else 0),
-                 1 if d.month == 12 and d.day == 31 else d.month,
-                 1 if d.month == 12 and d.day == 31 else d.day + 1)
-        # simpler: just add all years from start.year to end.year
-        break
     years_needed = set(range(start.year, end.year + 1))
 
     for year in sorted(years_needed):
