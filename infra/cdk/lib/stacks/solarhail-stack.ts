@@ -329,7 +329,7 @@ export class SolarHailStack extends cdk.Stack {
       code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/solarhail/api')),
       handler: 'handler.handler',
       timeout: cdk.Duration.seconds(60),
-      memorySize: 512,
+      memorySize: 1024,
       environment: {
         S3_BUCKET: dataBucket.bucketName,
         S3_PREFIX: 'parquet/hail-events',
@@ -375,6 +375,18 @@ export class SolarHailStack extends cdk.Stack {
     new apigwv2.CfnRoute(this, 'SolarRoute', {
       apiId: httpApi.ref,
       routeKey: 'GET /api/solar',
+      target: `integrations/${integration.ref}`,
+    });
+
+    new apigwv2.CfnRoute(this, 'ConusRoute', {
+      apiId: httpApi.ref,
+      routeKey: 'GET /api/conus',
+      target: `integrations/${integration.ref}`,
+    });
+
+    new apigwv2.CfnRoute(this, 'ConusStateSummaryRoute', {
+      apiId: httpApi.ref,
+      routeKey: 'GET /api/conus/state-summary',
       target: `integrations/${integration.ref}`,
     });
 

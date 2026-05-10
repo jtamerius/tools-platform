@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import gzip
 import io
+import json
 import logging
 import re
 import sys
@@ -43,6 +44,53 @@ from src.mrms_reader import read_mrms_pixels
 from src.overture_fetcher import fetch_buildings_bbox, load_precomputed_buildings
 
 USPVDB_S3_KEY = "commercial-solar/uspvdb_h3_aggregated.parquet"
+H3_STATE_S3_KEY = "lookups/h3_to_state.parquet"
+
+# MESH severity thresholds (mm) — must match API handler
+MESH_MODERATE_MM    = 38.0
+MESH_SIGNIFICANT_MM = 50.0
+MESH_SEVERE_MM      = 65.0
+
+
+def load_h3_state(s3_client, data_dir: Path) -> pd.DataFrame | None:
+    """Load h3_to_state lookup parquet from S3 (cached locally). Returns None if not yet built."""
+    cache = data_dir / "h3_to_state.parquet"
+    if not cache.exists():
+        try:
+            s3_client.download_file(S3_BUCKET, H3_STATE_S3_KEY, str(cache))
+            logger.info("Downloaded h3_to_state parquet from S3")
+        except Exception as e:
+            logger.info("h3_to_state lookup not available yet: %s", e)
+            return None
+    return pd.read_parquet(cache, columns=["h3_index", "state_abbr", "state_name"])
+
+
+def write_state_agg(s3_client, output: pd.DataFrame, date_: date, h3_state: pd.DataFrame) -> None:
+    """Compute and upload per-state severity/solar aggregation for the API state-summary endpoint."""
+    merged = output.merge(h3_state, on="h3_index", how="left")
+    merged = merged[merged["state_abbr"].notna()]
+    if merged.empty:
+        return
+
+    rows = []
+    for (abbr, name), grp in merged.groupby(["state_abbr", "state_name"]):
+        rows.append({
+            "state_abbr": abbr,
+            "state_name": name,
+            "has_moderate":    bool((grp["max_mesh_mm"] >= MESH_MODERATE_MM).any()),
+            "has_significant": bool((grp["max_mesh_mm"] >= MESH_SIGNIFICANT_MM).any()),
+            "has_severe":      bool((grp["max_mesh_mm"] >= MESH_SEVERE_MM).any()),
+            "total_solar":            float(grp["solar_systems_exposed"].sum()),
+            "total_commercial_mwdc":  float(grp["commercial_capacity_mwdc"].sum()),
+        })
+
+    key = f"{S3_PARQUET_PREFIX}/event_date={date_.strftime('%Y-%m-%d')}/conus_state_agg.json"
+    s3_client.put_object(
+        Bucket=S3_BUCKET, Key=key,
+        Body=json.dumps(rows).encode(),
+        ContentType="application/json",
+    )
+    logger.info("State agg uploaded → %s (%d states)", key, len(rows))
 
 
 def load_commercial_solar(s3_client, data_dir: Path) -> pd.DataFrame | None:
@@ -161,6 +209,13 @@ def run(date_: date, data_dir: Path) -> None:
     key = f"{S3_PARQUET_PREFIX}/event_date={date_.strftime('%Y-%m-%d')}/conus.json.gz"
     s3.upload_fileobj(buf, S3_BUCKET, key)
     logger.info("Uploaded → s3://%s/%s  (%d rows)", S3_BUCKET, key, len(output))
+
+    h3_state = load_h3_state(s3, data_dir)
+    if h3_state is not None:
+        try:
+            write_state_agg(s3, output, date_, h3_state)
+        except Exception:
+            logger.exception("State agg failed — continuing without it")
 
 
 if __name__ == "__main__":
