@@ -80,6 +80,73 @@
   margin-top: auto;
 }
 
+/* ── Map mode selector ─────────────────────────────────────────────────────── */
+.modeBar {
+  display: flex;
+  gap: 4px;
+}
+
+.modeBtn {
+  flex: 1;
+  padding: 6px 4px;
+  background: #1a1e2e;
+  border: 1px solid #2a3050;
+  border-radius: 6px;
+  color: #8b93a8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.modeBtn:hover {
+  background: #2a3050;
+  color: #e8eaf0;
+}
+
+.modeBtnActive {
+  background: #0d1f3c;
+  border-color: #5b8cff;
+  color: #5b8cff;
+}
+
+/* ── Sidebar tabs ──────────────────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid #1e2540;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #5b6480;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: #8b93a8;
+}
+
+.tabActive {
+  color: #5b8cff;
+  border-bottom-color: #5b8cff;
+}
+
+.tabContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  border-bottom: 1px solid #1e2540;
+}
+
 .error {
   font-size: 13px;
   color: #ff6b6b;

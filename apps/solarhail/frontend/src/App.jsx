@@ -1,9 +1,8 @@
-import { useState, useMemo, useEffect, useRef } from 'react';
-import { METRO_LIST, BACKFILL_START, BACKFILL_END } from './config/metros';
+import { useState, useMemo, useCallback } from 'react';
+import { BACKFILL_START, BACKFILL_END } from './config/metros';
 import { useHailData } from './hooks/useHailData';
-import { useSolarData } from './hooks/useSolarData';
-import { useMetroSummary } from './hooks/useMetroSummary';
-import { MetroSelector } from './components/MetroSelector';
+import { useStateSummary } from './hooks/useStateSummary';
+import { useCommercialFacilities } from './hooks/useCommercialFacilities';
 import { DateRangeSlider } from './components/DateRangeSlider';
 import { StatsPanel } from './components/StatsPanel';
 import { Legend } from './components/Legend';
@@ -11,58 +10,82 @@ import { HailMap } from './components/HailMap';
 import styles from './App.module.css';
 
 export function App() {
-  const [selectedMetroId, setSelectedMetroId] = useState(METRO_LIST[0].id);
   const [startDate, setStartDate] = useState(BACKFILL_START);
   const [endDate, setEndDate] = useState(BACKFILL_END);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showSolar, setShowSolar] = useState(false);
+  const [mapMode, setMapMode] = useState('hail');
+  const [activeTab, setActiveTab] = useState('home');
   const [opacity, setOpacity] = useState(0.8);
   const [minMeshMm, setMinMeshMm] = useState(25);
+  const [viewportBounds, setViewportBounds] = useState(null);
 
-  const selectedMetro = useMemo(
-    () => METRO_LIST.find(m => m.id === selectedMetroId),
-    [selectedMetroId],
-  );
+  const { cells, loading, error } = useHailData(startDate, endDate);
+  const { rows: stateRows, loading: stateLoading } = useStateSummary(startDate, endDate);
+  const { facilitiesByH3 } = useCommercialFacilities();
 
-  const { cells, stats, loading, error } = useHailData(selectedMetroId, startDate, endDate);
-  const { solarCells } = useSolarData(selectedMetroId);
-  const { sortedMetros, isResolved } = useMetroSummary();
-  const autoSelectedRef = useRef(false);
-
-  useEffect(() => {
-    if (isResolved && !autoSelectedRef.current && sortedMetros.length > 0) {
-      autoSelectedRef.current = true;
-      setSelectedMetroId(sortedMetros[0].id);
-    }
-  }, [isResolved, sortedMetros]);
-
+  // Filter by min hail size
   const filteredCells = useMemo(
     () => cells.filter(c => c.maxMeshMm >= minMeshMm),
     [cells, minMeshMm],
   );
 
-  const filteredSolarCells = useMemo(() => {
-    const hailSet = new Set(filteredCells.map(c => c.h3_index));
-    return solarCells.filter(s => hailSet.has(s.h3_index));
-  }, [solarCells, filteredCells]);
+  // Further filter by current viewport
+  const viewportCells = useMemo(() => {
+    if (!viewportBounds) return filteredCells;
+    const { north, south, east, west } = viewportBounds;
+    return filteredCells.filter(
+      c => c.lat >= south && c.lat <= north && c.lng >= west && c.lng <= east,
+    );
+  }, [filteredCells, viewportBounds]);
 
-  const filteredStats = useMemo(() => {
-    if (!filteredCells.length) return {
+  // Home tab stats — computed from viewport
+  const homeStats = useMemo(() => {
+    if (!viewportCells.length) return {
       hailDays: 0, maxMeshMm: 0, totalSolarExposed: 0, cellsAffected: 0,
       solarBySize: { moderate: 0, significant: 0, severe: 0 },
     };
     return {
-      hailDays:          stats.hailDays,
-      maxMeshMm:         Math.max(...filteredCells.map(c => c.maxMeshMm)),
-      totalSolarExposed: filteredCells.reduce((s, c) => s + c.totalSolarExposed, 0),
-      cellsAffected:     filteredCells.length,
+      hailDays:          viewportCells.reduce((s, c) => s + c.hailDays, 0),
+      maxMeshMm:         Math.max(...viewportCells.map(c => c.maxMeshMm)),
+      totalSolarExposed: viewportCells.reduce((s, c) => s + c.totalSolarExposed, 0),
+      cellsAffected:     viewportCells.length,
       solarBySize: {
-        moderate:    filteredCells.filter(c => c.maxMeshMm >= 25 && c.maxMeshMm < 35).reduce((s, c) => s + c.totalSolarExposed, 0),
-        significant: filteredCells.filter(c => c.maxMeshMm >= 35 && c.maxMeshMm < 50).reduce((s, c) => s + c.totalSolarExposed, 0),
-        severe:      filteredCells.filter(c => c.maxMeshMm >= 50).reduce((s, c) => s + c.totalSolarExposed, 0),
+        moderate:    viewportCells.filter(c => c.maxMeshMm >= 25 && c.maxMeshMm < 38).reduce((s, c) => s + c.totalSolarExposed, 0),
+        significant: viewportCells.filter(c => c.maxMeshMm >= 38 && c.maxMeshMm < 50).reduce((s, c) => s + c.totalSolarExposed, 0),
+        severe:      viewportCells.filter(c => c.maxMeshMm >= 50).reduce((s, c) => s + c.totalSolarExposed, 0),
       },
     };
-  }, [filteredCells, stats.hailDays]);
+  }, [viewportCells]);
+
+  // Commercial tab stats — computed from viewport
+  const commercialStats = useMemo(() => {
+    if (!viewportCells.length) return { hailDays: 0, maxMeshMm: 0, totalCommercialMwdc: 0, cellsAffected: 0 };
+    return {
+      hailDays:           viewportCells.reduce((s, c) => s + c.hailDays, 0),
+      maxMeshMm:          Math.max(...viewportCells.map(c => c.maxMeshMm)),
+      totalCommercialMwdc: viewportCells.reduce((s, c) => s + c.totalCommercialMwdc, 0),
+      cellsAffected:      viewportCells.length,
+    };
+  }, [viewportCells]);
+
+  // Facility list for commercial tab — join viewport cells with facility lookup
+  const viewportFacilities = useMemo(() => {
+    if (!facilitiesByH3) return [];
+    const result = [];
+    for (const cell of viewportCells) {
+      const facs = facilitiesByH3.get(cell.h3_index);
+      if (facs) {
+        for (const f of facs) {
+          result.push({ ...f, maxMeshMm: cell.maxMeshMm, hailDays: cell.hailDays });
+        }
+      }
+    }
+    return result.sort((a, b) => b.capacity_mwdc - a.capacity_mwdc);
+  }, [facilitiesByH3, viewportCells]);
+
+  const handleViewportChange = useCallback(bounds => {
+    setViewportBounds(bounds);
+  }, []);
 
   return (
     <div className={styles.layout}>
@@ -76,22 +99,12 @@ export function App() {
           <span className={styles.collapseBtnMobileIcon}>{sidebarOpen ? '↓' : '↑'}</span>
         </button>
 
-        {!sidebarOpen && (
-          <div className={styles.collapsedSummary}>
-            <span className={styles.collapsedMetroName}>{selectedMetro?.name ?? '—'}</span>
-          </div>
-        )}
-
         {sidebarOpen && (
           <>
             <header className={styles.sidebarHeader}>
               <h1 className={styles.appTitle}>Hailstoned</h1>
               <p className={styles.appSubtitle}>Hail exposure for solar portfolios</p>
             </header>
-
-            <section className={styles.section}>
-              <MetroSelector value={selectedMetroId} onChange={setSelectedMetroId} metros={sortedMetros} />
-            </section>
 
             <section className={styles.section}>
               <DateRangeSlider
@@ -115,22 +128,53 @@ export function App() {
             </section>
 
             <section className={styles.section}>
+              <div className={styles.modeBar}>
+                {(['hail', 'home', 'commercial']).map(mode => (
+                  <button
+                    key={mode}
+                    className={`${styles.modeBtn} ${mapMode === mode ? styles.modeBtnActive : ''}`}
+                    onClick={() => setMapMode(mode)}
+                  >
+                    {mode === 'hail' ? 'Hail' : mode === 'home' ? 'Home Solar' : 'Commercial'}
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <div className={styles.tabBar}>
+              <button
+                className={`${styles.tab} ${activeTab === 'home' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('home')}
+              >
+                Home Solar
+              </button>
+              <button
+                className={`${styles.tab} ${activeTab === 'commercial' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('commercial')}
+              >
+                Commercial
+              </button>
+            </div>
+
+            <section className={styles.tabContent}>
               {error ? (
                 <div className={styles.error}>{error}</div>
               ) : (
-                <StatsPanel stats={filteredStats} loading={loading} />
+                <StatsPanel
+                  activeTab={activeTab}
+                  homeStats={homeStats}
+                  commercialStats={commercialStats}
+                  stateRows={stateRows}
+                  stateLoading={stateLoading}
+                  viewportFacilities={viewportFacilities}
+                  loading={loading}
+                />
               )}
             </section>
 
             <section className={styles.legendSection}>
-              <Legend showSolar={showSolar} />
-              <button
-                className={`${styles.toggleBtn} ${showSolar ? styles.toggleBtnActive : ''}`}
-                onClick={() => setShowSolar(s => !s)}
-              >
-                {showSolar ? '← Hail Events' : 'Solar Density →'}
-              </button>
-              <div className={styles.sliderRow}>
+              <Legend mapMode={mapMode} />
+              <div className={styles.sliderRow} style={{ marginTop: 12 }}>
                 <span className={styles.sliderLabel}>Opacity</span>
                 <span className={styles.sliderLabel}>{Math.round(opacity * 100)}%</span>
               </div>
@@ -149,7 +193,12 @@ export function App() {
       </aside>
 
       <main className={styles.mapArea}>
-        <HailMap cells={filteredCells} metro={selectedMetro} solarCells={filteredSolarCells} showSolar={showSolar} opacity={opacity} />
+        <HailMap
+          cells={filteredCells}
+          mapMode={mapMode}
+          opacity={opacity}
+          onViewportChange={handleViewportChange}
+        />
       </main>
     </div>
   );
