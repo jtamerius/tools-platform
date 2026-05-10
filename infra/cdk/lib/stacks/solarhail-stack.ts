@@ -294,6 +294,33 @@ export class SolarHailStack extends cdk.Stack {
       ],
     });
 
+    // ── Batch job definition: H3→state lookup precompute ────────────────────
+    // One-time job: resolves 4.66M H3 cell centroids to US states via spatial
+    // join. Writes lookups/h3_to_state.parquet. Re-run manually if TIGER year
+    // changes. Uses on-demand queue; takes ~10 min at 4 vCPU / 8 GB.
+    new batch.EcsJobDefinition(this, 'H3StateJobDefinition', {
+      jobDefinitionName: `tools-solarhail-h3state-${e}`,
+      retryAttempts: 1,
+      container: new batch.EcsFargateContainerDefinition(this, 'H3StateContainerDef', {
+        image: ecs.ContainerImage.fromEcrRepository(ecrRepo, 'latest'),
+        command: ['scripts/precompute_h3_state.py'],
+        cpu: 4,
+        memory: cdk.Size.mebibytes(8192),
+        executionRole: batchExecRole,
+        jobRole: batchJobRole,
+        assignPublicIp: true,
+        environment: {
+          SOLARHAIL_ENV: e,
+          DATA_DIR: '/tmp/solarhail_data',
+          LOG_LEVEL: 'INFO',
+        },
+        logging: new ecs.AwsLogDriver({
+          streamPrefix: `solarhail-h3state-${e}`,
+          logRetention: cdk.aws_logs.RetentionDays.ONE_MONTH,
+        }),
+      }),
+    });
+
     // ── Lambda: public API (S3 Select — no auth, no external deps) ──────────
     const apiFn = new lambda.Function(this, 'ApiFunction', {
       functionName: `tools-solarhail-api-${e}`,
