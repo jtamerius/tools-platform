@@ -38,7 +38,6 @@ from src.config import MRMS_BUCKET, MRMS_PRODUCT, S3_BUCKET, S3_PARQUET_PREFIX
 from src.data_downloader import DEFAULT_DATA_DIR, fetch_all
 from src.deepsolar_joiner import assign_solar_to_h3
 from src.h3_snapper import snap_to_h3
-from src.iem_prefilter import get_conus_warning_windows
 from src.impact_calculator import calculate_impact
 from src.mrms_reader import read_mrms_pixels
 from src.overture_fetcher import fetch_buildings_bbox, load_precomputed_buildings
@@ -125,38 +124,16 @@ def list_mrms_keys_for_date(s3_client, date_: date) -> list[str]:
     return keys
 
 
-def _filter_keys_by_windows(
-    keys: list[str],
-    windows: list[tuple[datetime, datetime]],
-) -> list[str]:
-    """Keep only keys whose filename timestamp falls within any warning window."""
-    if not windows:
-        return keys  # no window data — safe fallback: keep all
-    filtered = []
-    for key in keys:
-        m = re.search(r'(\d{8})-(\d{6})\.grib2', key)
-        if not m:
-            filtered.append(key)
-            continue
-        key_dt = datetime.strptime(
-            m.group(1) + m.group(2), '%Y%m%d%H%M%S'
-        ).replace(tzinfo=timezone.utc)
-        if any(issued <= key_dt <= expired for issued, expired in windows):
-            filtered.append(key)
-    return filtered
-
 
 def run(date_: date, data_dir: Path) -> None:
     noaa = boto3.client("s3", config=Config(signature_version=UNSIGNED), region_name="us-east-1")
     s3 = boto3.client("s3")
 
-    windows = get_conus_warning_windows(date_, data_dir=data_dir)
-    all_keys = list_mrms_keys_for_date(noaa, date_)
-    keys = _filter_keys_by_windows(all_keys, windows)
-    logger.info("MRMS keys: %d total → %d within warning windows", len(all_keys), len(keys))
+    keys = list_mrms_keys_for_date(noaa, date_)
+    logger.info("MRMS keys: %d to process for %s", len(keys), date_)
 
     if not keys:
-        logger.info("No MRMS files in warning windows for %s — nothing to process", date_)
+        logger.info("No MRMS files found for %s — nothing to process", date_)
         return
 
     all_cells: list[pd.DataFrame] = []

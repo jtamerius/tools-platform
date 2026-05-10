@@ -5,7 +5,10 @@ import { H3HexagonLayer } from '@deck.gl/geo-layers';
 import { Map } from 'react-map-gl/mapbox';
 import styles from './HailMap.module.css';
 
-const MAP_STYLE = 'mapbox://styles/mapbox/satellite-streets-v12';
+const STYLES = {
+  dark:      'mapbox://styles/mapbox/dark-v10',
+  satellite: 'mapbox://styles/mapbox/satellite-streets-v12',
+};
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const COMMERCIAL_CAP_MW = 100;
@@ -44,37 +47,43 @@ const INITIAL_VIEW = { longitude: -97, latitude: 38, zoom: 4, pitch: 0, bearing:
 export function HailMap({ cells, mapMode = 'hail', opacity = 0.8, onViewportChange }) {
   const [viewState, setViewState] = useState(INITIAL_VIEW);
   const [tooltip, setTooltip] = useState(null);
+  const [basemap, setBasemap] = useState('dark');
+
   const containerRef = useRef(null);
   const sizeRef = useRef({ width: 0, height: 0 });
+  // Keep latest values accessible from the stable callback without recreating it
+  const onViewportChangeRef = useRef(onViewportChange);
+  onViewportChangeRef.current = onViewportChange;
+  const latestVsRef = useRef(INITIAL_VIEW);
+  const vpTimerRef = useRef(null);
 
-  // Track container dimensions for viewport bbox computation
   useEffect(() => {
     if (!containerRef.current) return;
     const ro = new ResizeObserver(([entry]) => {
       const { width, height } = entry.contentRect;
       sizeRef.current = { width, height };
-      if (onViewportChange && width && height) {
-        const vp = new WebMercatorViewport({ ...viewState, width, height });
-        const [[west, south], [east, north]] = vp.getBounds();
-        onViewportChange({ north, south, east, west });
-      }
     });
     ro.observe(containerRef.current);
     return () => ro.disconnect();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
+  // Stable callback — never recreated, so DeckGL's drag state is never interrupted
   const handleViewStateChange = useCallback(({ viewState: vs }) => {
     setViewState(vs);
     setTooltip(null);
-    if (onViewportChange) {
+    latestVsRef.current = vs;
+
+    // Debounce the expensive parent update: recomputing viewportCells on every
+    // animation frame (60fps) causes jank. 150ms means ~7 updates/sec while panning.
+    clearTimeout(vpTimerRef.current);
+    vpTimerRef.current = setTimeout(() => {
       const { width, height } = sizeRef.current;
-      if (width && height) {
-        const vp = new WebMercatorViewport({ ...vs, width, height });
-        const [[west, south], [east, north]] = vp.getBounds();
-        onViewportChange({ north, south, east, west });
-      }
-    }
-  }, [onViewportChange]);
+      if (!width || !height || !onViewportChangeRef.current) return;
+      const vp = new WebMercatorViewport({ ...latestVsRef.current, width, height });
+      const [[west, south], [east, north]] = vp.getBounds();
+      onViewportChangeRef.current({ north, south, east, west });
+    }, 150);
+  }, []); // empty deps — callback identity never changes
 
   const layer = useMemo(() => new H3HexagonLayer({
     id: 'hail-hex',
@@ -103,7 +112,7 @@ export function HailMap({ cells, mapMode = 'hail', opacity = 0.8, onViewportChan
         layers={[layer]}
         onHover={onHover}
       >
-        <Map reuseMaps mapStyle={MAP_STYLE} mapboxAccessToken={MAPBOX_TOKEN} />
+        <Map reuseMaps mapStyle={STYLES[basemap]} mapboxAccessToken={MAPBOX_TOKEN} />
       </DeckGL>
 
       {tooltip && (
@@ -128,6 +137,14 @@ export function HailMap({ cells, mapMode = 'hail', opacity = 0.8, onViewportChan
           )}
         </div>
       )}
+
+      <button
+        className={styles.basemapToggle}
+        onClick={() => setBasemap(b => b === 'dark' ? 'satellite' : 'dark')}
+        title="Toggle basemap"
+      >
+        {basemap === 'dark' ? '🛰 Satellite' : '◼ Dark'}
+      </button>
 
       {cells.length === 0 && (
         <div className={styles.empty}>No hail events in selected range</div>
