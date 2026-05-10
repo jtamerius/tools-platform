@@ -388,6 +388,10 @@ export class SolarHailStack extends cdk.Stack {
       apiId: httpApi.ref,
       stageName: '$default',
       autoDeploy: true,
+      defaultRouteSettings: {
+        throttlingRateLimit: 50,   // sustained requests/second
+        throttlingBurstLimit: 100, // max concurrent burst
+      },
     });
 
     new lambda.CfnPermission(this, 'ApiInvokePermission', {
