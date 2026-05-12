@@ -1,37 +1,39 @@
 import styles from './Legend.module.css';
 
-const MODES = {
-  hail: {
-    title: 'Max MESH (mm)',
-    bar: 'linear-gradient(to right, #ffe500, #ff8800, #cc0000)',
-    stops: [{ color: '#ffe500', label: '25mm' }, { color: '#ff8800', label: '38mm' }, { color: '#cc0000', label: '50mm+' }],
-  },
-  home: {
-    title: 'Est. Solar Systems',
-    bar: 'linear-gradient(to right, #145020, #00b4a0, #1464ff)',
-    stops: [{ color: '#145020', label: '1' }, { color: '#00b4a0', label: '10' }, { color: '#1464ff', label: '20+' }],
-  },
-  commercial: {
-    title: 'Commercial MW Exposed',
-    bar: 'linear-gradient(to right, #ffe500, #ff8800, #cc0000)',
-    stops: [{ color: '#ffe500', label: '1 MW' }, { color: '#ff8800', label: '50 MW' }, { color: '#cc0000', label: '100+ MW' }],
-  },
-};
-
-export function Legend({ mapMode = 'hail' }) {
-  const { title, bar, stops } = MODES[mapMode] ?? MODES.hail;
+export function Legend({ showRadar, showSolar, showCommercial }) {
   return (
     <div className={styles.wrapper}>
-      <span className={styles.title}>{title}</span>
-      <div className={styles.bar} style={{ background: bar }} />
-      <div className={styles.ticks}>
-        {stops.map(s => (
-          <div key={s.label} className={styles.tick}>
-            <span className={styles.dot} style={{ background: s.color }} />
-            <span className={styles.tickLabel}>{s.label}</span>
+      {showRadar && (
+        <div className={styles.entry}>
+          <span className={styles.title}>Radar — Max MESH</span>
+          <div className={styles.bar} style={{ background: 'linear-gradient(to right, #ffe500, #ff8800, #cc0000)' }} />
+          <div className={styles.ticks}>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#ffe500' }} /><span className={styles.tickLabel}>25mm</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#ff8800' }} /><span className={styles.tickLabel}>38mm</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#cc0000' }} /><span className={styles.tickLabel}>50mm+</span></div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+      {showSolar && (
+        <div className={styles.entry}>
+          <span className={styles.title}>Home Solar — Est. Systems</span>
+          <div className={styles.bar} style={{ background: 'linear-gradient(to right, #145020, #00b4a0, #1464ff)' }} />
+          <div className={styles.ticks}>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#145020' }} /><span className={styles.tickLabel}>1</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#00b4a0' }} /><span className={styles.tickLabel}>10</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#1464ff' }} /><span className={styles.tickLabel}>20+</span></div>
+          </div>
+        </div>
+      )}
+      {showCommercial && (
+        <div className={styles.entry}>
+          <span className={styles.title}>Commercial Solar</span>
+          <div className={styles.ticks}>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#ff8c00' }} /><span className={styles.tickLabel}>Hit by hail</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#828282' }} /><span className={styles.tickLabel}>Below threshold</span></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

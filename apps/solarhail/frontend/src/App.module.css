@@ -80,35 +80,55 @@
   margin-top: auto;
 }
 
-/* ── Map mode selector ─────────────────────────────────────────────────────── */
-.modeBar {
-  display: flex;
-  gap: 4px;
+/* ── Layer toggles ─────────────────────────────────────────────────────────── */
+.layerLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #5b6480;
+  margin-bottom: 8px;
 }
 
-.modeBtn {
-  flex: 1;
-  padding: 6px 4px;
+.layerToggles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.layerBtn {
+  width: 100%;
+  padding: 7px 12px;
   background: #1a1e2e;
   border: 1px solid #2a3050;
   border-radius: 6px;
-  color: #8b93a8;
-  font-size: 11px;
+  color: #5b6480;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
-  text-align: center;
+  text-align: left;
   transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
 
-.modeBtn:hover {
+.layerBtn:hover {
   background: #2a3050;
-  color: #e8eaf0;
+  color: #8b93a8;
 }
 
-.modeBtnActive {
-  background: #0d1f3c;
-  border-color: #5b8cff;
-  color: #5b8cff;
+.layerBtnActive {
+  color: #e8eaf0;
+  border-color: #3a4060;
+  background: #1e2540;
+}
+
+.layerBtnActive.layerBtnSolar {
+  border-color: #b89800;
+  color: #ffdc00;
+}
+
+.layerBtnActive.layerBtnCommercial {
+  border-color: #994400;
+  color: #ff8c00;
 }
 
 /* ── Sidebar tabs ──────────────────────────────────────────────────────────── */

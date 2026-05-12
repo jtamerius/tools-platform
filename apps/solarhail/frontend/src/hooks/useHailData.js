@@ -3,7 +3,7 @@ import { cellToLatLng } from 'h3-js';
 import { fetchConusEvents } from '../services/api';
 import { BACKFILL_START } from '../config/metros';
 
-function getMonthlyChunks() {
+function getWeeklyChunks() {
   const chunks = [];
   const end = new Date();
   end.setDate(end.getDate() - 1); // yesterday — today's pipeline may not have run yet
@@ -11,17 +11,19 @@ function getMonthlyChunks() {
 
   while (cur <= end) {
     const chunkStart = cur.toISOString().slice(0, 10);
-    const lastDay = new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
-    const chunkEnd = (lastDay < end ? lastDay : end).toISOString().slice(0, 10);
+    const chunkEndDate = new Date(cur);
+    chunkEndDate.setDate(chunkEndDate.getDate() + 6);
+    const chunkEnd = (chunkEndDate < end ? chunkEndDate : end).toISOString().slice(0, 10);
     chunks.push([chunkStart, chunkEnd]);
-    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+    cur = new Date(chunkEndDate);
+    cur.setDate(cur.getDate() + 1);
   }
   return chunks;
 }
 
 /**
- * Fetches all CONUS hail events in monthly chunks (to stay under API Gateway
- * 10MB response limit). Returns cells with lat/lng for viewport filtering.
+ * Fetches all CONUS hail events in weekly chunks (to stay under API Gateway
+ * response limit — monthly chunks exceed 6MB with full unfiltered data). Returns cells with lat/lng for viewport filtering.
  *
  * cells: [{ h3_index, maxMeshMm, totalSolarExposed, totalCommercialMwdc, hailDays, lat, lng }]
  */
@@ -34,7 +36,7 @@ export function useHailData(startDate, endDate) {
     setLoading(true);
     setError(null);
 
-    const chunks = getMonthlyChunks();
+    const chunks = getWeeklyChunks();
     let mounted = true;
     let arrived = 0;
     const total = chunks.length;
