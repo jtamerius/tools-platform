@@ -2,6 +2,7 @@ import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import DeckGL from '@deck.gl/react';
 import { WebMercatorViewport } from '@deck.gl/core';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
+import { ScatterplotLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/mapbox';
 import styles from './HailMap.module.css';
 
@@ -11,7 +12,6 @@ const STYLES = {
 };
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_TOKEN;
 
-const COMMERCIAL_CAP_MW = 100;
 const LOG_CAP = Math.log(21);
 
 function meshToColor(mm) {
@@ -30,28 +30,25 @@ function solarToColor(systems) {
   return [Math.round(t * 20), Math.round(200 - t * 100), Math.round(80 + t * 175), Math.round(120 + t * 135)];
 }
 
-function commercialToColor(mwdc) {
-  if (mwdc <= 0) return [0, 0, 0, 0];
-  const t = Math.min(mwdc / COMMERCIAL_CAP_MW, 1);
-  return [255, Math.round(200 - t * 200), 0, Math.round(120 + t * 135)];
-}
-
-function getColor(d, mapMode) {
-  if (mapMode === 'home') return solarToColor(d.totalSolarExposed);
-  if (mapMode === 'commercial') return commercialToColor(d.totalCommercialMwdc);
-  return meshToColor(d.maxMeshMm);
-}
-
 const INITIAL_VIEW = { longitude: -97, latitude: 38, zoom: 4, pitch: 0, bearing: 0 };
 
-export function HailMap({ cells, mapMode = 'hail', opacity = 0.8, onViewportChange }) {
+export function HailMap({
+  cells,
+  commercialFeatures = [],
+  minMeshMm = 25,
+  showRadar = true,
+  showSolar = true,
+  showCommercial = false,
+  opacity = 0.8,
+  onViewportChange,
+}) {
   const [viewState, setViewState] = useState(INITIAL_VIEW);
+  const [roundedZoom, setRoundedZoom] = useState(Math.round(INITIAL_VIEW.zoom));
   const [tooltip, setTooltip] = useState(null);
   const [basemap, setBasemap] = useState('dark');
 
   const containerRef = useRef(null);
   const sizeRef = useRef({ width: 0, height: 0 });
-  // Keep latest values accessible from the stable callback without recreating it
   const onViewportChangeRef = useRef(onViewportChange);
   onViewportChangeRef.current = onViewportChange;
   const latestVsRef = useRef(INITIAL_VIEW);
@@ -67,14 +64,19 @@ export function HailMap({ cells, mapMode = 'hail', opacity = 0.8, onViewportChan
     return () => ro.disconnect();
   }, []);
 
+  const roundedZoomRef = useRef(Math.round(INITIAL_VIEW.zoom));
+
   // Stable callback — never recreated, so DeckGL's drag state is never interrupted
   const handleViewStateChange = useCallback(({ viewState: vs }) => {
     setViewState(vs);
     setTooltip(null);
     latestVsRef.current = vs;
+    const rz = Math.round(vs.zoom);
+    if (rz !== roundedZoomRef.current) {
+      roundedZoomRef.current = rz;
+      setRoundedZoom(rz);
+    }
 
-    // Debounce the expensive parent update: recomputing viewportCells on every
-    // animation frame (60fps) causes jank. 150ms means ~7 updates/sec while panning.
     clearTimeout(vpTimerRef.current);
     vpTimerRef.current = setTimeout(() => {
       const { width, height } = sizeRef.current;
@@ -83,21 +85,62 @@ export function HailMap({ cells, mapMode = 'hail', opacity = 0.8, onViewportChan
       const [[west, south], [east, north]] = vp.getBounds();
       onViewportChangeRef.current({ north, south, east, west });
     }, 150);
-  }, []); // empty deps — callback identity never changes
+  }, []);
 
-  const layer = useMemo(() => new H3HexagonLayer({
-    id: 'hail-hex',
-    data: cells,
-    getHexagon: d => d.h3_index,
-    getFillColor: d => getColor(d, mapMode),
-    getElevation: 0,
-    extruded: false,
-    filled: true,
-    stroked: false,
-    opacity,
-    pickable: true,
-    updateTriggers: { getFillColor: [mapMode, cells] },
-  }), [cells, mapMode, opacity]);
+  const radarCells   = useMemo(() => cells.filter(c => c.maxMeshMm >= minMeshMm), [cells, minMeshMm]);
+
+  // Pixel radius shrinks as you zoom in: ~12px at zoom 4, ~4px at zoom 10+
+  const commercialRadius = useMemo(
+    () => Math.max(4, 14 - (roundedZoom - 4) * 1.5),
+    [roundedZoom],
+  );
+
+  const layers = useMemo(() => {
+    const out = [];
+
+    if (showRadar) out.push(new H3HexagonLayer({
+      id: 'hail-hex',
+      data: radarCells,
+      getHexagon: d => d.h3_index,
+      getFillColor: d => meshToColor(d.maxMeshMm),
+      getElevation: 0,
+      extruded: false,
+      filled: true,
+      stroked: false,
+      opacity,
+      pickable: true,
+      updateTriggers: { getFillColor: radarCells },
+    }));
+
+    if (showSolar) out.push(new H3HexagonLayer({
+      id: 'solar-hex',
+      data: radarCells.filter(d => d.totalSolarExposed > 0),
+      getHexagon: d => d.h3_index,
+      getFillColor: d => solarToColor(d.totalSolarExposed),
+      getElevation: 0,
+      extruded: false,
+      filled: true,
+      stroked: false,
+      opacity,
+      pickable: true,
+      updateTriggers: { getFillColor: radarCells },
+    }));
+
+    if (showCommercial) out.push(new ScatterplotLayer({
+      id: 'commercial-points',
+      data: commercialFeatures,
+      getPosition: d => [d.lng, d.lat],
+      getFillColor: d => d.maxMeshMm >= minMeshMm
+        ? [255, 220, 0, 240]      // yellow — hit by qualifying hail
+        : [130, 130, 130, 160],   // grey — below threshold
+      getRadius: commercialRadius,
+      radiusUnits: 'pixels',
+      pickable: true,
+      updateTriggers: { getFillColor: [minMeshMm, commercialFeatures], getRadius: commercialRadius },
+    }));
+
+    return out;
+  }, [showRadar, showSolar, showCommercial, radarCells, commercialFeatures, minMeshMm, opacity, commercialRadius]);
 
   const onHover = useCallback(({ object, x, y }) => {
     setTooltip(object ? { object, x, y } : null);
@@ -109,7 +152,7 @@ export function HailMap({ cells, mapMode = 'hail', opacity = 0.8, onViewportChan
         viewState={viewState}
         onViewStateChange={handleViewStateChange}
         controller={true}
-        layers={[layer]}
+        layers={layers}
         onHover={onHover}
       >
         <Map reuseMaps mapStyle={STYLES[basemap]} mapboxAccessToken={MAPBOX_TOKEN} />
@@ -117,23 +160,50 @@ export function HailMap({ cells, mapMode = 'hail', opacity = 0.8, onViewportChan
 
       {tooltip && (
         <div className={styles.tooltip} style={{ left: tooltip.x + 12, top: tooltip.y - 10 }}>
-          <div className={styles.tooltipRow}>
-            <span>Max MESH</span>
-            <strong>{tooltip.object.maxMeshMm.toFixed(1)} mm</strong>
-          </div>
-          <div className={styles.tooltipRow}>
-            <span>Hail days</span>
-            <strong>{tooltip.object.hailDays}</strong>
-          </div>
-          <div className={styles.tooltipRow}>
-            <span>Solar systems</span>
-            <strong>{tooltip.object.totalSolarExposed.toFixed(1)}</strong>
-          </div>
-          {tooltip.object.totalCommercialMwdc > 0 && (
-            <div className={styles.tooltipRow}>
-              <span>Commercial MW</span>
-              <strong>{tooltip.object.totalCommercialMwdc.toFixed(1)}</strong>
-            </div>
+          {tooltip.object.p_name ? (
+            <>
+              <div className={styles.tooltipTitle}>{tooltip.object.p_name}</div>
+              {(tooltip.object.p_county || tooltip.object.p_state) && (
+                <div className={styles.tooltipSubtitle}>
+                  {[tooltip.object.p_county, tooltip.object.p_state].filter(Boolean).join(', ')}
+                </div>
+              )}
+              <div className={styles.tooltipRow}>
+                <span>Capacity</span>
+                <strong>{tooltip.object.capacity_mwdc.toFixed(1)} MW</strong>
+              </div>
+              <div className={styles.tooltipRow}>
+                <span>Max MESH</span>
+                <strong>{tooltip.object.maxMeshMm.toFixed(1)} mm</strong>
+              </div>
+              <div className={styles.tooltipRow}>
+                <span>Hail days</span>
+                <strong>{tooltip.object.hailDays}</strong>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className={styles.tooltipRow}>
+                <span>Max MESH</span>
+                <strong>{tooltip.object.maxMeshMm.toFixed(1)} mm</strong>
+              </div>
+              <div className={styles.tooltipRow}>
+                <span>Hail days</span>
+                <strong>{tooltip.object.hailDays}</strong>
+              </div>
+              {tooltip.object.totalSolarExposed > 0 && (
+                <div className={styles.tooltipRow}>
+                  <span>Solar systems</span>
+                  <strong>{tooltip.object.totalSolarExposed.toFixed(0)}</strong>
+                </div>
+              )}
+              {tooltip.object.totalCommercialMwdc > 0 && (
+                <div className={styles.tooltipRow}>
+                  <span>Commercial MW</span>
+                  <strong>{tooltip.object.totalCommercialMwdc.toFixed(1)}</strong>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}

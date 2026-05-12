@@ -13,10 +13,12 @@ export function App() {
   const [startDate, setStartDate] = useState(BACKFILL_START);
   const [endDate, setEndDate] = useState(BACKFILL_END);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [mapMode, setMapMode] = useState('hail');
   const [activeTab, setActiveTab] = useState('home');
   const [opacity, setOpacity] = useState(0.8);
   const [minMeshMm, setMinMeshMm] = useState(25);
+  const [showRadar, setShowRadar] = useState(true);
+  const [showSolar, setShowSolar] = useState(true);
+  const [showCommercial, setShowCommercial] = useState(false);
   const [viewportBounds, setViewportBounds] = useState(null);
 
   const { cells, loading, error } = useHailData(startDate, endDate);
@@ -67,6 +69,22 @@ export function App() {
       cellsAffected:      viewportCells.length,
     };
   }, [viewportCells]);
+
+  // All commercial facilities joined with hail cell data (for map layer)
+  const commercialFeatures = useMemo(() => {
+    if (!facilitiesByH3) return [];
+    const result = [];
+    for (const cell of cells) {
+      if (cell.totalCommercialMwdc <= 0) continue;
+      const facs = facilitiesByH3.get(cell.h3_index);
+      if (facs) {
+        for (const f of facs) {
+          result.push({ ...f, lng: cell.lng, lat: cell.lat, maxMeshMm: cell.maxMeshMm, hailDays: cell.hailDays });
+        }
+      }
+    }
+    return result;
+  }, [facilitiesByH3, cells]);
 
   // Facility list for commercial tab — join viewport cells with facility lookup
   const viewportFacilities = useMemo(() => {
@@ -128,16 +146,20 @@ export function App() {
             </section>
 
             <section className={styles.section}>
-              <div className={styles.modeBar}>
-                {(['hail', 'home', 'commercial']).map(mode => (
-                  <button
-                    key={mode}
-                    className={`${styles.modeBtn} ${mapMode === mode ? styles.modeBtnActive : ''}`}
-                    onClick={() => setMapMode(mode)}
-                  >
-                    {mode === 'hail' ? 'Hail' : mode === 'home' ? 'Home Solar' : 'Commercial'}
-                  </button>
-                ))}
+              <div className={styles.layerLabel}>Layers</div>
+              <div className={styles.layerToggles}>
+                <button
+                  className={`${styles.layerBtn} ${showRadar ? styles.layerBtnActive : ''}`}
+                  onClick={() => setShowRadar(v => !v)}
+                >⬡ Radar</button>
+                <button
+                  className={`${styles.layerBtn} ${showSolar ? styles.layerBtnActive : ''} ${styles.layerBtnSolar}`}
+                  onClick={() => setShowSolar(v => !v)}
+                >● Home Solar</button>
+                <button
+                  className={`${styles.layerBtn} ${showCommercial ? styles.layerBtnActive : ''} ${styles.layerBtnCommercial}`}
+                  onClick={() => setShowCommercial(v => !v)}
+                >● Commercial</button>
               </div>
             </section>
 
@@ -173,7 +195,7 @@ export function App() {
             </section>
 
             <section className={styles.legendSection}>
-              <Legend mapMode={mapMode} />
+              <Legend showRadar={showRadar} showSolar={showSolar} showCommercial={showCommercial} />
               <div className={styles.sliderRow} style={{ marginTop: 12 }}>
                 <span className={styles.sliderLabel}>Opacity</span>
                 <span className={styles.sliderLabel}>{Math.round(opacity * 100)}%</span>
@@ -194,8 +216,12 @@ export function App() {
 
       <main className={styles.mapArea}>
         <HailMap
-          cells={filteredCells}
-          mapMode={mapMode}
+          cells={cells}
+          commercialFeatures={commercialFeatures}
+          minMeshMm={minMeshMm}
+          showRadar={showRadar}
+          showSolar={showSolar}
+          showCommercial={showCommercial}
           opacity={opacity}
           onViewportChange={handleViewportChange}
         />

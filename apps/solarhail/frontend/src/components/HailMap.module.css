@@ -16,6 +16,19 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
 }
 
+.tooltipTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e8eaf0;
+  margin-bottom: 2px;
+}
+
+.tooltipSubtitle {
+  font-size: 11px;
+  color: #8b93a8;
+  margin-bottom: 6px;
+}
+
 .tooltipRow {
   display: flex;
   justify-content: space-between;
