@@ -29,6 +29,7 @@ PREFIX = os.environ.get("S3_PREFIX", "parquet/hail-events")
 MAX_DAYS = 92
 
 SUMMARY_KEY = "summary/metro_totals.json"
+FACILITIES_KEY = "commercial-solar/uspvdb_facilities.json"
 
 # MESH severity thresholds (mm) — must match pipeline
 MESH_MODERATE_MM    = 38.0
@@ -61,6 +62,9 @@ def handler(event, context):  # noqa: ARG001
 
     if path.rstrip("/").endswith("/conus"):
         return _handle_conus(params)
+
+    if path.rstrip("/").endswith("/facilities"):
+        return _handle_facilities()
 
     metro = params.get("metro", "").strip().lower()
     start = params.get("start", "")
@@ -251,6 +255,34 @@ def _fetch_parallel(keys: list[tuple[str, str]]) -> list[dict]:
         for fut in as_completed(futures):
             rows.extend(fut.result())
     return rows
+
+
+# ── /api/facilities ───────────────────────────────────────────────────────────
+
+def _handle_facilities() -> dict:
+    """Return USPVDB facility list as JSON. Returns empty list if not yet built."""
+    try:
+        resp = s3.get_object(Bucket=BUCKET, Key=FACILITIES_KEY)
+        facilities = json.loads(resp["Body"].read())
+        logger.info("Returning facilities (%d)", len(facilities))
+        return {
+            "statusCode": 200,
+            "headers": {**CORS, "Content-Type": "application/json"},
+            "body": json.dumps({"facilities": facilities}),
+        }
+    except s3.exceptions.NoSuchKey:
+        return {
+            "statusCode": 200,
+            "headers": {**CORS, "Content-Type": "application/json"},
+            "body": json.dumps({"facilities": []}),
+        }
+    except Exception as exc:
+        logger.warning("Failed to read facilities: %s", exc)
+        return {
+            "statusCode": 200,
+            "headers": {**CORS, "Content-Type": "application/json"},
+            "body": json.dumps({"facilities": []}),
+        }
 
 
 # ── Existing handlers (unchanged) ────────────────────────────────────────────
