@@ -30,10 +30,12 @@ function getWeeklyChunks() {
 export function useHailData(startDate, endDate) {
   const [allEvents, setAllEvents] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [allLoaded, setAllLoaded] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     setLoading(true);
+    setAllLoaded(false);
     setError(null);
 
     const chunks = getWeeklyChunks();
@@ -46,7 +48,8 @@ export function useHailData(startDate, endDate) {
         .then(events => {
           if (!mounted) return;
           arrived++;
-          if (arrived === 1) setLoading(false); // show data after first chunk
+          if (arrived === 1) setLoading(false); // show map after first chunk
+          if (arrived === total) setAllLoaded(true);
           setAllEvents(prev => [...prev, ...events]);
         })
         .catch(err => {
@@ -54,6 +57,7 @@ export function useHailData(startDate, endDate) {
           arrived++;
           if (arrived === total) {
             setLoading(false);
+            setAllLoaded(true);
             setError(err.message);
           }
         });
@@ -94,5 +98,5 @@ export function useHailData(startDate, endDate) {
     return Array.from(cellMap.values()).map(c => ({ ...c, hailDays: c.hailDays.size }));
   }, [allEvents, startDate, endDate]);
 
-  return { cells, loading, error };
+  return { cells, loading, allLoaded, error };
 }

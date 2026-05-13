@@ -40,6 +40,7 @@ export function HailMap({
   showSolar = true,
   showCommercial = false,
   opacity = 0.8,
+  allLoaded = true,
   onViewportChange,
 }) {
   const [viewState, setViewState] = useState(INITIAL_VIEW);
@@ -216,7 +217,11 @@ export function HailMap({
         {basemap === 'dark' ? '🛰 Satellite' : '◼ Dark'}
       </button>
 
-      {cells.length === 0 && (
+      {!allLoaded && (
+        <div className={styles.loadingBadge}>Loading data…</div>
+      )}
+
+      {allLoaded && cells.length === 0 && (
         <div className={styles.empty}>No hail events in selected range</div>
       )}
     </div>

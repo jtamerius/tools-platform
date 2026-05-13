@@ -21,7 +21,7 @@ export function App() {
   const [showCommercial, setShowCommercial] = useState(false);
   const [viewportBounds, setViewportBounds] = useState(null);
 
-  const { cells, loading, error } = useHailData(startDate, endDate);
+  const { cells, loading, allLoaded, error } = useHailData(startDate, endDate);
   const { rows: stateRows, loading: stateLoading } = useStateSummary(startDate, endDate);
   const { facilitiesByH3 } = useCommercialFacilities();
 
@@ -223,6 +223,7 @@ export function App() {
           showSolar={showSolar}
           showCommercial={showCommercial}
           opacity={opacity}
+          allLoaded={allLoaded}
           onViewportChange={handleViewportChange}
         />
       </main>
