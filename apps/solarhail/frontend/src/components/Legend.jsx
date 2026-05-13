@@ -5,7 +5,7 @@ export function Legend({ showRadar, showSolar, showCommercial }) {
     <div className={styles.wrapper}>
       {showRadar && (
         <div className={styles.entry}>
-          <span className={styles.title}>Radar — Max MESH</span>
+          <span className={styles.title}>MESH — Max Hail Size</span>
           <div className={styles.bar} style={{ background: 'linear-gradient(to right, #ffe500, #ff8800, #cc0000)' }} />
           <div className={styles.ticks}>
             <div className={styles.tick}><span className={styles.dot} style={{ background: '#ffe500' }} /><span className={styles.tickLabel}>25mm</span></div>
@@ -27,11 +27,7 @@ export function Legend({ showRadar, showSolar, showCommercial }) {
       )}
       {showCommercial && (
         <div className={styles.entry}>
-          <span className={styles.title}>Commercial Solar</span>
-          <div className={styles.ticks}>
-            <div className={styles.tick}><span className={styles.dot} style={{ background: '#ff8c00' }} /><span className={styles.tickLabel}>Hit by hail</span></div>
-            <div className={styles.tick}><span className={styles.dot} style={{ background: '#828282' }} /><span className={styles.tickLabel}>Below threshold</span></div>
-          </div>
+          <span className={styles.title}>Commercial Solar — dot size = MW capacity</span>
         </div>
       )}
     </div>

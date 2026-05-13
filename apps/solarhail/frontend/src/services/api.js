@@ -44,15 +44,23 @@ export function fetchStateSummary(start, end) {
   });
 }
 
-// Singleton — facilities JSON is static and fetched once per session
+// Singleton — facilities JSON is static and fetched once per session.
+// Retries up to 3 times with 2s backoff on failure.
 let facilitiesCache = null;
 export function fetchFacilities() {
   if (!facilitiesCache) {
     facilitiesCache = (async () => {
-      const res = await fetch(`${BASE}/api/facilities`);
-      if (!res.ok) return [];
-      const { facilities } = await res.json();
-      return facilities ?? [];
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000 * attempt));
+        try {
+          const res = await fetch(`${BASE}/api/facilities`);
+          if (!res.ok) throw new Error(res.statusText);
+          const { facilities } = await res.json();
+          return facilities ?? [];
+        } catch (e) {
+          if (attempt === 2) return [];
+        }
+      }
     })();
     facilitiesCache.catch(() => { facilitiesCache = null; });
   }

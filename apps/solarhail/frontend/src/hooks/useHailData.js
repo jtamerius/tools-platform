@@ -43,22 +43,29 @@ export function useHailData(startDate, endDate) {
     let arrived = 0;
     const total = chunks.length;
 
+    function fetchChunk(s, e, retries = 2) {
+      return fetchConusEvents(s, e).catch(err => {
+        if (!mounted || retries <= 0) throw err;
+        return new Promise(r => setTimeout(r, 2000)).then(() => fetchChunk(s, e, retries - 1));
+      });
+    }
+
     chunks.forEach(([s, e]) => {
-      fetchConusEvents(s, e)
+      fetchChunk(s, e)
         .then(events => {
           if (!mounted) return;
           arrived++;
-          if (arrived === 1) setLoading(false); // show map after first chunk
+          if (arrived === 1) setLoading(false);
           if (arrived === total) setAllLoaded(true);
           setAllEvents(prev => [...prev, ...events]);
         })
         .catch(err => {
           if (!mounted) return;
           arrived++;
+          console.error(`[chunk ${s}–${e} FAILED after retries]`, err.message);
           if (arrived === total) {
             setLoading(false);
             setAllLoaded(true);
-            setError(err.message);
           }
         });
     });

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import DeckGL from '@deck.gl/react';
-import { WebMercatorViewport } from '@deck.gl/core';
+import { WebMercatorViewport, FlyToInterpolator } from '@deck.gl/core';
 import { H3HexagonLayer } from '@deck.gl/geo-layers';
 import { ScatterplotLayer } from '@deck.gl/layers';
 import { Map } from 'react-map-gl/mapbox';
@@ -42,6 +42,7 @@ export function HailMap({
   opacity = 0.8,
   allLoaded = true,
   onViewportChange,
+  flyToTarget = null,
 }) {
   const [viewState, setViewState] = useState(INITIAL_VIEW);
   const [roundedZoom, setRoundedZoom] = useState(Math.round(INITIAL_VIEW.zoom));
@@ -83,16 +84,29 @@ export function HailMap({
       const { width, height } = sizeRef.current;
       if (!width || !height || !onViewportChangeRef.current) return;
       const vp = new WebMercatorViewport({ ...latestVsRef.current, width, height });
-      const [[west, south], [east, north]] = vp.getBounds();
+      const [west, south] = vp.unproject([0, height]);
+      const [east, north] = vp.unproject([width, 0]);
       onViewportChangeRef.current({ north, south, east, west });
     }, 150);
   }, []);
 
+  useEffect(() => {
+    if (!flyToTarget) return;
+    setViewState(vs => ({
+      ...vs,
+      longitude: flyToTarget.longitude,
+      latitude: flyToTarget.latitude,
+      zoom: 12,
+      transitionDuration: 1200,
+      transitionInterpolator: new FlyToInterpolator(),
+    }));
+  }, [flyToTarget]);
+
   const radarCells   = useMemo(() => cells.filter(c => c.maxMeshMm >= minMeshMm), [cells, minMeshMm]);
 
-  // Pixel radius shrinks as you zoom in: ~12px at zoom 4, ~4px at zoom 10+
+  // Pixel radius shrinks as you zoom in: ~6px at zoom 4, ~2px at zoom 10+
   const commercialRadius = useMemo(
-    () => Math.max(4, 14 - (roundedZoom - 4) * 1.5),
+    () => Math.max(2, 7 - (roundedZoom - 4) * 0.75),
     [roundedZoom],
   );
 
@@ -130,14 +144,28 @@ export function HailMap({
     if (showCommercial) out.push(new ScatterplotLayer({
       id: 'commercial-points',
       data: commercialFeatures,
-      getPosition: d => [d.lng, d.lat],
+      getPosition: d => [d.xlong, d.ylat],
       getFillColor: d => d.maxMeshMm >= minMeshMm
-        ? [255, 220, 0, 240]      // yellow — hit by qualifying hail
-        : [130, 130, 130, 160],   // grey — below threshold
-      getRadius: commercialRadius,
+        ? [255, 230, 80, 210]
+        : [160, 160, 160, 130],
+      getLineColor: d => d.maxMeshMm >= minMeshMm
+        ? [180, 100, 0, 230]
+        : [80, 80, 80, 160],
+      // Scale dot radius by capacity (sqrt keeps large sites from dominating)
+      getRadius: d => {
+        const base = commercialRadius;
+        const scale = Math.min(2.5, Math.sqrt(Math.max(1, d.capacity_mwdc) / 20) + 0.4);
+        return base * scale;
+      },
       radiusUnits: 'pixels',
+      stroked: true,
+      lineWidthMinPixels: 1.2,
       pickable: true,
-      updateTriggers: { getFillColor: [minMeshMm, commercialFeatures], getRadius: commercialRadius },
+      updateTriggers: {
+        getFillColor: [minMeshMm],
+        getLineColor: [minMeshMm],
+        getRadius: [commercialRadius],
+      },
     }));
 
     return out;
@@ -177,20 +205,12 @@ export function HailMap({
                 <span>Max MESH</span>
                 <strong>{tooltip.object.maxMeshMm.toFixed(1)} mm</strong>
               </div>
-              <div className={styles.tooltipRow}>
-                <span>Hail days</span>
-                <strong>{tooltip.object.hailDays}</strong>
-              </div>
             </>
           ) : (
             <>
               <div className={styles.tooltipRow}>
                 <span>Max MESH</span>
                 <strong>{tooltip.object.maxMeshMm.toFixed(1)} mm</strong>
-              </div>
-              <div className={styles.tooltipRow}>
-                <span>Hail days</span>
-                <strong>{tooltip.object.hailDays}</strong>
               </div>
               {tooltip.object.totalSolarExposed > 0 && (
                 <div className={styles.tooltipRow}>

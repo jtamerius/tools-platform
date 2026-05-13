@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 PARQUET_KEY = "commercial-solar/uspvdb_facilities.parquet"
 JSON_KEY = "commercial-solar/uspvdb_facilities.json"
 
-KEEP_COLS = ["h3_index", "case_id", "p_name", "p_state", "p_county", "capacity_mwdc"]
+KEEP_COLS = ["h3_index", "case_id", "p_name", "p_state", "p_county", "ylat", "xlong", "capacity_mwdc"]
 
 
 def run() -> None:

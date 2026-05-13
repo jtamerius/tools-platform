@@ -133,6 +133,15 @@
   background: #141728;
 }
 
+.clickableRow {
+  cursor: pointer;
+}
+
+.clickableRow:hover td {
+  background: #1e2540 !important;
+  color: #e8eaf0;
+}
+
 .numCol {
   text-align: right !important;
   font-variant-numeric: tabular-nums;

@@ -13,13 +13,16 @@ export function App() {
   const [startDate, setStartDate] = useState(BACKFILL_START);
   const [endDate, setEndDate] = useState(BACKFILL_END);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState('home');
+  const [activeTab, setActiveTab] = useState('commercial');
   const [opacity, setOpacity] = useState(0.8);
   const [minMeshMm, setMinMeshMm] = useState(25);
   const [showRadar, setShowRadar] = useState(true);
-  const [showSolar, setShowSolar] = useState(true);
-  const [showCommercial, setShowCommercial] = useState(false);
   const [viewportBounds, setViewportBounds] = useState(null);
+  const [flyToTarget, setFlyToTarget] = useState(null);
+
+  // Layer visibility follows the active tab — mutually exclusive
+  const showSolar      = activeTab === 'home';
+  const showCommercial = activeTab === 'commercial';
 
   const { cells, loading, allLoaded, error } = useHailData(startDate, endDate);
   const { rows: stateRows, loading: stateLoading } = useStateSummary(startDate, endDate);
@@ -43,30 +46,20 @@ export function App() {
   // Home tab stats — computed from viewport
   const homeStats = useMemo(() => {
     if (!viewportCells.length) return {
-      hailDays: 0, maxMeshMm: 0, totalSolarExposed: 0, cellsAffected: 0,
+      maxMeshMm: 0, totalSolarExposed: 0, totalMwdc: 0, cellsAffected: 0,
       solarBySize: { moderate: 0, significant: 0, severe: 0 },
     };
+    const totalSolarExposed = viewportCells.reduce((s, c) => s + c.totalSolarExposed, 0);
     return {
-      hailDays:          viewportCells.reduce((s, c) => s + c.hailDays, 0),
-      maxMeshMm:         Math.max(...viewportCells.map(c => c.maxMeshMm)),
-      totalSolarExposed: viewportCells.reduce((s, c) => s + c.totalSolarExposed, 0),
+      maxMeshMm:         viewportCells.reduce((m, c) => Math.max(m, c.maxMeshMm), 0),
+      totalSolarExposed,
+      totalMwdc:         totalSolarExposed * 7.2 / 1000,
       cellsAffected:     viewportCells.length,
       solarBySize: {
         moderate:    viewportCells.filter(c => c.maxMeshMm >= 25 && c.maxMeshMm < 38).reduce((s, c) => s + c.totalSolarExposed, 0),
         significant: viewportCells.filter(c => c.maxMeshMm >= 38 && c.maxMeshMm < 50).reduce((s, c) => s + c.totalSolarExposed, 0),
         severe:      viewportCells.filter(c => c.maxMeshMm >= 50).reduce((s, c) => s + c.totalSolarExposed, 0),
       },
-    };
-  }, [viewportCells]);
-
-  // Commercial tab stats — computed from viewport
-  const commercialStats = useMemo(() => {
-    if (!viewportCells.length) return { hailDays: 0, maxMeshMm: 0, totalCommercialMwdc: 0, cellsAffected: 0 };
-    return {
-      hailDays:           viewportCells.reduce((s, c) => s + c.hailDays, 0),
-      maxMeshMm:          Math.max(...viewportCells.map(c => c.maxMeshMm)),
-      totalCommercialMwdc: viewportCells.reduce((s, c) => s + c.totalCommercialMwdc, 0),
-      cellsAffected:      viewportCells.length,
     };
   }, [viewportCells]);
 
@@ -79,7 +72,7 @@ export function App() {
       const facs = facilitiesByH3.get(cell.h3_index);
       if (facs) {
         for (const f of facs) {
-          result.push({ ...f, lng: cell.lng, lat: cell.lat, maxMeshMm: cell.maxMeshMm, hailDays: cell.hailDays });
+          result.push({ ...f, maxMeshMm: cell.maxMeshMm });
         }
       }
     }
@@ -94,12 +87,19 @@ export function App() {
       const facs = facilitiesByH3.get(cell.h3_index);
       if (facs) {
         for (const f of facs) {
-          result.push({ ...f, maxMeshMm: cell.maxMeshMm, hailDays: cell.hailDays });
+          result.push({ ...f, maxMeshMm: cell.maxMeshMm });
         }
       }
     }
     return result.sort((a, b) => b.capacity_mwdc - a.capacity_mwdc);
   }, [facilitiesByH3, viewportCells]);
+
+  // Commercial tab stats — exact MW sum from facility list
+  const commercialStats = useMemo(() => ({
+    maxMeshMm:    viewportCells.length ? viewportCells.reduce((m, c) => Math.max(m, c.maxMeshMm), 0) : 0,
+    totalMwdc:    viewportFacilities.reduce((s, f) => s + (f.capacity_mwdc || 0), 0),
+    cellsAffected: viewportCells.length,
+  }), [viewportCells, viewportFacilities]);
 
   const handleViewportChange = useCallback(bounds => {
     setViewportBounds(bounds);
@@ -145,40 +145,31 @@ export function App() {
               />
             </section>
 
-            <section className={styles.section}>
-              <div className={styles.layerLabel}>Layers</div>
-              <div className={styles.layerToggles}>
-                <button
-                  className={`${styles.layerBtn} ${showRadar ? styles.layerBtnActive : ''}`}
-                  onClick={() => setShowRadar(v => !v)}
-                >⬡ Radar</button>
-                <button
-                  className={`${styles.layerBtn} ${showSolar ? styles.layerBtnActive : ''} ${styles.layerBtnSolar}`}
-                  onClick={() => setShowSolar(v => !v)}
-                >● Home Solar</button>
-                <button
-                  className={`${styles.layerBtn} ${showCommercial ? styles.layerBtnActive : ''} ${styles.layerBtnCommercial}`}
-                  onClick={() => setShowCommercial(v => !v)}
-                >● Commercial</button>
-              </div>
-            </section>
-
             <div className={styles.tabBar}>
-              <button
-                className={`${styles.tab} ${activeTab === 'home' ? styles.tabActive : ''}`}
-                onClick={() => setActiveTab('home')}
-              >
-                Home Solar
-              </button>
               <button
                 className={`${styles.tab} ${activeTab === 'commercial' ? styles.tabActive : ''}`}
                 onClick={() => setActiveTab('commercial')}
               >
                 Commercial
               </button>
+              <button
+                className={`${styles.tab} ${activeTab === 'home' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('home')}
+              >
+                Home Solar
+              </button>
             </div>
 
             <section className={styles.tabContent}>
+              <div className={styles.layerToggles} style={{ marginBottom: 10 }}>
+                <button
+                  className={`${styles.layerBtn} ${styles.layerBtnRadar} ${showRadar ? styles.layerBtnActive : ''}`}
+                  onClick={() => setShowRadar(v => !v)}
+                >
+                  <span className={styles.layerBtnLight} />
+                  ⬡ MESH
+                </button>
+              </div>
               {error ? (
                 <div className={styles.error}>{error}</div>
               ) : (
@@ -190,6 +181,7 @@ export function App() {
                   stateLoading={stateLoading}
                   viewportFacilities={viewportFacilities}
                   loading={loading}
+                  onFlyTo={setFlyToTarget}
                 />
               )}
             </section>
@@ -225,6 +217,7 @@ export function App() {
           opacity={opacity}
           allLoaded={allLoaded}
           onViewportChange={handleViewportChange}
+          flyToTarget={flyToTarget}
         />
       </main>
     </div>

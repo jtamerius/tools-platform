@@ -121,6 +121,13 @@
   background: #1e2540;
 }
 
+.layerBtnActive.layerBtnRadar {
+  border-color: #cc5500;
+  color: #ff9944;
+  background: #231a10;
+  box-shadow: 0 0 0 1px #cc5500;
+}
+
 .layerBtnActive.layerBtnSolar {
   border-color: #b89800;
   color: #ffdc00;
@@ -129,6 +136,23 @@
 .layerBtnActive.layerBtnCommercial {
   border-color: #994400;
   color: #ff8c00;
+}
+
+.layerBtnLight {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2a3050;
+  margin-right: 7px;
+  vertical-align: middle;
+  transition: background 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.layerBtnActive .layerBtnLight {
+  background: #ff7700;
+  box-shadow: 0 0 5px #ff7700, 0 0 10px rgba(255, 119, 0, 0.4);
 }
 
 /* ── Sidebar tabs ──────────────────────────────────────────────────────────── */
