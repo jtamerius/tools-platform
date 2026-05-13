@@ -1,36 +1,35 @@
 import styles from './Legend.module.css';
 
-const HAIL_STOPS = [
-  { color: '#ffe500', label: '25mm' },
-  { color: '#ff8800', label: '35mm' },
-  { color: '#cc0000', label: '50mm+' },
-];
-
-const SOLAR_STOPS = [
-  { color: '#00c850', label: '1' },
-  { color: '#00b4a0', label: '10' },
-  { color: '#1464ff', label: '20+' },
-];
-
-export function Legend({ showSolar = false }) {
-  const stops = showSolar ? SOLAR_STOPS : HAIL_STOPS;
-  const title = showSolar ? 'Est. Solar Systems' : 'Max MESH (mm)';
-  const barStyle = showSolar
-    ? { background: 'linear-gradient(to right, #00c850, #00b4a0, #1464ff)' }
-    : { background: 'linear-gradient(to right, #ffe500, #ff8800, #cc0000)' };
-
+export function Legend({ showRadar, showSolar, showCommercial }) {
   return (
     <div className={styles.wrapper}>
-      <span className={styles.title}>{title}</span>
-      <div className={styles.bar} style={barStyle} />
-      <div className={styles.ticks}>
-        {stops.map(s => (
-          <div key={s.label} className={styles.tick}>
-            <span className={styles.dot} style={{ background: s.color }} />
-            <span className={styles.tickLabel}>{s.label}</span>
+      {showRadar && (
+        <div className={styles.entry}>
+          <span className={styles.title}>MESH — Max Hail Size</span>
+          <div className={styles.bar} style={{ background: 'linear-gradient(to right, #ffe500, #ff8800, #cc0000)' }} />
+          <div className={styles.ticks}>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#ffe500' }} /><span className={styles.tickLabel}>25mm</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#ff8800' }} /><span className={styles.tickLabel}>38mm</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#cc0000' }} /><span className={styles.tickLabel}>50mm+</span></div>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+      {showSolar && (
+        <div className={styles.entry}>
+          <span className={styles.title}>Home Solar — Est. Systems</span>
+          <div className={styles.bar} style={{ background: 'linear-gradient(to right, #145020, #00b4a0, #1464ff)' }} />
+          <div className={styles.ticks}>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#145020' }} /><span className={styles.tickLabel}>1</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#00b4a0' }} /><span className={styles.tickLabel}>10</span></div>
+            <div className={styles.tick}><span className={styles.dot} style={{ background: '#1464ff' }} /><span className={styles.tickLabel}>20+</span></div>
+          </div>
+        </div>
+      )}
+      {showCommercial && (
+        <div className={styles.entry}>
+          <span className={styles.title}>Commercial Solar — dot size = MW capacity</span>
+        </div>
+      )}
     </div>
   );
 }

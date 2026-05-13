@@ -43,4 +43,4 @@ export const METRO_LIST = Object.entries(METROS).map(([id, m]) => ({ id, ...m })
 
 // Backfill window constants
 export const BACKFILL_START = '2026-02-02';
-export const BACKFILL_END   = '2026-05-01';
+export const BACKFILL_END   = '2026-05-09';

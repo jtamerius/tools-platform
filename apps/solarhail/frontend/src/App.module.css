@@ -80,6 +80,117 @@
   margin-top: auto;
 }
 
+/* ── Layer toggles ─────────────────────────────────────────────────────────── */
+.layerLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #5b6480;
+  margin-bottom: 8px;
+}
+
+.layerToggles {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.layerBtn {
+  width: 100%;
+  padding: 7px 12px;
+  background: #1a1e2e;
+  border: 1px solid #2a3050;
+  border-radius: 6px;
+  color: #5b6480;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.layerBtn:hover {
+  background: #2a3050;
+  color: #8b93a8;
+}
+
+.layerBtnActive {
+  color: #e8eaf0;
+  border-color: #3a4060;
+  background: #1e2540;
+}
+
+.layerBtnActive.layerBtnRadar {
+  border-color: #cc5500;
+  color: #ff9944;
+  background: #231a10;
+  box-shadow: 0 0 0 1px #cc5500;
+}
+
+.layerBtnActive.layerBtnSolar {
+  border-color: #b89800;
+  color: #ffdc00;
+}
+
+.layerBtnActive.layerBtnCommercial {
+  border-color: #994400;
+  color: #ff8c00;
+}
+
+.layerBtnLight {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2a3050;
+  margin-right: 7px;
+  vertical-align: middle;
+  transition: background 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+
+.layerBtnActive .layerBtnLight {
+  background: #ff7700;
+  box-shadow: 0 0 5px #ff7700, 0 0 10px rgba(255, 119, 0, 0.4);
+}
+
+/* ── Sidebar tabs ──────────────────────────────────────────────────────────── */
+.tabBar {
+  display: flex;
+  border-bottom: 1px solid #1e2540;
+}
+
+.tab {
+  flex: 1;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #5b6480;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.tab:hover {
+  color: #8b93a8;
+}
+
+.tabActive {
+  color: #5b8cff;
+  border-bottom-color: #5b8cff;
+}
+
+.tabContent {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+  border-bottom: 1px solid #1e2540;
+}
+
 .error {
   font-size: 13px;
   color: #ff6b6b;
