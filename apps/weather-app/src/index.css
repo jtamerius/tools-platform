@@ -5,19 +5,29 @@
 }
 
 :root {
-  --bg: #f9f9f7;
-  --surface: #ffffff;
-  --border: #e8e8e4;
-  --border-subtle: #f0f0ec;
-  --text: #0d0d0b;
-  --text-muted: #6c6c68;
-  --text-faint: #a8a8a4;
-  --accent: #0d0d0b;
-  --accent-hover: #2a2a28;
-  --radius: 8px;
-  --radius-lg: 12px;
-  --nav-height: 60px;
-  --max-w: 1000px;
+  --bg:          #0b0d18;
+  --bg-2:        #0e1120;
+  --bg-3:        #12162a;
+  --surface:     #0e1120;
+  --line:        #1e2540;
+  --line-2:      #2a3050;
+  --fg:          #e8eaf0;
+  --muted:       #8b93a8;
+  --dim:         #5b6480;
+  --neon:        #4fc3f7;
+  --neon-glow:   rgba(79, 195, 247, 0.22);
+  --neon-bg:     #061824;
+  --border:      #1e2540;
+  --border-subtle: #1e2540;
+  --text:        #e8eaf0;
+  --text-muted:  #8b93a8;
+  --text-faint:  #5b6480;
+  --accent:      #4fc3f7;
+  --accent-hover: #81d4fa;
+  --radius:      8px;
+  --radius-lg:   14px;
+  --nav-height:  60px;
+  --max-w:       1200px;
 }
 
 html {
@@ -25,9 +35,9 @@ html {
 }
 
 body {
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background-color: var(--bg);
-  color: var(--text);
+  color: var(--fg);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -41,4 +51,51 @@ a {
 button {
   font-family: inherit;
   cursor: pointer;
+}
+
+/* Custom range slider — pseudo-elements can't be set via React inline styles */
+.run-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: linear-gradient(
+    to right,
+    var(--neon) calc(var(--pct, 100%) * 1%),
+    var(--line-2) calc(var(--pct, 100%) * 1%)
+  );
+  outline: none;
+  cursor: pointer;
+}
+
+.run-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--neon);
+  box-shadow: 0 0 0 3px var(--neon-glow), 0 0 10px var(--neon-glow);
+  cursor: pointer;
+  transition: box-shadow 0.15s ease;
+}
+
+.run-slider::-webkit-slider-thumb:hover {
+  box-shadow: 0 0 0 5px var(--neon-glow), 0 0 18px var(--neon-glow);
+}
+
+.run-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: none;
+  border-radius: 50%;
+  background: var(--neon);
+  box-shadow: 0 0 0 3px var(--neon-glow);
+  cursor: pointer;
+}
+
+.run-slider::-moz-range-track {
+  height: 4px;
+  background: var(--line-2);
+  border-radius: 2px;
 }

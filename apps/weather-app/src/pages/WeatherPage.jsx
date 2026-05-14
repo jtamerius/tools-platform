@@ -1,16 +1,17 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Plot from 'react-plotly.js'
+import Plotly from 'plotly.js-dist-min'
 
 const CDN_BASE = 'https://d326hhew368icp.cloudfront.net'
 
 const MODEL_COLORS = {
-  gfs_seamless:  '#1f77b4',
-  ecmwf_ifs025:  '#d62728',
-  icon_seamless:  '#2ca02c',
-  gem_global:    '#9467bd',
-  gfs_hrrr:      '#ff7f0e',
+  gfs_seamless:  '#4fc3f7',
+  ecmwf_ifs025:  '#ff6b6b',
+  icon_seamless:  '#69db7c',
+  gem_global:    '#cc5de8',
+  gfs_hrrr:      '#ff922b',
 }
-const FALLBACK_COLORS = ['#1f77b4', '#d62728', '#2ca02c', '#9467bd', '#ff7f0e', '#17becf']
+const FALLBACK_COLORS = ['#4fc3f7', '#ff6b6b', '#69db7c', '#cc5de8', '#ff922b', '#38d9a9']
 
 const EVENT_PALETTE = [
   'rgba(255,193,7,0.13)', 'rgba(76,175,80,0.13)', 'rgba(33,150,243,0.13)',
@@ -118,6 +119,9 @@ function buildTraces(forecast, varKey, xRangeStart) {
   const traces  = []
 
   models.forEach((model, mIdx) => {
+    if (model === 'gfs_hrrr'    && varKey === 'freezing_level_height') return
+    if (model === 'icon_seamless' && varKey === 'surface_pressure')    return
+
     const color  = MODEL_COLORS[model] || FALLBACK_COLORS[mIdx % FALLBACK_COLORS.length]
     const rgb    = hexToRgb(color)
     const mlabel = model === 'gfs_hrrr' ? 'GFS-HRRR' : model.split('_')[0].toUpperCase()
@@ -148,7 +152,7 @@ function buildTraces(forecast, varKey, xRangeStart) {
 
     if (processed.length === 1) {
       traces.push({
-        type: 'scatter', x: tArr, y: processed[0], mode: 'lines',
+        type: 'scattergl', x: tArr, y: processed[0], mode: 'lines',
         line: { color, width: 1.8, dash: model === 'gfs_hrrr' ? 'solid' : 'dot' },
         name: mlabel, legendgroup: model, hovertemplate: hover,
       })
@@ -160,7 +164,7 @@ function buildTraces(forecast, varKey, xRangeStart) {
         hoverinfo: 'skip', showlegend: false, legendgroup: `${model}_iqr` })
       traces.push({ type: 'scatter', x: tArr, y: qLo, mode: 'lines', line: { width: 0 },
         fill: 'tonexty', fillcolor: rgba, hoverinfo: 'skip', showlegend: false, legendgroup: `${model}_iqr` })
-      traces.push({ type: 'scatter', x: tArr, y: q50, mode: 'lines',
+      traces.push({ type: 'scattergl', x: tArr, y: q50, mode: 'lines',
         line: { color, width: 2.5 }, name: mlabel, legendgroup: model, hovertemplate: hover })
     }
   })
@@ -201,12 +205,12 @@ function buildShapesAndAnnotations(forecast) {
     if (nowMt > t0Mt && nowMt < tNMt) {
       shapes.push({
         type: 'line', xref: 'x', yref: 'y domain', x0: nowMt, x1: nowMt, y0: 0, y1: 1,
-        line: { color: 'black', width: 1.5, dash: 'dash' },
+        line: { color: '#4fc3f7', width: 1.5, dash: 'dash' },
       })
       annotations.push({
         x: nowMt, y: 0.97, xref: 'x', yref: 'y domain',
-        text: '<b>Now</b>', showarrow: false, font: { size: 10, color: 'black' },
-        bgcolor: 'rgba(255,255,255,0.7)', yanchor: 'top',
+        text: '<b>Now</b>', showarrow: false, font: { size: 10, color: '#4fc3f7' },
+        bgcolor: 'rgba(6,24,32,0.85)', yanchor: 'top',
       })
     }
   }
@@ -214,19 +218,20 @@ function buildShapesAndAnnotations(forecast) {
   return { shapes, annotations }
 }
 
-function buildTickerTraces(forecast, xRangeStart, xRangeEnd) {
+function buildTickerTraces(forecast, xRangeStart, xRangeEnd, fixedModels = null) {
   const members    = forecast.members
   if (!members?.precipitation) return { traces: [], activeModels: [] }
   const timeArr    = members.time || []
   const precipData = members.precipitation
   const meta       = forecast.meta || {}
-  const ensModels  = meta.ensemble_models?.length ? meta.ensemble_models : Object.keys(precipData)
+  const ensModels  = fixedModels || (meta.ensemble_models?.length ? meta.ensemble_models : Object.keys(precipData))
 
   const tArrMt     = timeArr.map(toMtIso)
   const traces     = []
   const activeModels = []
 
   ensModels.forEach((model, mIdx) => {
+    activeModels.push(model)   // always reserve the slot regardless of data availability
     const seriesList   = precipData[model] || []
     const memberSeries = seriesList.length > 1 ? seriesList.slice(1) : seriesList
     const n = memberSeries.length
@@ -250,15 +255,14 @@ function buildTickerTraces(forecast, xRangeStart, xRangeEnd) {
     }
     if (groups.size === 0) return
 
-    const color  = MODEL_COLORS[model] || FALLBACK_COLORS[mIdx % FALLBACK_COLORS.length]
-    const yAxisId = `y${activeModels.length + 2}`
-    activeModels.push(model)
+    const color   = MODEL_COLORS[model] || FALLBACK_COLORS[mIdx % FALLBACK_COLORS.length]
+    const yAxisId = `y${mIdx + 2}`   // stable: based on position in ensModels, not activeModels count
 
     groups.forEach((times, count) => {
       const xs = [], ys = []
       times.forEach(t => { xs.push(t, t, null); ys.push(0, 1, null) })
       traces.push({
-        type: 'scatter', mode: 'lines',
+        type: 'scattergl', mode: 'lines',
         x: xs, y: ys,
         line: { color, width: (1 + (count / n) * 4) * 0.25 },
         hoverinfo: 'skip', showlegend: false,
@@ -337,7 +341,7 @@ function buildKdeTracesAndLayout(forecast, evIdx = 0) {
     const mlabel = model === 'gfs_hrrr' ? 'GFS-HRRR' : model.split('_')[0].toUpperCase()
     const r = parseInt(color.slice(1,3),16), g = parseInt(color.slice(3,5),16), b = parseInt(color.slice(5,7),16)
     traces.push({
-      type: 'scatter', mode: 'lines',
+      type: 'scattergl', mode: 'lines',
       x: xGrid, y: yGrid,
       name: `${mlabel} (n\u202f=\u202f${totals.length})`,
       fill: 'tozeroy',
@@ -350,12 +354,14 @@ function buildKdeTracesAndLayout(forecast, evIdx = 0) {
 
   const layout = {
     showlegend: true,
-    legend: { x: 1.02, y: 1, xanchor: 'left', yanchor: 'top' },
+    legend: { x: 1.02, y: 1, xanchor: 'left', yanchor: 'top', font: { size: 11, color: '#8b93a8' }, bgcolor: 'rgba(14,17,32,0.6)', bordercolor: '#1e2540', borderwidth: 1 },
     margin: { l: 60, r: 160, t: 80, b: 60 },
-    paper_bgcolor: '#f8faff',
+    paper_bgcolor: 'transparent',
+    plot_bgcolor: 'rgba(14,17,32,0.5)',
+    font: { color: '#8b93a8' },
     height: 400,
-    xaxis: { title: { text: 'Accumulated Precip (in)' }, automargin: true },
-    yaxis: { title: { text: 'Density' } },
+    xaxis: { title: { text: 'Accumulated Precip (in)', font: { color: '#8b93a8' } }, automargin: true, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' } },
+    yaxis: { title: { text: 'Density', font: { color: '#8b93a8' } }, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' } },
   }
 
   return { traces, layout, ev }
@@ -367,6 +373,13 @@ export default function WeatherPage() {
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [selectedLoc, setSelectedLoc]   = useState(null)
   const [runOffset, setRunOffset]       = useState(0)
+  const runCacheRef      = useRef(new Map())
+  const plotDataCacheRef = useRef(new Map())
+  const abortRef    = useRef(null)
+  const sliderRef   = useRef(null)
+  const runLabelRef = useRef(null)
+  const plotRef     = useRef(null)
+  const kdeRef      = useRef(null)
   const [forecast, setForecast]         = useState(null)
   const [baselineForecast, setBaselineForecast] = useState(null)
   const [loading, setLoading]           = useState(false)
@@ -376,30 +389,58 @@ export default function WeatherPage() {
   const [selectedEventIdx, setSelectedEventIdx] = useState(0)
   const wrapRef = useRef(null)
 
-  const fetchForecast = useCallback(async (loc, runId) => {
-    const key = `${loc.lat.toFixed(4)}_${loc.lon.toFixed(4)}`
-    const res = await fetch(`${CDN_BASE}/forecasts/${key}/${runId}.json`)
+  const fetchForecast = useCallback(async (loc, runId, signal) => {
+    const key      = `${loc.lat.toFixed(4)}_${loc.lon.toFixed(4)}`
+    const cacheKey = `${key}/${runId}`
+    if (runCacheRef.current.has(cacheKey)) return runCacheRef.current.get(cacheKey)
+
+    const res = await fetch(`${CDN_BASE}/forecasts/${key}/${runId}.json`, { signal })
     if (res.status === 404) {
-      const prev = prevRunId(runId)
-      const res2 = await fetch(`${CDN_BASE}/forecasts/${key}/${prev}.json`)
+      const prev    = prevRunId(runId)
+      const prevKey = `${key}/${prev}`
+      if (runCacheRef.current.has(prevKey)) return runCacheRef.current.get(prevKey)
+      const res2 = await fetch(`${CDN_BASE}/forecasts/${key}/${prev}.json`, { signal })
       if (!res2.ok) throw new Error('No forecast available for this location.')
-      return res2.json()
+      const data2 = await res2.json()
+      runCacheRef.current.set(prevKey, data2)
+      return data2
     }
     if (!res.ok) throw new Error(`Forecast fetch failed (${res.status})`)
-    return res.json()
+    const data = await res.json()
+    runCacheRef.current.set(cacheKey, data)
+    return data
   }, [])
 
   function selectLocation(loc, displayName) {
+    if (abortRef.current) abortRef.current.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
+
     setQuery(displayName)
     setShowSuggestions(false)
     setSelectedLoc(loc)
+    setRunOffset(0)
+    if (sliderRef.current) {
+      sliderRef.current.value = MAX_RUN_OFFSET
+      sliderRef.current.style.setProperty('--pct', '100')
+    }
+    if (runLabelRef.current) runLabelRef.current.textContent = '— current'
     setLoading(true)
     setError(null)
     setForecast(null)
     setSelectedEventIdx(0)
-    fetchForecast(loc, runIdAtOffset(runOffset))
-      .then(data => { setForecast(data); setBaselineForecast(data); setLoading(false) })
-      .catch(err  => { setError(err.message); setLoading(false) })
+    fetchForecast(loc, runIdAtOffset(0), ctrl.signal)
+      .then(data => {
+        if (ctrl.signal.aborted) return
+        setForecast(data)
+        setBaselineForecast(data)
+        setLoading(false)
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') return
+        setError(err.message)
+        setLoading(false)
+      })
   }
 
   useEffect(() => {
@@ -418,15 +459,50 @@ export default function WeatherPage() {
 
   useEffect(() => {
     if (!selectedLoc) return
+    if (abortRef.current) abortRef.current.abort()
+    const ctrl = new AbortController()
+    abortRef.current = ctrl
     setLoading(true)
     setError(null)
-    fetchForecast(selectedLoc, runIdAtOffset(runOffset))
+    fetchForecast(selectedLoc, runIdAtOffset(runOffset), ctrl.signal)
       .then(data => {
+        if (ctrl.signal.aborted) return
         setForecast(data)
-        if (runOffset === 0) setBaselineForecast(data)
+        setLoading(false)
+        if (runOffset === 0) {
+          setBaselineForecast(data)
+          const locKey   = `${selectedLoc.lat.toFixed(4)}_${selectedLoc.lon.toFixed(4)}`
+          const baseResult   = buildTickerTraces(data, xRangeStart, xRangeEnd)
+          const baseModels   = baseResult.activeModels
+          for (let o = 1; o <= MAX_RUN_OFFSET; o++) {
+            const rid = runIdAtOffset(o)
+            fetchForecast(selectedLoc, rid, new AbortController().signal)
+              .then(runData => {
+                setTimeout(() => {
+                  const varKey  = `${locKey}/${rid}/${variable}`
+                  const kdeKey  = `${locKey}/${rid}/kde`
+                  if (!plotDataCacheRef.current.has(varKey)) {
+                    const t  = buildTraces(runData, variable, xRangeStart)
+                    const { traces: tt } = buildTickerTraces(runData, xRangeStart, xRangeEnd, baseModels)
+                    const { shapes, annotations } = buildShapesAndAnnotations(runData)
+                    plotDataCacheRef.current.set(varKey, { traces: t, tickerTraces: tt, shapes, annotations })
+                  }
+                  if (!plotDataCacheRef.current.has(kdeKey)) {
+                    const kdeResult = buildKdeTracesAndLayout(runData, 0)
+                    if (kdeResult) plotDataCacheRef.current.set(kdeKey, kdeResult)
+                  }
+                }, 0)
+              })
+              .catch(() => {})
+          }
+        }
+      })
+      .catch(err => {
+        if (err.name === 'AbortError') return
+        setError(err.message)
         setLoading(false)
       })
-      .catch(err  => { setError(err.message); setLoading(false) })
+    return () => ctrl.abort()
   }, [runOffset]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -457,22 +533,30 @@ export default function WeatherPage() {
     return toMtIso(d.toISOString())
   })()
 
-  const traces = forecast ? buildTraces(forecast, variable, xRangeStart) : []
+  const traces = useMemo(
+    () => forecast ? buildTraces(forecast, variable, xRangeStart) : [],
+    [forecast, variable, xRangeStart] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+
+  const { activeModels: baselineActiveModels } = useMemo(
+    () => baselineForecast ? buildTickerTraces(baselineForecast, xRangeStart, xRangeEnd) : { traces: [], activeModels: [] },
+    [baselineForecast, xRangeStart, xRangeEnd] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   const { traces: tickerTraces, activeModels } = useMemo(
-    () => forecast ? buildTickerTraces(forecast, xRangeStart, xRangeEnd) : { traces: [], activeModels: [] },
-    [forecast, xRangeStart, xRangeEnd] // eslint-disable-line react-hooks/exhaustive-deps
+    () => forecast ? buildTickerTraces(forecast, xRangeStart, xRangeEnd, baselineActiveModels.length ? baselineActiveModels : null) : { traces: [], activeModels: [] },
+    [forecast, xRangeStart, xRangeEnd, baselineActiveModels] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
   const STRIP_H   = 0.04
   const STRIP_GAP = 0.010
   const X_LABEL_GAP = 0.13
-  const N = activeModels.length
+  const N = baselineActiveModels.length || activeModels.length
   const totalStripArea  = N * STRIP_H + Math.max(N - 1, 0) * STRIP_GAP
   const mainChartBottom = N > 0 ? totalStripArea + X_LABEL_GAP : 0.13
 
   const tickerLayout = {}
-  activeModels.forEach((_, i) => {
+  ;(baselineActiveModels.length ? baselineActiveModels : activeModels).forEach((_, i) => {
     const stripTop    = totalStripArea - i * (STRIP_H + STRIP_GAP)
     const stripBottom = stripTop - STRIP_H
     tickerLayout[`yaxis${i + 2}`] = {
@@ -494,10 +578,14 @@ export default function WeatherPage() {
     return [mn - pad, mx + pad]
   }, [baselineForecast, variable, xRangeStart]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  const { shapes, annotations } = forecast
-    ? buildShapesAndAnnotations(forecast)
-    : { shapes: [], annotations: [] }
-  const kdeResult = forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null
+  const { shapes, annotations } = useMemo(
+    () => forecast ? buildShapesAndAnnotations(forecast) : { shapes: [], annotations: [] },
+    [forecast] // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const kdeResult = useMemo(
+    () => forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null,
+    [forecast, selectedEventIdx] // eslint-disable-line react-hooks/exhaustive-deps
+  )
   const kdeEv     = kdeResult?.ev
 
   const baselineKdeResult = useMemo(
@@ -536,6 +624,8 @@ export default function WeatherPage() {
                   <li
                     key={`${loc.lat}_${loc.lon}`}
                     style={styles.suggestion}
+                    onMouseEnter={e => { e.currentTarget.style.background = 'var(--bg-3)' }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
                     onMouseDown={() => selectLocation(
                       loc,
                       loc.state ? `${loc.name}, ${loc.state}` : loc.name
@@ -581,16 +671,47 @@ export default function WeatherPage() {
         )}
 
         <div style={styles.runWrap}>
-          <label style={styles.label}>
-            Forecast run — {runOffset === 0 ? 'current' : formatRunLabel(runIdAtOffset(runOffset))}
+          <label style={styles.runLabel}>
+            Forecast run
+            <span ref={runLabelRef} style={styles.runValue}>— current</span>
           </label>
           <input
+            ref={sliderRef}
             type="range"
+            className="run-slider"
             min={0}
             max={MAX_RUN_OFFSET}
-            value={MAX_RUN_OFFSET - runOffset}
-            onChange={e => setRunOffset(MAX_RUN_OFFSET - +e.target.value)}
-            style={styles.slider}
+            defaultValue={MAX_RUN_OFFSET}
+            style={{ '--pct': '100' }}
+            onChange={e => {
+              const pos = +e.target.value
+              e.target.style.setProperty('--pct', (pos / MAX_RUN_OFFSET * 100).toFixed(1))
+              if (runLabelRef.current) {
+                runLabelRef.current.textContent = pos === MAX_RUN_OFFSET
+                  ? '— current'
+                  : `— ${formatRunLabel(runIdAtOffset(MAX_RUN_OFFSET - pos))}`
+              }
+              if (selectedLoc) {
+                const offset = MAX_RUN_OFFSET - pos
+                const locKey = `${selectedLoc.lat.toFixed(4)}_${selectedLoc.lon.toFixed(4)}`
+                const rid = runIdAtOffset(offset)
+                const varEl = plotRef.current?.el
+                const varKey = `${locKey}/${rid}/${variable}`
+                const varData = plotDataCacheRef.current.get(varKey)
+                if (varData && varEl) {
+                  const newLayout = { ...varEl.layout,
+                    shapes: varData.shapes, annotations: varData.annotations }
+                  Plotly.react(varEl, [...varData.traces, ...varData.tickerTraces], newLayout)
+                }
+                const kdeEl = kdeRef.current?.el
+                const kdeData = plotDataCacheRef.current.get(`${locKey}/${rid}/kde`)
+                if (kdeData && kdeEl) {
+                  Plotly.react(kdeEl, kdeData.traces, kdeEl.layout || {})
+                }
+              }
+            }}
+            onMouseUp={e  => setRunOffset(MAX_RUN_OFFSET - +e.target.value)}
+            onTouchEnd={e => setRunOffset(MAX_RUN_OFFSET - +e.currentTarget.value)}
           />
         </div>
       </div>
@@ -611,20 +732,24 @@ export default function WeatherPage() {
         {error   && <div style={styles.statusError}>{error}</div>}
         {forecast && activeTab === 'var' && (
           <Plot
+            ref={plotRef}
             data={[...traces, ...tickerTraces]}
             layout={{
               ...tickerLayout,
+              template: undefined,
+              paper_bgcolor: 'transparent',
+              plot_bgcolor: 'rgba(14,17,32,0.5)',
+              font: { color: '#8b93a8', family: "'Inter', system-ui, sans-serif" },
               title: {
                 text: `${varInfo.label} — ${meta.lat}°N, ${lonLabel}<br><sub>Run: ${(meta.fetched_at || '').slice(0, 16)} UTC · ${(forecast.events || []).length} event(s)</sub>`,
-                font: { size: 15 },
+                font: { size: 15, color: '#e8eaf0' },
               },
-              template: 'plotly_white',
               height: 560,
               hovermode: 'x unified',
               dragmode: 'pan',
-              legend: { orientation: 'h', yanchor: 'top', y: -0.15, xanchor: 'center', x: 0.5, font: { size: 11 } },
-              xaxis: { range: [xRangeStart, xRangeEnd], tickformat: '%a\n%b %d', gridcolor: 'rgba(200,200,200,0.4)' },
-              yaxis: { title: { text: `${varInfo.label} (${varInfo.unit})` }, gridcolor: 'rgba(200,200,200,0.4)', domain: [mainChartBottom, 1], range: yAxisRange },
+              legend: { orientation: 'h', yanchor: 'top', y: -0.15, xanchor: 'center', x: 0.5, font: { size: 11, color: '#8b93a8' }, bgcolor: 'rgba(14,17,32,0.6)', bordercolor: '#1e2540', borderwidth: 1 },
+              xaxis: { range: [xRangeStart, xRangeEnd], tickformat: '%a\n%b %d', gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' }, zerolinecolor: '#1e2540' },
+              yaxis: { title: { text: `${varInfo.label} (${varInfo.unit})`, font: { color: '#8b93a8' } }, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' }, zerolinecolor: '#1e2540', domain: [mainChartBottom, 1], range: yAxisRange },
               margin: { t: 80, b: 80 },
               shapes,
               annotations,
@@ -637,16 +762,20 @@ export default function WeatherPage() {
         {forecast && activeTab === 'kde' && (
           kdeResult
             ? <Plot
+                ref={kdeRef}
                 data={kdeResult.traces}
                 layout={{
                   ...kdeResult.layout,
+                  template: undefined,
+                  paper_bgcolor: 'transparent',
+                  plot_bgcolor: 'rgba(14,17,32,0.5)',
+                  font: { color: '#8b93a8', family: "'Inter', system-ui, sans-serif" },
                   title: {
                     text: `Storm KDE — E${kdeEv?.event_index}: ${(kdeEv?.start_time || '').slice(5,10)}–${(kdeEv?.end_time || '').slice(5,10)} (${kdeEv?.duration_hours}h)<br><sub>${meta.lat}°N, ${lonLabel} · Run: ${(meta.fetched_at || '').slice(0, 16)} UTC</sub>`,
-                    font: { size: 15 },
+                    font: { size: 15, color: '#e8eaf0' },
                   },
-                  template: 'plotly_white',
-                  xaxis: { ...kdeResult.layout.xaxis, range: kdeXRange },
-                  yaxis: { ...kdeResult.layout.yaxis, range: kdeYRange },
+                  xaxis: { ...kdeResult.layout.xaxis, range: kdeXRange, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' } },
+                  yaxis: { ...kdeResult.layout.yaxis, range: kdeYRange, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' } },
                 }}
                 config={{ scrollZoom: false, displayModeBar: 'hover', responsive: true }}
                 style={{ width: '100%' }}
@@ -662,54 +791,54 @@ export default function WeatherPage() {
 const styles = {
   page: {
     display: 'flex', flexDirection: 'column', height: 'calc(100vh - var(--nav-height))',
-    fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-    background: 'var(--bg)',
+    fontFamily: "'Inter', system-ui, sans-serif", background: 'var(--bg)',
   },
   controls: {
-    display: 'flex', alignItems: 'flex-end', gap: 16, padding: '10px 16px',
-    background: 'var(--bg-subtle, #f8f9fa)', borderBottom: '1px solid var(--border-subtle, #dee2e6)',
-    flexWrap: 'wrap',
+    display: 'flex', alignItems: 'flex-end', gap: 16, padding: '12px 20px',
+    background: 'rgba(14,17,32,0.85)',
+    backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)',
+    borderBottom: '1px solid var(--line)', flexWrap: 'wrap',
   },
-  locWrap:  { display: 'flex', flexDirection: 'column', gap: 4 },
-  varWrap:  { display: 'flex', flexDirection: 'column', gap: 4 },
-  label:    { fontSize: 12, fontWeight: 600, color: 'var(--text-secondary, #555)' },
+  locWrap:  { display: 'flex', flexDirection: 'column', gap: 6 },
+  varWrap:  { display: 'flex', flexDirection: 'column', gap: 6 },
+  label:    { fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em' },
   input: {
-    fontSize: 14, padding: '5px 10px', border: '1px solid var(--border, #ced4da)',
-    borderRadius: 6, background: 'white', minWidth: 220, outline: 'none',
+    fontSize: 14, padding: '7px 12px', border: '1px solid var(--line-2)',
+    borderRadius: 8, background: 'var(--bg-3)', color: 'var(--fg)',
+    minWidth: 220, outline: 'none', transition: 'border-color 0.15s ease', fontFamily: 'inherit',
   },
   select: {
-    fontSize: 13, padding: '5px 10px', border: '1px solid var(--border, #ced4da)',
-    borderRadius: 5, background: 'white', cursor: 'pointer', color: '#333', minWidth: 220,
+    fontSize: 13, padding: '7px 12px', border: '1px solid var(--line-2)',
+    borderRadius: 8, background: 'var(--bg-3)', cursor: 'pointer',
+    color: 'var(--fg)', minWidth: 220, fontFamily: 'inherit',
   },
   suggestions: {
     position: 'absolute', top: '100%', left: 0, minWidth: '100%',
-    background: 'white', border: '1px solid var(--border, #ced4da)',
-    borderTop: 'none', borderRadius: '0 0 6px 6px', listStyle: 'none',
+    background: 'var(--bg-2)', border: '1px solid var(--line-2)',
+    borderTop: 'none', borderRadius: '0 0 8px 8px', listStyle: 'none',
     maxHeight: 240, overflowY: 'auto', zIndex: 1000,
-    boxShadow: '0 4px 12px rgba(0,0,0,0.1)', margin: 0, padding: 0,
+    boxShadow: '0 8px 24px rgba(0,0,0,0.5)', margin: 0, padding: 0,
   },
   suggestion: {
-    padding: '6px 12px', cursor: 'pointer', fontSize: 14, whiteSpace: 'nowrap',
+    padding: '8px 14px', cursor: 'pointer', fontSize: 14, whiteSpace: 'nowrap',
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    color: 'var(--fg)', transition: 'background 0.1s ease',
   },
-  stateTag:    { fontSize: 11, color: '#888', marginLeft: 12 },
-  runWrap: { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 180 },
-  slider:  { width: '100%', cursor: 'pointer', accentColor: '#1976d2' },
+  stateTag: { fontSize: 11, color: 'var(--dim)', marginLeft: 12, fontFamily: "'JetBrains Mono', monospace" },
+  runWrap:  { display: 'flex', flexDirection: 'column', gap: 6, minWidth: 200 },
+  runLabel: { fontSize: 11, fontWeight: 600, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: '0.07em', display: 'flex', gap: 6, alignItems: 'center' },
+  runValue: { fontFamily: "'JetBrains Mono', monospace", color: 'var(--neon)', fontWeight: 500, fontSize: 12, textTransform: 'none', letterSpacing: 0 },
   tabBar: {
-    display: 'flex', borderBottom: '1px solid var(--border-subtle, #dee2e6)',
-    background: 'var(--bg-subtle, #f8f9fa)', padding: '0 16px',
+    display: 'flex', borderBottom: '1px solid var(--line)',
+    background: 'var(--bg-2)', padding: '8px 16px', gap: 8,
   },
   tab: {
-    padding: '7px 18px', border: 'none', borderBottom: '2px solid transparent',
+    padding: '6px 18px', border: '1px solid transparent', borderRadius: '999px',
     background: 'transparent', cursor: 'pointer', fontSize: 13, fontWeight: 500,
-    color: 'var(--text-secondary, #666)',
+    color: 'var(--muted)', transition: 'background 0.2s, color 0.2s, border-color 0.2s',
   },
-  tabActive: {
-    borderBottom: '2px solid #1976d2',
-    color: '#1976d2',
-  },
-  chartArea:       { flex: 1, overflow: 'hidden', padding: '8px 8px 0' },
-  chartAreaScroll: { flex: 1, overflowY: 'auto', padding: '8px 8px 0' },
-  status:      { textAlign: 'center', padding: 40, color: '#666', fontSize: 14 },
-  statusError: { textAlign: 'center', padding: 40, color: '#c00', fontSize: 14 },
+  tabActive: { background: 'var(--bg-3)', color: 'var(--neon)', borderColor: 'var(--line-2)' },
+  chartArea: { flex: 1, overflow: 'hidden', padding: '12px 16px 0', background: 'var(--bg)' },
+  status:      { textAlign: 'center', padding: 40, color: 'var(--muted)', fontSize: 14 },
+  statusError: { textAlign: 'center', padding: 40, color: '#ff6b6b', fontSize: 14 },
 }
