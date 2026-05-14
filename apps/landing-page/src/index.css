@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -41,4 +43,39 @@ a {
 button {
   font-family: inherit;
   cursor: pointer;
+}
+
+/* ─── App showcase cards ─────────────────────────────────────── */
+@keyframes hs-hex-pulse {
+  0%, 100% { opacity: var(--o, 0.85); }
+  50%       { opacity: 1; filter: brightness(1.15); }
+}
+.hs-hex-cell {
+  transform-origin: center;
+  transform-box: fill-box;
+  animation: hs-hex-pulse 3.6s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.hs-card:hover .hs-hex-cell { animation-play-state: running; }
+.hs-card:hover .hs-arrow {
+  background: #0a2a16 !important;
+  border-color: #00c864 !important;
+  color: #00e87a !important;
+  transform: translate(2px, -2px);
+}
+
+@keyframes wx-line-pulse {
+  0%, 100% { opacity: var(--o, 0.6); }
+  50%       { opacity: 1; }
+}
+.wx-line {
+  animation: wx-line-pulse 4s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.wx-card:hover .wx-line { animation-play-state: running; }
+.wx-card:hover .wx-arrow {
+  background: #0a1a2a !important;
+  border-color: #0088cc !important;
+  color: #00c8ff !important;
+  transform: translate(2px, -2px);
 }
