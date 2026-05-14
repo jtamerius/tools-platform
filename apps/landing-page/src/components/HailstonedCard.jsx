@@ -1,4 +1,4 @@
-const APP_URL = 'https://solarhail.jtamerius.com'
+const APP_URL = 'https://hailstoned.jtamerius.com'
 const ABOUT_URL = '/#/apps/hailstoned'
 
 const HEX_CELLS = [
