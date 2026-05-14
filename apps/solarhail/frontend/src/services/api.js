@@ -11,18 +11,6 @@ function cached(key, fetcher) {
   return p;
 }
 
-export function fetchEvents(metro, start, end) {
-  return cached(`events|${metro}|${start}|${end}`, async () => {
-    const res = await fetch(`${BASE}/api/events?metro=${metro}&start=${start}&end=${end}`);
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({ error: res.statusText }));
-      throw new Error(error);
-    }
-    const { events } = await res.json();
-    return events;
-  });
-}
-
 export function fetchConusEvents(start, end) {
   return cached(`conus|${start}|${end}`, async () => {
     const res = await fetch(`${BASE}/api/conus?start=${start}&end=${end}`);
@@ -32,15 +20,6 @@ export function fetchConusEvents(start, end) {
     }
     const { events } = await res.json();
     return events;
-  });
-}
-
-export function fetchStateSummary(start, end) {
-  return cached(`state|${start}|${end}`, async () => {
-    const res = await fetch(`${BASE}/api/conus/state-summary?start=${start}&end=${end}`);
-    if (!res.ok) return [];
-    const { rows } = await res.json();
-    return rows ?? [];
   });
 }
 

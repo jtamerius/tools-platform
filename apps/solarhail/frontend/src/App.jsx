@@ -1,7 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { BACKFILL_START, BACKFILL_END } from './config/metros';
 import { useHailData } from './hooks/useHailData';
-import { useStateSummary } from './hooks/useStateSummary';
 import { useCommercialFacilities } from './hooks/useCommercialFacilities';
 import { DateRangeSlider } from './components/DateRangeSlider';
 import { StatsPanel } from './components/StatsPanel';
@@ -25,7 +24,6 @@ export function App() {
   const showCommercial = activeTab === 'commercial';
 
   const { cells, loading, allLoaded, error } = useHailData(startDate, endDate);
-  const { rows: stateRows, loading: stateLoading } = useStateSummary(startDate, endDate);
   const { facilitiesByH3 } = useCommercialFacilities();
 
   // Filter by min hail size
@@ -177,8 +175,6 @@ export function App() {
                   activeTab={activeTab}
                   homeStats={homeStats}
                   commercialStats={commercialStats}
-                  stateRows={stateRows}
-                  stateLoading={stateLoading}
                   viewportFacilities={viewportFacilities}
                   loading={loading}
                   onFlyTo={setFlyToTarget}

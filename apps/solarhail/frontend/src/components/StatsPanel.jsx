@@ -42,34 +42,6 @@ function SolarBuckets({ solarBySize }) {
   );
 }
 
-function StateTable({ rows, loading }) {
-  if (loading) return <p className={styles.tableNote}>Loading state summary…</p>;
-  if (!rows.length) return <p className={styles.tableNote}>State summary not yet available</p>;
-
-  return (
-    <div className={styles.tableWrap}>
-      <table className={styles.table}>
-        <thead>
-          <tr>
-            <th>State</th>
-            <th className={styles.numCol}>Systems</th>
-            <th className={styles.numCol}>Est. MW</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(r => (
-            <tr key={r.state_abbr}>
-              <td>{r.state_abbr}</td>
-              <td className={styles.numCol}>{r.total_solar_systems.toFixed(0)}</td>
-              <td className={styles.numCol}>{(r.total_solar_systems * 7.2 / 1000).toFixed(1)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
 function FacilityTable({ facilities, onFlyTo }) {
   if (!facilities.length) return <p className={styles.tableNote}>No commercial facilities in view</p>;
 
@@ -104,8 +76,6 @@ export function StatsPanel({
   activeTab,
   homeStats,
   commercialStats,
-  stateRows,
-  stateLoading,
   viewportFacilities,
   loading,
   onFlyTo,

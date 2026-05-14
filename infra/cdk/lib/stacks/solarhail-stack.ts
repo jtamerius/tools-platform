@@ -360,24 +360,6 @@ export class SolarHailStack extends cdk.Stack {
       payloadFormatVersion: '2.0',
     });
 
-    new apigwv2.CfnRoute(this, 'EventsRoute', {
-      apiId: httpApi.ref,
-      routeKey: 'GET /api/events',
-      target: `integrations/${integration.ref}`,
-    });
-
-    new apigwv2.CfnRoute(this, 'SummaryRoute', {
-      apiId: httpApi.ref,
-      routeKey: 'GET /api/summary',
-      target: `integrations/${integration.ref}`,
-    });
-
-    new apigwv2.CfnRoute(this, 'SolarRoute', {
-      apiId: httpApi.ref,
-      routeKey: 'GET /api/solar',
-      target: `integrations/${integration.ref}`,
-    });
-
     new apigwv2.CfnRoute(this, 'ConusRoute', {
       apiId: httpApi.ref,
       routeKey: 'GET /api/conus',
@@ -393,12 +375,6 @@ export class SolarHailStack extends cdk.Stack {
     new apigwv2.CfnRoute(this, 'FacilitiesRoute', {
       apiId: httpApi.ref,
       routeKey: 'GET /api/facilities',
-      target: `integrations/${integration.ref}`,
-    });
-
-    new apigwv2.CfnRoute(this, 'OptionsRoute', {
-      apiId: httpApi.ref,
-      routeKey: 'OPTIONS /api/events',
       target: `integrations/${integration.ref}`,
     });
 

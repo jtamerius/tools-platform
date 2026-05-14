@@ -1,6 +1,6 @@
 ---
 name: app-solarhail
-description: Reference for the SolarHail app — architecture, pipeline modules, AWS resources, phase status, and operational runbook.
+description: Reference for the SolarHail app — architecture, pipeline modules, AWS resources, and operational runbook.
 allowed-tools: Bash(aws *), Bash(python *)
 ---
 
@@ -8,29 +8,40 @@ allowed-tools: Bash(aws *), Bash(python *)
 
 ## What It Is
 
-Historical hail risk dashboard for 34 U.S. metros spanning hail alley and the midwest (ND to Louisiana, CO to Ohio). Users select a metro and time window to see H3-hex hail exposure with estimated solar system counts exposed. Toggles between hail intensity view and solar density overlay.
+CONUS-scale historical hail risk dashboard showing H3-hex hail exposure for residential and utility-scale solar across the continental US. Users pan/zoom the map freely; stats update live for the visible viewport. Two tabs: **Commercial** (USPVDB utility-scale facilities) and **Home Solar** (DeepSolar residential estimates).
 
-Portfolio piece — historical data only, no live ingestion. Backfill window: **2026-02-02 to 2026-05-01**.
+Portfolio piece — historical data only, no live ingestion. Backfill window: **2026-02-02 to 2026-05-09**.
 
 ## Architecture
 
 ```
 NOAA noaa-mrms-pds (public S3, us-east-1)
   └─ MRMS MESH_Max_30min GRIB2 (streamed, never stored locally)
-       └─ pipeline/src/ (Modules 1–5)
-            ├─ mrms_reader.py       → hail pixels per metro bbox
+       └─ pipeline/scripts/run_conus_day.py   nightly Batch job
+            ├─ mrms_reader.py       → hail pixels CONUS-wide
             ├─ h3_snapper.py        → H3 res-8 cells, max MESH per cell
-            ├─ overture_fetcher.py  → building counts per cell (DuckDB → Overture S3)
-            ├─ deepsolar_joiner.py  → block-group solar disaggregated to cells
-            ├─ impact_calculator.py → final enriched output (solar_systems_exposed)
-            └─ data_downloader.py   → fetches DeepSolar CSV + TIGER BG shapefile
+            ├─ overture_fetcher.py  → load_precomputed_buildings()
+            ├─ deepsolar_joiner.py  → solar_systems_exposed per cell
+            └─ impact_calculator.py → join residential + commercial exposure
 
-JSON.gz → s3://tools-solarhail-production-606196119553/parquet/hail-events/event_date=YYYY-MM-DD/{metro_id}.json.gz
-Solar basemap → s3://tools-solarhail-production-606196119553/solar/{metro_id}.json.gz
-Glue catalog → solarhail_production.hail_events (partition projection on event_date)
-Athena workgroup → solarhail-wg-production
-API Gateway HTTP v2 + Lambda → GET /api/events, /api/summary, /api/solar
+Per-day output:
+  s3://.../parquet/hail-events/event_date=YYYY-MM-DD/conus.json.gz
+  s3://.../parquet/hail-events/event_date=YYYY-MM-DD/conus_state_agg.json
+
+Static precomputed data:
+  s3://.../commercial-solar/uspvdb_facilities.json    (6611 USPVDB facilities, ~1.2 MB)
+  s3://.../lookups/h3_to_state.parquet                (H3 res-8 → state mapping)
+  s3://.../commercial-solar/uspvdb_h3_aggregated.parquet
+
+API Gateway HTTP v2 + Lambda:
+  GET /api/conus?start=&end=                   → merged hail events (weekly chunks)
+  GET /api/conus/state-summary?start=&end=     → per-state severity aggregation
+  GET /api/facilities                          → static USPVDB facilities JSON
+
 React + Deck.gl + Mapbox → Amplify (CI/CD deploy)
+  - H3HexagonLayer colored by hail intensity or solar exposure
+  - ScatterplotLayer for commercial facility dots (capacity-scaled, amber)
+  - Viewport-filtered live stats; no metro selector
 ```
 
 ## Directory
@@ -41,27 +52,36 @@ apps/solarhail/
 │   ├── requirements.txt
 │   ├── Dockerfile
 │   ├── src/
-│   │   ├── config.py            metro bboxes (34), thresholds, URLs, S3/Athena config
-│   │   ├── data_downloader.py   fetches DeepSolar CSV + TIGER BG shapefile
-│   │   ├── mrms_reader.py       Module 1
-│   │   ├── h3_snapper.py        Module 2
-│   │   ├── overture_fetcher.py  Module 3
-│   │   ├── deepsolar_joiner.py  Module 4
-│   │   ├── impact_calculator.py Module 5
-│   │   └── main.py              CLI/Batch entrypoint (with S3 checkpoint/resume)
-│   ├── tests/                   pytest suite (fast unit + slow integration)
-│   └── scripts/
-│       └── submit_backfill.py   submit one Batch job per metro
+│   │   ├── config.py              S3 bucket, prefixes, MRMS config, thresholds
+│   │   ├── data_downloader.py     fetches DeepSolar CSV + TIGER BG shapefile
+│   │   ├── mrms_reader.py         GRIB2 decode → hail pixels
+│   │   ├── h3_snapper.py          pixels → H3 res-8 cells
+│   │   ├── overture_fetcher.py    building counts (precomputed or live Overture)
+│   │   ├── deepsolar_joiner.py    block-group solar → per-cell disaggregation
+│   │   └── impact_calculator.py   final enriched output (residential + commercial)
+│   ├── scripts/
+│   │   ├── run_conus_day.py        nightly Batch entrypoint — processes one date CONUS-wide
+│   │   ├── submit_backfill.py      submit Batch jobs for a date range
+│   │   ├── precompute_buildings.py one-time: build conus_h3_building_counts.parquet
+│   │   ├── precompute_uspvdb.py    one-time: snap USPVDB facilities to H3
+│   │   ├── precompute_h3_state.py  one-time: build h3_to_state.parquet
+│   │   ├── build_facilities_json.py  manual utility: convert USPVDB parquet → facilities JSON for API
+│   │   └── patch_commercial_column.py  manual utility: backfill commercial_capacity_mwdc into existing conus.json.gz files
+│   └── tests/                     pytest suite (fast unit + slow integration)
 ├── api/
-│   └── handler.py               Lambda handler — /api/events, /api/summary, /api/solar
+│   └── handler.py                 Lambda handler — /api/conus, /api/conus/state-summary, /api/facilities
 └── frontend/
     ├── src/
-    │   ├── App.jsx              Root layout — desktop sidebar + mobile bottom sheet
-    │   ├── App.module.css       Responsive layout (768px breakpoint)
-    │   ├── config/metros.js     34 metro list with lat/lon
-    │   ├── hooks/               useHailData, useSolarData, useMetroSummary
-    │   └── components/          HailMap, MetroSelector, DateRangeSlider, StatsPanel, Legend
-    ├── vite.config.js
+    │   ├── App.jsx                Root layout — sidebar + map
+    │   ├── config/metros.js       BACKFILL_START / BACKFILL_END constants
+    │   ├── hooks/
+    │   │   ├── useHailData.js     fetches weekly chunks, accumulates, date-filters
+    │   │   └── useCommercialFacilities.js  loads facilities JSON once, returns Map<h3_index → facilities>
+    │   └── components/
+    │       ├── HailMap.jsx        deck.gl map: H3HexagonLayer + ScatterplotLayer
+    │       ├── StatsPanel.jsx     Home/Commercial tab stats + facility table
+    │       ├── DateRangeSlider.jsx
+    │       └── Legend.jsx
     └── package.json
 infra/cdk/lib/stacks/solarhail-stack.ts   CDK stack (S3, Glue, Athena, ECR, Batch, Lambda, API GW)
 ```
@@ -75,17 +95,15 @@ infra/cdk/lib/stacks/solarhail-stack.ts   CDK stack (S3, Glue, Athena, ECR, Batc
 | MRMS bucket | `noaa-mrms-pds` (public, `us-east-1`) |
 | Stream-and-discard | GRIB2 never written to local S3 |
 | GRIB library | pygrib |
-| Building classes | `residential`, `commercial` |
-| Building footprint filter | 50–10,000 sq ft (4.6–929 sq m) |
-| Overture release | `2026-04-15.0` (update every ~6 weeks when releases rotate) |
-| Solar data | DeepSolar-3M block-group level (rajanieprabha/DeepSolar-3M, GitHub) |
+| Solar data (residential) | DeepSolar-3M block-group level |
 | Solar disaggregation | Proportional to building count per cell within census block group |
+| Solar data (commercial) | USPVDB (USGS utility-scale) — 6611 facilities, snapped to H3 res-8 |
 | Census BG shapefile | TIGER 2023 national, 500k scale (~97 MB) |
-| Impact metric | `solar_systems_exposed` — inner join of hail cells × solar cells, no damage probability |
-| Backfill window | 2026-02-02 to 2026-05-01 |
-| Output format | JSON.gz (newline-delimited JSON), S3 prefix `parquet/hail-events/` |
+| MESH thresholds | Moderate ≥25mm, Significant ≥38mm, Severe ≥50mm |
+| Output format | NDJSON.gz, S3 prefix `parquet/hail-events/` |
 | Basemap | Mapbox `satellite-streets-v12` — token in SSM `/tools/production/solarhail/mapbox` |
 | Region | `us-east-1` |
+| Frontend chunk size | Weekly (stays under API Gateway 6MB response limit) |
 
 ## AWS Resources (Production)
 
@@ -96,115 +114,64 @@ infra/cdk/lib/stacks/solarhail-stack.ts   CDK stack (S3, Glue, Athena, ECR, Batc
 | Glue table | `hail_events` (partition projection on `event_date`) |
 | Athena workgroup | `solarhail-wg-production` |
 | ECR repo | `tools-solarhail-pipeline-production` |
-| Batch compute env | `tools-solarhail-fargate-production` (Fargate Spot, public subnets, max 128 vCPU) |
+| Batch compute env | `tools-solarhail-fargate-production` (Fargate Spot, max 128 vCPU) |
 | Batch job queue | `tools-solarhail-queue-production` |
-| Batch job definition | `tools-solarhail-pipeline-production` (retryAttempts: 3, Spot retry strategy) |
-| Batch exec role | `tools-solarhail-batch-exec-production` |
-| Batch job role | `tools-solarhail-pipeline-production` |
+| Batch job definition | `tools-solarhail-pipeline-production` |
 | Lambda function | `tools-solarhail-api-production` |
-| API Gateway | HTTP v2 — `GET /api/events`, `GET /api/summary`, `GET /api/solar` |
+| API Gateway | HTTP v2 — `/api/conus`, `/api/conus/state-summary`, `/api/facilities` |
 | CDK stack | `tools-app-solarhail-production` |
-| CloudWatch log group | `tools-app-solarhail-production-ContainerDefLogGroup2ABC7679-Y9WKfuoJend1` |
 
 SSM parameters (all under `/tools/production/solarhail/`):
 `s3-bucket`, `glue-database`, `athena-workgroup`, `batch-job-queue`, `batch-job-definition`, `ecr-repo-uri`, `api-url`, `mapbox`
 
-## Metros (34 total)
-
-### Core Hail Alley
-`dfw`, `houston`, `san_antonio`, `austin`, `lubbock`, `amarillo`, `okc`, `tulsa`, `wichita`, `kc`, `omaha`, `lincoln`, `denver`, `colorado_springs`, `sioux_falls`, `fargo`, `minneapolis`
-
-### Midwest
-`st_louis`, `des_moines`, `chicago`, `indianapolis`, `columbus`, `cincinnati`, `cleveland`, `dayton`, `louisville`, `nashville`, `memphis`, `little_rock`, `shreveport`, `new_orleans`, `baton_rouge`, `jackson_ms`, `birmingham`
-
-## Build Phase Status
-
-| Phase | Description | Status |
-|-------|-------------|--------|
-| 1 | Local pipeline (Modules 1–5) | **Complete** — 46 fast + 8 slow integration tests |
-| 2 | S3 + Glue + Athena (CDK) | **Complete** — deployed to production |
-| 3 | ECR + Batch backfill (CDK) | **Complete** — backfill running; ~22/34 metros done |
-| 4 | API (Lambda + API Gateway HTTP v2) | **Complete** — deployed to production |
-| 5 | Frontend (React + Deck.gl + Mapbox) | **Complete** — deployed via Amplify, mobile-responsive |
-
 ## Operational Runbook
 
-### Submit backfill jobs
+### Run a single day manually (local test)
 
 ```bash
 cd apps/solarhail/pipeline
-
-# Single metro
-AWS_PROFILE=jtam python scripts/submit_backfill.py --env production --metros okc
-
-# Subset
-AWS_PROFILE=jtam python scripts/submit_backfill.py --env production --metros dfw houston chicago
-
-# All 34 metros
-AWS_PROFILE=jtam python scripts/submit_backfill.py --env production
-
-# Dry run
-AWS_PROFILE=jtam python scripts/submit_backfill.py --env production --dry-run
+AWS_PROFILE=jtam python scripts/run_conus_day.py --date 2026-04-15
+# Output → s3://tools-solarhail-staging-606196119553/parquet/hail-events/event_date=2026-04-15/conus.json.gz
 ```
 
-Default date range: `2026-02-02` → `2026-05-01`. Jobs checkpoint to S3 (`checkpoints/{metro_id}.json`) after each date — Spot interruptions auto-resume on retry.
-
-### Check Batch job status
+### Submit Batch backfill for a date range
 
 ```bash
-# List running
-AWS_PROFILE=jtam aws batch list-jobs \
-  --job-queue tools-solarhail-queue-production \
-  --job-status RUNNING \
-  --region us-east-1 --no-cli-pager
-
-# List succeeded
-AWS_PROFILE=jtam aws batch list-jobs \
-  --job-queue tools-solarhail-queue-production \
-  --job-status SUCCEEDED \
-  --query "jobSummaryList[].jobName" --output text \
-  --region us-east-1 --no-cli-pager
-
-# Describe specific job
-AWS_PROFILE=jtam aws batch describe-jobs \
-  --jobs <job-id> \
-  --region us-east-1 \
-  --query 'jobs[0].{status:status,statusReason:statusReason}' \
-  --no-cli-pager
+cd apps/solarhail/pipeline
+AWS_PROFILE=jtam python scripts/submit_backfill.py --env production --start 2026-04-01 --end 2026-04-30
+AWS_PROFILE=jtam python scripts/submit_backfill.py --env production --dry-run  # preview only
 ```
 
 ### Check S3 output
 
 ```bash
-# Which metros have hail event data
+# List all dates with CONUS hail data
 AWS_PROFILE=jtam aws s3 ls s3://tools-solarhail-production-606196119553/parquet/hail-events/ \
-  --recursive | awk '{print $4}' | sed 's|.*event_date=[^/]*/||; s|\.json\.gz||' | sort -u
+  --recursive | grep conus.json.gz | awk '{print $4}'
 
-# Which metros have solar basemaps (written at job start — indicates job began)
-AWS_PROFILE=jtam aws s3 ls s3://tools-solarhail-production-606196119553/solar/
-
-# Active checkpoint files (metros currently in-progress or interrupted)
-AWS_PROFILE=jtam aws s3 ls s3://tools-solarhail-production-606196119553/checkpoints/
+# Spot-check a specific date
+AWS_PROFILE=jtam aws s3 cp \
+  s3://tools-solarhail-production-606196119553/parquet/hail-events/event_date=2026-04-15/conus.json.gz \
+  - | gunzip | head -5
 ```
 
-### Terminate a running Batch job
+### Check Batch job status
 
 ```bash
-AWS_PROFILE=jtam aws batch terminate-job \
-  --job-id <job-id> \
-  --reason "reason text" \
-  --region us-east-1
+AWS_PROFILE=jtam aws batch list-jobs \
+  --job-queue tools-solarhail-queue-production \
+  --job-status RUNNING \
+  --region us-east-1 --no-cli-pager
 ```
 
-### View CloudWatch logs
+### Rebuild facilities JSON (if USPVDB data changes)
+
+`build_facilities_json.py` is a **manual one-time utility** — not part of the nightly pipeline.
 
 ```bash
-AWS_PROFILE=jtam aws logs filter-log-events \
-  --log-group-name "tools-app-solarhail-production-ContainerDefLogGroup2ABC7679-Y9WKfuoJend1" \
-  --log-stream-names "<stream-from-describe-jobs>" \
-  --filter-pattern "?ERROR ?Traceback ?Exception" \
-  --region us-east-1 --no-cli-pager \
-  --query 'events[*].message' --output text
+cd apps/solarhail/pipeline
+SOLARHAIL_ENV=production AWS_PROFILE=jtam python scripts/build_facilities_json.py
+# Uploads → s3://.../commercial-solar/uspvdb_facilities.json
 ```
 
 ### Overture Maps release rotation
@@ -215,27 +182,20 @@ Overture publishes new releases every ~6 weeks and removes old ones. Check avail
 AWS_PROFILE=jtam aws s3 ls s3://overturemaps-us-west-2/release/ --region us-west-2 --no-cli-pager
 ```
 
-Update `OVERTURE_RELEASE` in `apps/solarhail/pipeline/src/config.py` and push. CI runs `test_fetch_buildings_okc_live` (slow integration test) before building the Docker image — a stale release fails the test and blocks the push.
+Update `OVERTURE_RELEASE` in `apps/solarhail/pipeline/src/config.py` and push.
 
 ### CI pipeline
 
-- `test-solarhail-pipeline-production` — runs all pytest tests on every `apps/solarhail/pipeline/src/**` change
-- `build-push-solarhail-pipeline-production` — runs if tests pass; tags Docker image with commit SHA + `latest`
-- Frontend deploy — runs on `apps/solarhail/frontend/**` changes; fetches `VITE_MAPBOX_TOKEN` from SSM at build time
+- `test-solarhail-pipeline-*` — runs pytest on `src/**`, `scripts/**`, `tests/**` changes
+- `build-push-solarhail-pipeline-*` — builds Docker image if tests pass; tags with commit SHA + `latest`
+- Frontend deploy — runs on `frontend/**` changes; fetches `VITE_MAPBOX_TOKEN` from SSM at build time
 
 ## Data Sources
 
 | Source | Location | Notes |
 |--------|----------|-------|
 | MRMS MESH_Max_30min | `s3://noaa-mrms-pds/CONUS/MESH_Max_30min/` (public) | ~2-min cadence GRIB2, streamed |
-| Overture buildings | `s3://overturemaps-us-west-2/release/2026-04-15.0/` (public) | DuckDB httpfs query, no download |
+| Overture buildings | `s3://overturemaps-us-west-2/release/2026-04-15.0/` (public) | Precomputed to `conus_h3_building_counts.parquet` |
 | DeepSolar-3M | GitHub raw CSV (~2 MB) | Auto-downloaded to `pipeline/data/` |
 | Census TIGER BG | census.gov zip (~97 MB) | Auto-downloaded + extracted to `pipeline/data/` |
-
-## Cost Notes
-
-- NOAA MRMS: free (same-region S3 reads)
-- Overture S3: ~$0.09/GB (us-west-2→us-east-1 egress; small per metro)
-- Batch backfill (34 metros): ~$2–5 one-time
-- Athena + S3 ongoing: <$1/month
-- Amplify + CloudFront: free tier for portfolio traffic
+| USPVDB | USGS utility-scale solar (~4k facilities) | Precomputed to S3; `build_facilities_json.py` builds API-facing JSON |
