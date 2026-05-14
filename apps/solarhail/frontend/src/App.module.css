@@ -257,13 +257,14 @@
   min-width: 0;
 }
 
-/* ── Mobile icon visibility (desktop shows ‹/›, mobile shows ↑/↓) ───── */
+/* ── Mobile bars — hidden on desktop ──────────────────────────────────── */
+.mobileTopBar    { display: none; }
+.mobileBottomBar { display: none; }
 .collapseBtnMobileIcon { display: none; }
-.collapsedSummary      { display: none; }
 
-/* ── Mobile: bottom sheet layout ──────────────────────────────────────── */
+/* ── Mobile layout ────────────────────────────────────────────────────── */
 @media (max-width: 767px) {
-  .layout { flex-direction: column; }
+  .sidebar { display: none !important; }
 
   .mapArea {
     position: fixed;
@@ -273,66 +274,154 @@
     flex: none;
   }
 
-  .sidebar {
+  /* ── Top bar ── */
+  .mobileTopBar {
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    background: #0e1120;
+    border-bottom: 1px solid #1e2540;
+  }
+
+  .mobileRow {
+    display: flex;
+    align-items: center;
+    padding: 8px 10px;
+    gap: 8px;
+    min-height: 52px;
+  }
+
+  .mobileTabs {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .mobileTabBtn {
+    padding: 5px 9px;
+    background: #1a1e2e;
+    border: 1px solid #2a3050;
+    border-radius: 6px;
+    color: #5b6480;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .mobileTabBtnActive {
+    color: #5b8cff;
+    border-color: #5b8cff;
+    background: #0f1830;
+  }
+
+  .mobileStats {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+    justify-content: center;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    padding: 5px 8px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+
+  .mobileStats:active {
+    background: #1a1e2e;
+    border-color: #2a3050;
+  }
+
+  .mobileStatItem {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .mobileStatValue {
+    font-size: 17px;
+    font-weight: 700;
+    color: #e8eaf0;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+  }
+
+  .mobileStatLabel {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: #5b6480;
+    margin-top: 1px;
+  }
+
+  .mobileStatDivider {
+    width: 1px;
+    height: 28px;
+    background: #2a3050;
+    flex-shrink: 0;
+  }
+
+  .mobileExpandCaret {
+    font-size: 9px;
+    color: #5b6480;
+    margin-left: 2px;
+    flex-shrink: 0;
+  }
+
+  .meshToggleMobile {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 5px 9px;
+    background: #1a1e2e;
+    border: 1px solid #2a3050;
+    border-radius: 6px;
+    color: #5b6480;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .meshToggleMobileActive {
+    border-color: #cc5500;
+    color: #ff9944;
+    background: #231a10;
+    box-shadow: 0 0 0 1px #cc5500;
+  }
+
+  .meshToggleMobileActive .layerBtnLight {
+    background: #ff7700;
+    box-shadow: 0 0 5px #ff7700, 0 0 10px rgba(255, 119, 0, 0.4);
+  }
+
+  /* ── Expandable detail panel ── */
+  .mobileDetail {
+    max-height: 55vh;
+    overflow-y: auto;
+    padding: 12px 14px;
+    border-top: 1px solid #1e2540;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* ── Bottom bar ── */
+  .mobileBottomBar {
+    display: block;
     position: fixed;
     bottom: 0;
     left: 0;
     right: 0;
-    width: 100% !important;
-    height: 58vh;
-    max-height: 58vh;
-    border-right: none;
-    border-top: 1px solid #1e2540;
-    border-radius: 16px 16px 0 0;
-    transition: height 0.3s ease;
     z-index: 100;
-    padding-bottom: env(safe-area-inset-bottom);
+    background: #0e1120;
+    border-top: 1px solid #1e2540;
+    padding: 10px 14px;
+    padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
-
-  .sidebarCollapsed {
-    width: 100% !important;
-    height: 64px;
-    overflow: hidden;
-  }
-
-  .collapseBtn {
-    position: static;
-    width: 100%;
-    height: 40px;
-    border-radius: 16px 16px 0 0;
-    border-left: none;
-    border-right: none;
-    border-top: none;
-    border-bottom: 1px solid #1e2540;
-    font-size: 20px;
-    flex-shrink: 0;
-  }
-
-  .collapseBtnDesktopIcon { display: none; }
-  .collapseBtnMobileIcon  { display: block; }
-
-  .collapsedSummary {
-    display: flex;
-    align-items: center;
-    padding: 4px 20px 0;
-  }
-
-  .collapsedMetroName {
-    font-size: 13px;
-    font-weight: 600;
-    color: #e8eaf0;
-  }
-
-  .toggleBtn {
-    padding: 12px 16px;
-    font-size: 14px;
-    min-height: 44px;
-  }
-
-  .slider { height: 28px; }
-
-  .sliderLabel { font-size: 12px; }
-
-  .section        { padding: 12px 16px; }
-  .legendSection  { padding: 12px 16px; }
 }

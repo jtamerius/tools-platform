@@ -99,12 +99,77 @@ export function App() {
     cellsAffected: viewportCells.length,
   }), [viewportCells, viewportFacilities]);
 
+  const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+
   const handleViewportChange = useCallback(bounds => {
     setViewportBounds(bounds);
   }, []);
 
+  const mobileMw = activeTab === 'commercial'
+    ? (commercialStats.totalMwdc > 0 ? `${commercialStats.totalMwdc.toFixed(0)}` : '—')
+    : (homeStats.totalMwdc > 0 ? `${homeStats.totalMwdc.toFixed(1)}` : '—');
+  const mobileCount = activeTab === 'commercial'
+    ? (viewportFacilities.length > 0 ? viewportFacilities.length.toLocaleString() : '—')
+    : (homeStats.totalSolarExposed > 0 ? `~${Math.round(homeStats.totalSolarExposed).toLocaleString()}` : '—');
+  const mobileCountLabel = activeTab === 'commercial' ? 'facs' : 'sys';
+
   return (
     <div className={styles.layout}>
+      {/* ── Mobile top bar ─────────────────────────────────────────────── */}
+      <div className={styles.mobileTopBar}>
+        <div className={styles.mobileRow}>
+          <div className={styles.mobileTabs}>
+            <button
+              className={`${styles.mobileTabBtn} ${activeTab === 'commercial' ? styles.mobileTabBtnActive : ''}`}
+              onClick={() => setActiveTab('commercial')}
+            >Comm</button>
+            <button
+              className={`${styles.mobileTabBtn} ${activeTab === 'home' ? styles.mobileTabBtnActive : ''}`}
+              onClick={() => setActiveTab('home')}
+            >Home</button>
+          </div>
+          <button className={styles.mobileStats} onClick={() => setMobileDetailOpen(o => !o)}>
+            <div className={styles.mobileStatItem}>
+              <span className={styles.mobileStatValue}>{mobileMw}</span>
+              <span className={styles.mobileStatLabel}>MW</span>
+            </div>
+            <div className={styles.mobileStatDivider} />
+            <div className={styles.mobileStatItem}>
+              <span className={styles.mobileStatValue}>{mobileCount}</span>
+              <span className={styles.mobileStatLabel}>{mobileCountLabel}</span>
+            </div>
+            <span className={styles.mobileExpandCaret}>{mobileDetailOpen ? '▲' : '▼'}</span>
+          </button>
+          <button
+            className={`${styles.meshToggleMobile} ${showRadar ? styles.meshToggleMobileActive : ''}`}
+            onClick={() => setShowRadar(v => !v)}
+          >
+            <span className={styles.layerBtnLight} />
+            ⬡ MESH
+          </button>
+        </div>
+        {mobileDetailOpen && (
+          <div className={styles.mobileDetail}>
+            <StatsPanel
+              activeTab={activeTab}
+              homeStats={homeStats}
+              commercialStats={commercialStats}
+              viewportFacilities={viewportFacilities}
+              loading={loading}
+              onFlyTo={t => { setFlyToTarget(t); setMobileDetailOpen(false); }}
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── Mobile bottom bar ──────────────────────────────────────────── */}
+      <div className={styles.mobileBottomBar}>
+        <DateRangeSlider
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(start, end) => { setStartDate(start); setEndDate(end); }}
+        />
+      </div>
       <aside className={`${styles.sidebar} ${sidebarOpen ? '' : styles.sidebarCollapsed}`}>
         <button
           className={styles.collapseBtn}
@@ -143,6 +208,31 @@ export function App() {
               />
             </section>
 
+            <section className={styles.section}>
+              <div className={styles.layerToggles}>
+                <button
+                  className={`${styles.layerBtn} ${styles.layerBtnRadar} ${showRadar ? styles.layerBtnActive : ''}`}
+                  onClick={() => setShowRadar(v => !v)}
+                >
+                  <span className={styles.layerBtnLight} />
+                  ⬡ MESH
+                </button>
+              </div>
+              <div className={styles.sliderRow} style={{ marginTop: 10 }}>
+                <span className={styles.sliderLabel}>Opacity</span>
+                <span className={styles.sliderLabel}>{Math.round(opacity * 100)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0.1"
+                max="1"
+                step="0.05"
+                value={opacity}
+                onChange={e => setOpacity(Number(e.target.value))}
+                className={styles.slider}
+              />
+            </section>
+
             <div className={styles.tabBar}>
               <button
                 className={`${styles.tab} ${activeTab === 'commercial' ? styles.tabActive : ''}`}
@@ -159,15 +249,6 @@ export function App() {
             </div>
 
             <section className={styles.tabContent}>
-              <div className={styles.layerToggles} style={{ marginBottom: 10 }}>
-                <button
-                  className={`${styles.layerBtn} ${styles.layerBtnRadar} ${showRadar ? styles.layerBtnActive : ''}`}
-                  onClick={() => setShowRadar(v => !v)}
-                >
-                  <span className={styles.layerBtnLight} />
-                  ⬡ MESH
-                </button>
-              </div>
               {error ? (
                 <div className={styles.error}>{error}</div>
               ) : (
@@ -184,19 +265,6 @@ export function App() {
 
             <section className={styles.legendSection}>
               <Legend showRadar={showRadar} showSolar={showSolar} showCommercial={showCommercial} />
-              <div className={styles.sliderRow} style={{ marginTop: 12 }}>
-                <span className={styles.sliderLabel}>Opacity</span>
-                <span className={styles.sliderLabel}>{Math.round(opacity * 100)}%</span>
-              </div>
-              <input
-                type="range"
-                min="0.1"
-                max="1"
-                step="0.05"
-                value={opacity}
-                onChange={e => setOpacity(Number(e.target.value))}
-                className={styles.slider}
-              />
             </section>
           </>
         )}
