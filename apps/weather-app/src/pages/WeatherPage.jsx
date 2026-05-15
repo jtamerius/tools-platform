@@ -469,11 +469,25 @@ export default function WeatherPage() {
         if (ctrl.signal.aborted) return
         setForecast(data)
         setLoading(false)
+        const locKey = `${selectedLoc.lat.toFixed(4)}_${selectedLoc.lon.toFixed(4)}`
+        setTimeout(() => {
+          const rid    = runIdAtOffset(runOffset)
+          const varKey = `${locKey}/${rid}/${variable}`
+          if (!plotDataCacheRef.current.has(varKey)) {
+            const baseResult = runOffset === 0
+              ? buildTickerTraces(data, xRangeStart, xRangeEnd)
+              : { activeModels: [] }
+            const baseModels = baseResult.activeModels
+            const t  = buildTraces(data, variable, xRangeStart)
+            const { traces: tt } = buildTickerTraces(data, xRangeStart, xRangeEnd, baseModels.length ? baseModels : null)
+            const { shapes, annotations } = buildShapesAndAnnotations(data)
+            plotDataCacheRef.current.set(varKey, { traces: t, tickerTraces: tt, shapes, annotations })
+          }
+        }, 0)
         if (runOffset === 0) {
           setBaselineForecast(data)
-          const locKey   = `${selectedLoc.lat.toFixed(4)}_${selectedLoc.lon.toFixed(4)}`
-          const baseResult   = buildTickerTraces(data, xRangeStart, xRangeEnd)
-          const baseModels   = baseResult.activeModels
+          const baseResult = buildTickerTraces(data, xRangeStart, xRangeEnd)
+          const baseModels = baseResult.activeModels
           for (let o = 1; o <= MAX_RUN_OFFSET; o++) {
             const rid = runIdAtOffset(o)
             fetchForecast(selectedLoc, rid, new AbortController().signal)
