@@ -257,53 +257,6 @@ export class IamStack extends cdk.Stack {
       ],
     }));
 
-    // ── News Scraper IAM User (staging only — IAM users are global; production reads
-    //    the same SSM params written by the staging stack) ─────────────────────
-    if (e === 'staging') {
-      const newsScraperUser = new iam.User(this, 'NewsScraperUser', {
-        userName: 'jtamerius-news-scraper',
-      });
-      (newsScraperUser.node.defaultChild as iam.CfnUser).overrideLogicalId('NewsScraperUser');
-
-      newsScraperUser.addToPolicy(new iam.PolicyStatement({
-        sid: 'S3Upload',
-        actions: ['s3:PutObject', 's3:GetObject'],
-        resources: ['arn:aws:s3:::jtamerius-news-data/*'],
-      }));
-
-      newsScraperUser.addToPolicy(new iam.PolicyStatement({
-        sid: 'SSMReadLLMKeys',
-        actions: ['ssm:GetParameter'],
-        resources: [
-          `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/tools/news-scraper/groq-api-key`,
-          `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/tools/news-scraper/gemini-api-key`,
-          `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/tools/news-scraper/hf-api-key`,
-          `arn:aws:ssm:${cfg.region}:${cfg.account}:parameter/tools/news-scraper/openrouter-api-key`,
-        ],
-      }));
-
-      const accessKey = new iam.CfnAccessKey(this, 'NewsScraperAccessKey', {
-        userName: newsScraperUser.userName,
-      });
-      accessKey.overrideLogicalId('NewsScraperAccessKey');
-
-      const accessKeyIdParam = new ssm.CfnParameter(this, 'NewsScraperAccessKeyIdParam', {
-        name: '/tools/news-scraper/aws-access-key-id',
-        type: 'String',
-        value: accessKey.ref,
-        description: 'Access key ID for jtamerius-news-scraper IAM user',
-      });
-      accessKeyIdParam.overrideLogicalId('NewsScraperAccessKeyIdParam');
-
-      const secretAccessKeyParam = new ssm.CfnParameter(this, 'NewsScraperSecretAccessKeyParam', {
-        name: '/tools/news-scraper/aws-secret-access-key',
-        type: 'String',
-        value: accessKey.attrSecretAccessKey,
-        description: 'Secret access key for jtamerius-news-scraper IAM user',
-      });
-      secretAccessKeyParam.overrideLogicalId('NewsScraperSecretAccessKeyParam');
-    }
-
     // ── Amplify Service Role ─────────────────────────────────────────────────
     this.amplifyServiceRole = new iam.Role(this, 'AmplifyServiceRole', {
       roleName: `tools-amplify-service-${e}`,

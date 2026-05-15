@@ -7,7 +7,6 @@ import { DnsStack } from '../lib/stacks/dns-stack';
 import { MonitoringStack } from '../lib/stacks/monitoring-stack';
 import { AmplifyStack } from '../lib/stacks/amplify-stack';
 import { LandingPageStack } from '../lib/stacks/landing-page-stack';
-import { NewsScraperStack } from '../lib/stacks/news-scraper-stack';
 import { InvestmentTrackerStack } from '../lib/stacks/investment-tracker-stack';
 import { AdventureBuilderStack } from '../lib/stacks/adventure-builder-stack';
 import { SolarHailStack } from '../lib/stacks/solarhail-stack';
@@ -131,9 +130,6 @@ new LandingPageStack(app, `tools-app-landing-page-${envName}`, {
   cognitoStack: cognito,
   env: awsEnv,
 });
-
-// ── App: news-scraper Lambda + EventBridge ───────────────────────────────────
-new NewsScraperStack(app, `tools-app-news-scraper-${envName}`, { cfg, env: awsEnv });
 
 /// ── App: investment-tracker (DynamoDB + S3 + Lambda API + SES inbound) ───────
 new InvestmentTrackerStack(app, `tools-app-investment-tracker-${envName}`, {
