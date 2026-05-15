@@ -127,7 +127,9 @@ Resources:
           - PUT
           - DELETE
         AllowOrigins:
-          - '*'
+          - 'https://finance.jtamerius.com'
+          - 'https://staging.d3r6r8egymbh24.amplifyapp.com'
+          - 'http://localhost:5173'
         MaxAge: 86400
 
   LambdaUrlPublicAccess:

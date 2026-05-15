@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 
-const API_URL = 'https://uvt928vggh.execute-api.us-east-1.amazonaws.com'
+const API_URL = import.meta.env.VITE_API_URL
 
 async function apiFetch(path, getAccessToken, options = {}) {
   const token = await getAccessToken()

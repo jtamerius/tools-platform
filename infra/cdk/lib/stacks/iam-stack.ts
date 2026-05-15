@@ -169,12 +169,6 @@ export class IamStack extends cdk.Stack {
     }));
 
     this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
-      sid: 'NewsDataBucket',
-      actions: ['s3:PutObject', 's3:GetObject'],
-      resources: ['arn:aws:s3:::jtamerius-news-data/*'],
-    }));
-
-    this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
       sid: 'EventBridgeCRUD',
       actions: [
         'events:PutRule', 'events:DeleteRule', 'events:DescribeRule',

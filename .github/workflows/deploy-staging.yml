@@ -555,6 +555,9 @@ jobs:
           echo "VITE_COGNITO_CLIENT_ID=$(aws ssm get-parameter \
             --name /tools/staging/cognito/client-id \
             --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_API_URL=$(aws ssm get-parameter \
+            --name /tools/staging/finance/api-url \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
           echo "VITE_ENV=staging" >> "$GITHUB_ENV"
 
       - name: Install and build
