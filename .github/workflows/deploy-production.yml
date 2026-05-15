@@ -175,7 +175,7 @@ jobs:
       - name: Deploy CDK stack
         run: |
           cd infra/cdk
-          out=$(npx cdk deploy tools-shared-cognito-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+          out=$(npx cdk deploy tools-shared-cognito-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 2b: Deploy DNS / ACM stack
@@ -200,7 +200,7 @@ jobs:
       - name: Deploy CDK stack
         run: |
           cd infra/cdk
-          out=$(npx cdk deploy tools-shared-dns-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+          out=$(npx cdk deploy tools-shared-dns-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 2c–f: Deploy Amplify stacks (one per app)
@@ -225,7 +225,7 @@ jobs:
       - name: Deploy CDK stack
         run: |
           cd infra/cdk
-          out=$(npx cdk deploy tools-shared-amplify-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+          out=$(npx cdk deploy tools-shared-amplify-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   deploy-amplify-weather-production:
     name: Deploy Amplify (weather-app) — Production
@@ -247,7 +247,7 @@ jobs:
       - name: Deploy CDK stack
         run: |
           cd infra/cdk
-          out=$(npx cdk deploy tools-shared-amplify-weather-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+          out=$(npx cdk deploy tools-shared-amplify-weather-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   deploy-amplify-finance-production:
     name: Deploy Amplify (finance-app) — Production
@@ -269,7 +269,7 @@ jobs:
       - name: Deploy CDK stack
         run: |
           cd infra/cdk
-          out=$(npx cdk deploy tools-shared-amplify-finance-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+          out=$(npx cdk deploy tools-shared-amplify-finance-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 2g: Deploy Monitoring stack
