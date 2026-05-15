@@ -52,4 +52,13 @@ export const APPS = [
     isPublic: false,
     requiredGroup: 'admin',
   },
+  {
+    id: 'purgatory',
+    name: 'Purgatory Crowding',
+    description: 'Traffic-cam + RWIS ingestion and review for Purgatory Resort crowding prediction.',
+    url: isProd ? 'https://purgatory.jtamerius.com' : 'https://staging.purgatory.amplifyapp.com',
+    subdomain: 'purgatory',
+    isPublic: false,
+    requiredGroup: 'admin',
+  },
 ]

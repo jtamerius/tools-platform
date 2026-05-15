@@ -11,6 +11,7 @@ import { InvestmentTrackerStack } from '../lib/stacks/investment-tracker-stack';
 import { AdventureBuilderStack } from '../lib/stacks/adventure-builder-stack';
 import { SolarHailStack } from '../lib/stacks/solarhail-stack';
 import { SolarHailPrecomputeStack } from '../lib/stacks/solarhail-precompute-stack';
+import { PurgatoryStack } from '../lib/stacks/purgatory-stack';
 
 const app = new cdk.App();
 
@@ -110,6 +111,15 @@ const solarHailAmplify = new AmplifyStack(app, `tools-shared-amplify-solarhail-$
   env: awsEnv,
 });
 
+const purgatoryAmplify = new AmplifyStack(app, `tools-shared-amplify-purgatory-${envName}`, {
+  cfg,
+  appName: 'purgatory',
+  subdomain: 'purgatory',
+  amplifyServiceRoleArn,
+  exportPrefix: 'tools-shared-amplify-purgatory',
+  env: awsEnv,
+});
+
 // ── Shared: Monitoring ───────────────────────────────────────────────────────
 new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
   cfg,
@@ -120,6 +130,7 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
     investmentTrackerAmplify.appId,
     adventureBuilderAmplify.appId,
     solarHailAmplify.appId,
+    purgatoryAmplify.appId,
   ],
   env: awsEnv,
 });
@@ -145,6 +156,12 @@ new AdventureBuilderStack(app, `tools-app-adventure-builder-${envName}`, {
 
 // ── App: solarhail (S3 + Glue + Athena + Batch + Lambda API) ─────────────────
 const solarHailStack = new SolarHailStack(app, `tools-app-solarhail-${envName}`, {
+  cfg,
+  env: awsEnv,
+});
+
+// ── App: purgatory (S3 + DynamoDB + ECR + ingest Lambda + scrape Lambda + review API) ─
+new PurgatoryStack(app, `tools-app-purgatory-${envName}`, {
   cfg,
   env: awsEnv,
 });
