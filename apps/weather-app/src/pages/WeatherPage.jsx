@@ -530,10 +530,10 @@ export default function WeatherPage() {
     xref: 'paper', yref: 'paper',
     x: -0.035, y: totalStripArea / 2,
     xanchor: 'center', yanchor: 'middle',
-    text: 'Precip Likelihood',
+    text: 'Phase Affinity<br>Matrix',
     textangle: -90,
     showarrow: false,
-    font: { size: 9, color: '#8b93a8' },
+    font: { color: '#8b93a8' },
   } : null
 
   const tickerLayout = {}
@@ -567,7 +567,7 @@ export default function WeatherPage() {
     () => forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null,
     [forecast, selectedEventIdx] // eslint-disable-line react-hooks/exhaustive-deps
   )
-  const kdeEv     = kdeResult?.ev
+
 
   const baselineKdeResult = useMemo(
     () => baselineForecast ? buildKdeTracesAndLayout(baselineForecast, selectedEventIdx) : null,
@@ -697,28 +697,35 @@ export default function WeatherPage() {
                   }
                 }
 
-                function buildFromRaw(raw) {
-                  const t  = buildTraces(raw, variable, xRangeStart)
-                  const { traces: tt } = buildTickerTraces(raw, xRangeStart, xRangeEnd, bm)
-                  const { shapes: sh, annotations: ann } = buildShapesAndAnnotations(raw)
-                  const pd = { traces: t, tickerTraces: tt, shapes: sh, annotations: ann }
-                  plotDataCacheRef.current.set(cacheKey, pd)
-                  const kd = buildKdeTracesAndLayout(raw, selectedEventIdx)
-                  if (kd) plotDataCacheRef.current.set(kdeKey, kd)
+                function ensureCached(raw) {
+                  let pd = plotDataCacheRef.current.get(cacheKey)
+                  let kd = plotDataCacheRef.current.get(kdeKey)
+                  if (!pd) {
+                    const t  = buildTraces(raw, variable, xRangeStart)
+                    const { traces: tt } = buildTickerTraces(raw, xRangeStart, xRangeEnd, bm)
+                    const { shapes: sh, annotations: ann } = buildShapesAndAnnotations(raw)
+                    pd = { traces: t, tickerTraces: tt, shapes: sh, annotations: ann }
+                    plotDataCacheRef.current.set(cacheKey, pd)
+                  }
+                  if (!kd) {
+                    const k = buildKdeTracesAndLayout(raw, selectedEventIdx)
+                    if (k) { kd = k; plotDataCacheRef.current.set(kdeKey, k) }
+                  }
                   return { pd, kd }
                 }
 
                 let plotData = plotDataCacheRef.current.get(cacheKey)
                 let kdeData  = plotDataCacheRef.current.get(kdeKey)
 
-                if (plotData || kdeData) {
+                // Only fast-path if both are ready; otherwise fall through to rebuild
+                if (plotData && kdeData) {
                   applyPlotData(plotData, kdeData)
                   return
                 }
 
                 const raw = runCacheRef.current.get(`${locKey}/${rid}`)
                 if (raw) {
-                  const { pd, kd } = buildFromRaw(raw)
+                  const { pd, kd } = ensureCached(raw)
                   applyPlotData(pd, kd)
                   return
                 }
@@ -730,7 +737,7 @@ export default function WeatherPage() {
                 fetchForecast(selectedLoc, rid, ctrl.signal)
                   .then(data => {
                     if (ctrl.signal.aborted) return
-                    const { pd, kd } = buildFromRaw(data)
+                    const { pd, kd } = ensureCached(data)
                     // Only apply if slider is still at this offset
                     const curPos = sliderRef.current ? +sliderRef.current.value : -1
                     if (MAX_RUN_OFFSET - curPos === offset) applyPlotData(pd, kd)
@@ -758,7 +765,7 @@ export default function WeatherPage() {
         <button
           style={activeTab === 'kde' ? { ...styles.tab, ...styles.tabActive } : styles.tab}
           onClick={() => setActiveTab('kde')}
-        >Storm KDE</button>
+        >Event Precip</button>
       </div>
 
       <div style={styles.chartArea}>
@@ -793,30 +800,32 @@ export default function WeatherPage() {
             useResizeHandler
           />
         )}
-        {forecast && activeTab === 'kde' && (
-          kdeResult
+        {forecast && activeTab === 'kde' && (() => {
+          const activeKde = kdeResult || baselineKdeResult
+          const activeEv  = activeKde?.ev
+          return activeKde
             ? <Plot
                 ref={kdeRef}
-                data={kdeResult.traces}
+                data={activeKde.traces}
                 layout={{
-                  ...kdeResult.layout,
+                  ...activeKde.layout,
                   template: undefined,
                   paper_bgcolor: 'transparent',
                   plot_bgcolor: 'rgba(14,17,32,0.5)',
                   font: { color: '#8b93a8', family: "'Inter', system-ui, sans-serif" },
                   title: {
-                    text: `Storm KDE — E${kdeEv?.event_index}: ${(kdeEv?.start_time || '').slice(5,10)}–${(kdeEv?.end_time || '').slice(5,10)} (${kdeEv?.duration_hours}h)<br><sub>${meta.lat}°N, ${lonLabel} · Run: ${(meta.fetched_at || '').slice(0, 16)} UTC</sub>`,
+                    text: `Accumulated Precipitation Density Estimation — E${activeEv?.event_index}: ${(activeEv?.start_time || '').slice(5,10)}–${(activeEv?.end_time || '').slice(5,10)} (${activeEv?.duration_hours}h)<br><sub>${meta.lat}°N, ${lonLabel} · Run: ${(meta.fetched_at || '').slice(0, 16)} UTC</sub>`,
                     font: { size: 15, color: '#e8eaf0' },
                   },
-                  xaxis: { ...kdeResult.layout.xaxis, range: kdeXRange, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' } },
-                  yaxis: { ...kdeResult.layout.yaxis, range: kdeYRange, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' } },
+                  xaxis: { ...activeKde.layout.xaxis, range: kdeXRange, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' } },
+                  yaxis: { ...activeKde.layout.yaxis, range: kdeYRange, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' } },
                 }}
                 config={{ scrollZoom: false, displayModeBar: 'hover', responsive: true }}
                 style={{ width: '100%' }}
                 useResizeHandler
               />
-            : <div style={styles.status}>No ensemble data available for Storm KDE.</div>
-        )}
+            : <div style={styles.status}>No ensemble data available.</div>
+        })()}
       </div>
     </div>
   )
