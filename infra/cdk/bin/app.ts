@@ -114,7 +114,7 @@ const solarHailAmplify = new AmplifyStack(app, `tools-shared-amplify-solarhail-$
 const purgatoryAmplify = new AmplifyStack(app, `tools-shared-amplify-purgatory-${envName}`, {
   cfg,
   appName: 'purgatory',
-  subdomain: 'purgatory',
+  subdomain: 'purg',
   amplifyServiceRoleArn,
   exportPrefix: 'tools-shared-amplify-purgatory',
   env: awsEnv,

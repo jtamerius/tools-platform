@@ -39,7 +39,7 @@ export class PurgatoryStack extends cdk.Stack {
     const cognitoUserPoolId = ssm.StringParameter.valueFromLookup(this, `/tools/${e}/cognito/user-pool-id`);
     const cognitoUserPoolClientId = ssm.StringParameter.valueFromLookup(this, `/tools/${e}/cognito/client-id`);
 
-    const appSubdomain = 'purgatory';
+    const appSubdomain = 'purg';
 
     // ── S3: raw image storage ───────────────────────────────────────────────
     const rawBucket = new s3.Bucket(this, 'RawBucket', {
