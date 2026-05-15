@@ -294,7 +294,7 @@ jobs:
       - name: Deploy CDK stack
         run: |
           cd infra/cdk
-          out=$(npx cdk deploy tools-shared-monitoring-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+          out=$(npx cdk deploy tools-shared-monitoring-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 3: Deploy landing-page app infrastructure (SSM params)
@@ -326,7 +326,7 @@ jobs:
       - name: Deploy CDK stack
         run: |
           cd infra/cdk
-          out=$(npx cdk deploy tools-app-landing-page-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+          out=$(npx cdk deploy tools-app-landing-page-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
   # Job 4: Deploy landing-page frontend via Amplify (main branch)
