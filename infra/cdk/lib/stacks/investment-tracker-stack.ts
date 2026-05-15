@@ -152,6 +152,9 @@ export class InvestmentTrackerStack extends cdk.Stack {
         EMAIL_DOMAIN: isProd
           ? `${emailSubdomain}.${cfg.domainRoot}`
           : `${appSubdomain}-${e}.${cfg.domainRoot}`,
+        ALLOWED_ORIGINS: isProd
+          ? `https://${appSubdomain}.${cfg.domainRoot},http://localhost:5173`
+          : '*',
       },
       // Point CDK at infra/cdk/package-lock.json so projectRoot = infra/cdk/,
       // where esbuild is installed by npm ci. The API app's lock file is in

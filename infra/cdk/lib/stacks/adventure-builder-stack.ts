@@ -56,6 +56,9 @@ export class AdventureBuilderStack extends cdk.Stack {
         TABLE_NAME: table.tableName,
         BEDROCK_MODEL_ID: 'amazon.nova-lite-v1:0',
         BEDROCK_REGION: cfg.region,
+        ALLOWED_ORIGINS: isProd
+          ? `https://adventure.${cfg.domainRoot},http://localhost:5173`
+          : '*',
       },
       depsLockFilePath: path.join(__dirname, '../../package-lock.json'),
       bundling: {

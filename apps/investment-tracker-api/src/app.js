@@ -16,7 +16,8 @@ const EMAIL_BUCKET = process.env.EMAIL_BUCKET;
 const EMAIL_DOMAIN = process.env.EMAIL_DOMAIN;
 
 const app = express();
-app.use(cors());
+const _originsEnv = process.env.ALLOWED_ORIGINS || '*';
+app.use(cors({ origin: _originsEnv === '*' ? '*' : _originsEnv.split(',') }));
 app.use(express.json());
 
 // Multer for the /api/upload endpoint (memory storage — payload goes straight to S3)

@@ -13,7 +13,8 @@ const bedrock = new BedrockRuntimeClient({ region: process.env.BEDROCK_REGION ||
 const BEDROCK_MODEL = process.env.BEDROCK_MODEL_ID || 'amazon.nova-lite-v1:0';
 
 const app = express();
-app.use(cors());
+const _originsEnv = process.env.ALLOWED_ORIGINS || '*';
+app.use(cors({ origin: _originsEnv === '*' ? '*' : _originsEnv.split(',') }));
 app.use(express.json({ limit: '1mb' }));
 
 app.get(['/health', '/api/health'], (_req, res) => res.json({ ok: true }));
