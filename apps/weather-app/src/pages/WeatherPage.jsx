@@ -244,31 +244,22 @@ function buildTickerTraces(forecast, xRangeStart, xRangeEnd, fixedModels = null)
       }
     })
 
-    const groups = new Map()
+    const color   = MODEL_COLORS[model] || FALLBACK_COLORS[mIdx % FALLBACK_COLORS.length]
+    const yAxisId = `y${mIdx + 2}`   // stable: based on position in ensModels, not activeModels count
+
     for (let i = 0; i < tArrMt.length; i++) {
       const t = tArrMt[i]
       if (t < xRangeStart || t > xRangeEnd) continue
       const c = counts[i]
       if (c < n * 0.10) continue
-      if (!groups.has(c)) groups.set(c, [])
-      groups.get(c).push(t)
-    }
-    if (groups.size === 0) return
-
-    const color   = MODEL_COLORS[model] || FALLBACK_COLORS[mIdx % FALLBACK_COLORS.length]
-    const yAxisId = `y${mIdx + 2}`   // stable: based on position in ensModels, not activeModels count
-
-    groups.forEach((times, count) => {
-      const xs = [], ys = []
-      times.forEach(t => { xs.push(t, t, null); ys.push(0, 1, null) })
       traces.push({
         type: 'scattergl', mode: 'lines',
-        x: xs, y: ys,
-        line: { color, width: (1 + (count / n) * 4) * 0.25 },
+        x: [t, t, null], y: [0, 1, null],
+        line: { color, width: 0.3 + (c / n) * 3.2 },
         hoverinfo: 'skip', showlegend: false,
         yaxis: yAxisId,
       })
-    })
+    }
   })
 
   return { traces, activeModels }
@@ -380,6 +371,8 @@ export default function WeatherPage() {
   const runLabelRef = useRef(null)
   const plotRef     = useRef(null)
   const kdeRef      = useRef(null)
+  const rafRef      = useRef(null)
+  const dragFetchRef = useRef(null)
   const [forecast, setForecast]         = useState(null)
   const [baselineForecast, setBaselineForecast] = useState(null)
   const [loading, setLoading]           = useState(false)
@@ -469,45 +462,10 @@ export default function WeatherPage() {
         if (ctrl.signal.aborted) return
         setForecast(data)
         setLoading(false)
-        const locKey = `${selectedLoc.lat.toFixed(4)}_${selectedLoc.lon.toFixed(4)}`
-        setTimeout(() => {
-          const rid    = runIdAtOffset(runOffset)
-          const varKey = `${locKey}/${rid}/${variable}`
-          if (!plotDataCacheRef.current.has(varKey)) {
-            const baseResult = runOffset === 0
-              ? buildTickerTraces(data, xRangeStart, xRangeEnd)
-              : { activeModels: [] }
-            const baseModels = baseResult.activeModels
-            const t  = buildTraces(data, variable, xRangeStart)
-            const { traces: tt } = buildTickerTraces(data, xRangeStart, xRangeEnd, baseModels.length ? baseModels : null)
-            const { shapes, annotations } = buildShapesAndAnnotations(data)
-            plotDataCacheRef.current.set(varKey, { traces: t, tickerTraces: tt, shapes, annotations })
-          }
-        }, 0)
         if (runOffset === 0) {
           setBaselineForecast(data)
-          const baseResult = buildTickerTraces(data, xRangeStart, xRangeEnd)
-          const baseModels = baseResult.activeModels
           for (let o = 1; o <= MAX_RUN_OFFSET; o++) {
-            const rid = runIdAtOffset(o)
-            fetchForecast(selectedLoc, rid, new AbortController().signal)
-              .then(runData => {
-                setTimeout(() => {
-                  const varKey  = `${locKey}/${rid}/${variable}`
-                  const kdeKey  = `${locKey}/${rid}/kde`
-                  if (!plotDataCacheRef.current.has(varKey)) {
-                    const t  = buildTraces(runData, variable, xRangeStart)
-                    const { traces: tt } = buildTickerTraces(runData, xRangeStart, xRangeEnd, baseModels)
-                    const { shapes, annotations } = buildShapesAndAnnotations(runData)
-                    plotDataCacheRef.current.set(varKey, { traces: t, tickerTraces: tt, shapes, annotations })
-                  }
-                  if (!plotDataCacheRef.current.has(kdeKey)) {
-                    const kdeResult = buildKdeTracesAndLayout(runData, 0)
-                    if (kdeResult) plotDataCacheRef.current.set(kdeKey, kdeResult)
-                  }
-                }, 0)
-              })
-              .catch(() => {})
+            fetchForecast(selectedLoc, runIdAtOffset(o), new AbortController().signal).catch(() => {})
           }
         }
       })
@@ -568,6 +526,15 @@ export default function WeatherPage() {
   const N = baselineActiveModels.length || activeModels.length
   const totalStripArea  = N * STRIP_H + Math.max(N - 1, 0) * STRIP_GAP
   const mainChartBottom = N > 0 ? totalStripArea + X_LABEL_GAP : 0.13
+  const tickerLabelAnnotation = N > 0 ? {
+    xref: 'paper', yref: 'paper',
+    x: -0.035, y: totalStripArea / 2,
+    xanchor: 'center', yanchor: 'middle',
+    text: 'Precip Likelihood',
+    textangle: -90,
+    showarrow: false,
+    font: { size: 9, color: '#8b93a8' },
+  } : null
 
   const tickerLayout = {}
   ;(baselineActiveModels.length ? baselineActiveModels : activeModels).forEach((_, i) => {
@@ -705,27 +672,80 @@ export default function WeatherPage() {
                   ? '— current'
                   : `— ${formatRunLabel(runIdAtOffset(MAX_RUN_OFFSET - pos))}`
               }
-              if (selectedLoc) {
-                const offset = MAX_RUN_OFFSET - pos
-                const locKey = `${selectedLoc.lat.toFixed(4)}_${selectedLoc.lon.toFixed(4)}`
-                const rid = runIdAtOffset(offset)
-                const varEl = plotRef.current?.el
-                const varKey = `${locKey}/${rid}/${variable}`
-                const varData = plotDataCacheRef.current.get(varKey)
-                if (varData && varEl) {
-                  const newLayout = { ...varEl.layout,
-                    shapes: varData.shapes, annotations: varData.annotations }
-                  Plotly.react(varEl, [...varData.traces, ...varData.tickerTraces], newLayout)
+              if (!selectedLoc) return
+              if (rafRef.current) cancelAnimationFrame(rafRef.current)
+              rafRef.current = requestAnimationFrame(() => {
+                const offset   = MAX_RUN_OFFSET - pos
+                const locKey   = `${selectedLoc.lat.toFixed(4)}_${selectedLoc.lon.toFixed(4)}`
+                const rid      = runIdAtOffset(offset)
+                const varEl    = plotRef.current?.el
+                const kdeEl    = kdeRef.current?.el
+                const bm       = baselineActiveModels.length ? baselineActiveModels : null
+                const cacheKey = `${locKey}/${rid}/${variable}`
+                const kdeKey   = `${locKey}/${rid}/kde/${selectedEventIdx}`
+
+                function applyPlotData(plotData, kdeData) {
+                  if (varEl && plotData) {
+                    const ann = tickerLabelAnnotation
+                      ? [...(plotData.annotations || []), tickerLabelAnnotation]
+                      : (plotData.annotations || [])
+                    Plotly.react(varEl, [...plotData.traces, ...plotData.tickerTraces],
+                      { ...varEl.layout, shapes: plotData.shapes, annotations: ann })
+                  }
+                  if (kdeEl && kdeData) {
+                    Plotly.react(kdeEl, kdeData.traces, kdeEl.layout || {})
+                  }
                 }
-                const kdeEl = kdeRef.current?.el
-                const kdeData = plotDataCacheRef.current.get(`${locKey}/${rid}/kde`)
-                if (kdeData && kdeEl) {
-                  Plotly.react(kdeEl, kdeData.traces, kdeEl.layout || {})
+
+                function buildFromRaw(raw) {
+                  const t  = buildTraces(raw, variable, xRangeStart)
+                  const { traces: tt } = buildTickerTraces(raw, xRangeStart, xRangeEnd, bm)
+                  const { shapes: sh, annotations: ann } = buildShapesAndAnnotations(raw)
+                  const pd = { traces: t, tickerTraces: tt, shapes: sh, annotations: ann }
+                  plotDataCacheRef.current.set(cacheKey, pd)
+                  const kd = buildKdeTracesAndLayout(raw, selectedEventIdx)
+                  if (kd) plotDataCacheRef.current.set(kdeKey, kd)
+                  return { pd, kd }
                 }
-              }
+
+                let plotData = plotDataCacheRef.current.get(cacheKey)
+                let kdeData  = plotDataCacheRef.current.get(kdeKey)
+
+                if (plotData || kdeData) {
+                  applyPlotData(plotData, kdeData)
+                  return
+                }
+
+                const raw = runCacheRef.current.get(`${locKey}/${rid}`)
+                if (raw) {
+                  const { pd, kd } = buildFromRaw(raw)
+                  applyPlotData(pd, kd)
+                  return
+                }
+
+                // Data not yet in cache — fetch this run on-demand
+                if (dragFetchRef.current) dragFetchRef.current.abort()
+                const ctrl = new AbortController()
+                dragFetchRef.current = ctrl
+                fetchForecast(selectedLoc, rid, ctrl.signal)
+                  .then(data => {
+                    if (ctrl.signal.aborted) return
+                    const { pd, kd } = buildFromRaw(data)
+                    // Only apply if slider is still at this offset
+                    const curPos = sliderRef.current ? +sliderRef.current.value : -1
+                    if (MAX_RUN_OFFSET - curPos === offset) applyPlotData(pd, kd)
+                  })
+                  .catch(() => {})
+              })
             }}
-            onMouseUp={e  => setRunOffset(MAX_RUN_OFFSET - +e.target.value)}
-            onTouchEnd={e => setRunOffset(MAX_RUN_OFFSET - +e.currentTarget.value)}
+            onMouseUp={e => {
+              if (dragFetchRef.current) { dragFetchRef.current.abort(); dragFetchRef.current = null }
+              setRunOffset(MAX_RUN_OFFSET - +e.target.value)
+            }}
+            onTouchEnd={e => {
+              if (dragFetchRef.current) { dragFetchRef.current.abort(); dragFetchRef.current = null }
+              setRunOffset(MAX_RUN_OFFSET - +e.currentTarget.value)
+            }}
           />
         </div>
       </div>
@@ -766,7 +786,7 @@ export default function WeatherPage() {
               yaxis: { title: { text: `${varInfo.label} (${varInfo.unit})`, font: { color: '#8b93a8' } }, gridcolor: 'rgba(42,48,80,0.7)', linecolor: '#1e2540', tickfont: { color: '#5b6480' }, zerolinecolor: '#1e2540', domain: [mainChartBottom, 1], range: yAxisRange },
               margin: { t: 80, b: 80 },
               shapes,
-              annotations,
+              annotations: tickerLabelAnnotation ? [...annotations, tickerLabelAnnotation] : annotations,
             }}
             config={{ scrollZoom: false, displayModeBar: 'hover', responsive: true }}
             style={{ width: '100%' }}
