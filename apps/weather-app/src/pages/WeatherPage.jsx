@@ -283,18 +283,21 @@ function evalKde(vals, bw, xGrid) {
   })
 }
 
-function buildKdeTracesAndLayout(forecast, evIdx = 0) {
+function buildKdeTracesAndLayout(forecast, evIdx = 0, evOverride = null) {
   const members    = forecast.members
   const events     = forecast.events || []
   const meta       = forecast.meta || {}
-  if (!members || !events.length) return null
+  if (!members) return null
 
-  const ev         = events[Math.min(evIdx, events.length - 1)]
+  const ev = evOverride ?? (events.length ? events[Math.min(evIdx, events.length - 1)] : null)
+  if (!ev) return null
+
   const timeArr    = members.time || []
   const precipData = members.precipitation || {}
   const ensModels  = meta.ensemble_models?.length ? meta.ensemble_models : Object.keys(precipData)
 
   const startIdx = timeArr.findIndex(t => t >= ev.start_time)
+  if (startIdx === -1) return null   // event window is before this run's forecast range
   let endIdx = timeArr.findIndex(t => t > ev.end_time)
   if (endIdx === -1) endIdx = timeArr.length
 
@@ -464,9 +467,14 @@ export default function WeatherPage() {
         setLoading(false)
         if (runOffset === 0) {
           setBaselineForecast(data)
-          for (let o = 1; o <= MAX_RUN_OFFSET; o++) {
-            fetchForecast(selectedLoc, runIdAtOffset(o), new AbortController().signal).catch(() => {})
+          const queue = Array.from({ length: MAX_RUN_OFFSET }, (_, i) => i + 1)
+          const worker = async () => {
+            while (queue.length) {
+              const o = queue.shift()
+              await fetchForecast(selectedLoc, runIdAtOffset(o), new AbortController().signal).catch(() => {})
+            }
           }
+          Promise.all([worker(), worker()])
         }
       })
       .catch(err => {
@@ -563,11 +571,12 @@ export default function WeatherPage() {
     () => forecast ? buildShapesAndAnnotations(forecast) : { shapes: [], annotations: [] },
     [forecast] // eslint-disable-line react-hooks/exhaustive-deps
   )
-  const kdeResult = useMemo(
-    () => forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx) : null,
-    [forecast, selectedEventIdx] // eslint-disable-line react-hooks/exhaustive-deps
-  )
+  const baselineEv = baselineForecast?.events?.[selectedEventIdx] ?? null
 
+  const kdeResult = useMemo(
+    () => forecast ? buildKdeTracesAndLayout(forecast, selectedEventIdx, baselineEv) : null,
+    [forecast, selectedEventIdx, baselineEv] // eslint-disable-line react-hooks/exhaustive-deps
+  )
 
   const baselineKdeResult = useMemo(
     () => baselineForecast ? buildKdeTracesAndLayout(baselineForecast, selectedEventIdx) : null,
@@ -692,8 +701,9 @@ export default function WeatherPage() {
                     Plotly.react(varEl, [...plotData.traces, ...plotData.tickerTraces],
                       { ...varEl.layout, shapes: plotData.shapes, annotations: ann })
                   }
-                  if (kdeEl && kdeData) {
-                    Plotly.react(kdeEl, kdeData.traces, kdeEl.layout || {})
+                  if (kdeEl) {
+                    const kd = kdeData || baselineKdeResult
+                    if (kd) Plotly.react(kdeEl, kd.traces, kdeEl.layout || {})
                   }
                 }
 
@@ -708,18 +718,25 @@ export default function WeatherPage() {
                     plotDataCacheRef.current.set(cacheKey, pd)
                   }
                   if (!kd) {
-                    const k = buildKdeTracesAndLayout(raw, selectedEventIdx)
+                    const k = buildKdeTracesAndLayout(raw, selectedEventIdx, baselineEv)
                     if (k) { kd = k; plotDataCacheRef.current.set(kdeKey, k) }
                   }
                   return { pd, kd }
                 }
 
                 let plotData = plotDataCacheRef.current.get(cacheKey)
-                let kdeData  = plotDataCacheRef.current.get(kdeKey)
 
-                // Only fast-path if both are ready; otherwise fall through to rebuild
-                if (plotData && kdeData) {
-                  applyPlotData(plotData, kdeData)
+                // Fast-path: var chart is ready — apply immediately, compute KDE as secondary
+                if (plotData) {
+                  let kdeData = plotDataCacheRef.current.get(kdeKey)
+                  if (!kdeData) {
+                    const raw = runCacheRef.current.get(`${locKey}/${rid}`)
+                    if (raw) {
+                      const k = buildKdeTracesAndLayout(raw, selectedEventIdx, baselineEv)
+                      if (k) { kdeData = k; plotDataCacheRef.current.set(kdeKey, k) }
+                    }
+                  }
+                  applyPlotData(plotData, kdeData)  // null kdeData → baseline fallback
                   return
                 }
 
