@@ -46,6 +46,10 @@ jobs:
       solarhail-pipeline: ${{ steps.filter.outputs.solarhail-pipeline }}
       solarhail-frontend: ${{ steps.filter.outputs.solarhail-frontend }}
       infra-amplify-solarhail: ${{ steps.filter.outputs.infra-amplify-solarhail }}
+      purgatory: ${{ steps.filter.outputs.purgatory }}
+      infra-amplify-purgatory: ${{ steps.filter.outputs.infra-amplify-purgatory }}
+      infra-purgatory: ${{ steps.filter.outputs.infra-purgatory }}
+      purgatory-ingest: ${{ steps.filter.outputs.purgatory-ingest }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -147,6 +151,27 @@ jobs:
               - 'infra/cdk/lib/constructs/amplify-hosting.ts'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
+            purgatory:
+              - 'apps/purgatory/frontend/**'
+              - 'shared/**'
+            infra-amplify-purgatory:
+              - 'infra/cdk/lib/stacks/amplify-stack.ts'
+              - 'infra/cdk/lib/constructs/amplify-hosting.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+            infra-purgatory:
+              - 'infra/cdk/lib/stacks/purgatory-stack.ts'
+              - 'apps/purgatory/ingest/src/**'
+              - 'apps/purgatory/scrape/src/**'
+              - 'apps/purgatory/api/**'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
+              - 'infra/cdk/package.json'
+              - 'infra/cdk/package-lock.json'
+            purgatory-ingest:
+              - 'apps/purgatory/ingest/Dockerfile'
+              - 'apps/purgatory/ingest/requirements.txt'
+              - 'apps/purgatory/ingest/src/**'
             weather-collector:
               - 'apps/weather_app/ensemble-plumes/**'
             finance-tracker:
@@ -1133,6 +1158,196 @@ jobs:
             --output text --no-cli-pager)
 
           cd apps/solarhail/frontend/dist && zip -r ../dist.zip . && cd ..
+
+          RESULT=$(aws amplify create-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name main --output json --no-cli-pager)
+
+          JOB_ID=$(echo "$RESULT" | jq -r '.jobId')
+          ZIP_URL=$(echo "$RESULT" | jq -r '.zipUploadUrl')
+
+          curl --fail -T dist.zip "$ZIP_URL"
+
+          aws amplify start-deployment \
+            --app-id "$AMPLIFY_APP_ID" \
+            --branch-name main --job-id "$JOB_ID" --no-cli-pager
+
+          echo "job_id=$JOB_ID" >> "$GITHUB_OUTPUT"
+          echo "amplify_app_id=$AMPLIFY_APP_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Wait for deployment to complete
+        run: |
+          JOB_ID="${{ steps.deploy.outputs.job_id }}"
+          APP_ID="${{ steps.deploy.outputs.amplify_app_id }}"
+          BRANCH="main"
+          MAX_ATTEMPTS=60
+          ATTEMPT=0
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            STATUS=$(aws amplify get-job \
+              --app-id "$APP_ID" --branch-name "$BRANCH" --job-id "$JOB_ID" \
+              --query 'job.summary.status' --output text --no-cli-pager)
+            echo "  Attempt $((ATTEMPT + 1))/$MAX_ATTEMPTS — Status: $STATUS"
+            case "$STATUS" in
+              SUCCEED) echo "Deployment succeeded."; exit 0 ;;
+              FAILED|CANCELLED) echo "Deployment ended with status: $STATUS"; exit 1 ;;
+              RUNNING|PENDING|PROVISIONING) ATTEMPT=$((ATTEMPT + 1)); sleep 30 ;;
+              *) echo "Unexpected status: $STATUS"; exit 1 ;;
+            esac
+          done
+          echo "Timed out."; exit 1
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy Purgatory Amplify hosting stack
+  # -----------------------------------------------------------------------
+  deploy-amplify-purgatory-production:
+    name: Deploy Amplify (purgatory) — Production
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-amplify-purgatory == 'true'
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-amplify-purgatory-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy Purgatory backend infra (S3, DDB, ECR, Lambdas, API GW)
+  # -----------------------------------------------------------------------
+  deploy-purgatory-app-production:
+    name: Deploy Purgatory App Infra — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-cognito-production
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.infra-purgatory == 'true' &&
+      (needs.deploy-cognito-production.result == 'success' ||
+       needs.deploy-cognito-production.result == 'skipped')
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-app-purgatory-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes" && exit 0 || exit 1; }
+
+  # -----------------------------------------------------------------------
+  # Job: Build and push Purgatory ingest Docker image to ECR
+  # -----------------------------------------------------------------------
+  build-push-purgatory-ingest-production:
+    name: Build & Push Purgatory Ingest — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-purgatory-app-production
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.purgatory-ingest == 'true' &&
+      (needs.deploy-purgatory-app-production.result == 'success' ||
+       needs.deploy-purgatory-app-production.result == 'skipped')
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Login to ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build and push
+        run: |
+          ECR_URI="606196119553.dkr.ecr.us-east-1.amazonaws.com/tools-purgatory-ingest-production"
+          SHA="${{ github.sha }}"
+          docker build -t "$ECR_URI:$SHA" -t "$ECR_URI:latest" apps/purgatory/ingest/
+          docker push "$ECR_URI:$SHA"
+          docker push "$ECR_URI:latest"
+
+  # -----------------------------------------------------------------------
+  # Job: Deploy Purgatory frontend via Amplify
+  # -----------------------------------------------------------------------
+  deploy-purgatory-frontend-production:
+    name: Deploy Purgatory Frontend — Production
+    runs-on: ubuntu-latest
+    needs:
+      - detect-changes
+      - deploy-purgatory-app-production
+      - deploy-amplify-purgatory-production
+    if: |
+      always() &&
+      needs.detect-changes.result == 'success' &&
+      needs.detect-changes.outputs.purgatory == 'true' &&
+      (needs.deploy-purgatory-app-production.result == 'success' ||
+       needs.deploy-purgatory-app-production.result == 'skipped') &&
+      (needs.deploy-amplify-purgatory-production.result == 'success' ||
+       needs.deploy-amplify-purgatory-production.result == 'skipped')
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Fetch build env vars from SSM
+        run: |
+          echo "VITE_COGNITO_USER_POOL_ID=$(aws ssm get-parameter \
+            --name /tools/production/cognito/user-pool-id \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_COGNITO_CLIENT_ID=$(aws ssm get-parameter \
+            --name /tools/production/cognito/client-id \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_API_URL=$(aws ssm get-parameter \
+            --name /tools/production/purgatory/api-url \
+            --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
+          echo "VITE_ENV=production" >> "$GITHUB_ENV"
+
+      - name: Install and build
+        working-directory: apps/purgatory/frontend
+        run: |
+          npm install --legacy-peer-deps
+          npm run build
+
+      - name: Package and deploy to Amplify
+        id: deploy
+        run: |
+          AMPLIFY_APP_ID=$(aws cloudformation describe-stacks \
+            --stack-name tools-shared-amplify-purgatory-production \
+            --query "Stacks[0].Outputs[?OutputKey=='AmplifyAppId'].OutputValue | [0]" \
+            --output text --no-cli-pager)
+
+          cd apps/purgatory/frontend/dist
+          zip -r ../dist.zip .
+          cd ..
 
           RESULT=$(aws amplify create-deployment \
             --app-id "$AMPLIFY_APP_ID" \
