@@ -1,4 +1,6 @@
 import * as path from 'path'; // noqa: bootstrap trigger
+import { execSync } from 'child_process';
+import * as fs from 'fs';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -181,6 +183,16 @@ export class PurgatoryStack extends cdk.Stack {
             'bash', '-c',
             'pip install --no-cache-dir -r requirements.txt -t /asset-output && cp -r . /asset-output/',
           ],
+          local: {
+            tryBundle(outputDir: string): boolean {
+              const srcDir = path.join(__dirname, '../../../../apps/purgatory/scrape');
+              try {
+                execSync(`pip install --no-cache-dir -r ${srcDir}/requirements.txt -t ${outputDir}`, { stdio: 'inherit' });
+                fs.cpSync(srcDir, outputDir, { recursive: true, force: true });
+                return true;
+              } catch { return false; }
+            },
+          },
         },
       }),
       timeout: cdk.Duration.seconds(60),
@@ -224,6 +236,16 @@ export class PurgatoryStack extends cdk.Stack {
             'bash', '-c',
             'pip install --no-cache-dir -r requirements.txt -t /asset-output && cp -r . /asset-output/',
           ],
+          local: {
+            tryBundle(outputDir: string): boolean {
+              const srcDir = path.join(__dirname, '../../../../apps/purgatory/api');
+              try {
+                execSync(`pip install --no-cache-dir -r ${srcDir}/requirements.txt -t ${outputDir}`, { stdio: 'inherit' });
+                fs.cpSync(srcDir, outputDir, { recursive: true, force: true });
+                return true;
+              } catch { return false; }
+            },
+          },
         },
       }),
       timeout: cdk.Duration.seconds(30),
