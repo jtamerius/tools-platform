@@ -163,12 +163,13 @@ export class PurgatoryStack extends cdk.Stack {
       scheduleExpression: 'rate(15 minutes)',
       targets: [{ arn: ingestFnArn, id: 'IngestFanout', input: '{}' }],
     });
-    new lambda.CfnPermission(this, 'IngestSchedulePermission', {
+    const ingestPermission = new lambda.CfnPermission(this, 'IngestSchedulePermission', {
       functionName: ingestFnArn,
       action: 'lambda:InvokeFunction',
       principal: 'events.amazonaws.com',
       sourceArn: `arn:aws:events:${cfg.region}:${cfg.account}:rule/tools-purgatory-ingest-${e}`,
     });
+    ingestPermission.node.addDependency(ingestFn);
 
     // ── Scrape Lambda (Python zip) ──────────────────────────────────────────
     const scrapeFn = new lambda.Function(this, 'ScrapeFunction', {
@@ -216,12 +217,13 @@ export class PurgatoryStack extends cdk.Stack {
       scheduleExpression: 'rate(15 minutes)',
       targets: [{ arn: scrapeFnArn, id: 'ScrapeTrigger', input: '{}' }],
     });
-    new lambda.CfnPermission(this, 'ScrapeSchedulePermission', {
+    const scrapePermission = new lambda.CfnPermission(this, 'ScrapeSchedulePermission', {
       functionName: scrapeFnArn,
       action: 'lambda:InvokeFunction',
       principal: 'events.amazonaws.com',
       sourceArn: `arn:aws:events:${cfg.region}:${cfg.account}:rule/tools-purgatory-scrape-${e}`,
     });
+    scrapePermission.node.addDependency(scrapeFn);
 
     // ── Review-UI API Lambda + API Gateway ──────────────────────────────────
     const apiFn = new lambda.Function(this, 'ApiFunction', {
