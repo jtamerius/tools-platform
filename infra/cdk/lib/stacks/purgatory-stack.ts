@@ -118,6 +118,11 @@ export class PurgatoryStack extends cdk.Stack {
     // Image tag is overridden by the GHA workflow during deploys; we provision
     // with a placeholder tag here, expecting the CI pipeline to push an image
     // tagged 'latest' before the first invocation.
+    const ingestLogGroup = new logs.LogGroup(this, 'IngestLogGroup', {
+      logGroupName: `/aws/lambda/tools-purgatory-ingest-${e}`,
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+    });
     const ingestFn = new lambda.DockerImageFunction(this, 'IngestFunction', {
       functionName: `tools-purgatory-ingest-${e}`,
       description: `Purgatory traffic-cam ingest (${e}) — YOLO, RWIS, agent QC`,
@@ -135,7 +140,7 @@ export class PurgatoryStack extends cdk.Stack {
         AGENT_PROMPT_VERSION: 'v1',
         LOG_LEVEL: 'INFO',
       },
-      logRetention: logs.RetentionDays.ONE_MONTH,
+      logGroup: ingestLogGroup,
     });
     rawBucket.grantReadWrite(ingestFn);
     ingestTable.grantReadWriteData(ingestFn);
@@ -179,7 +184,11 @@ export class PurgatoryStack extends cdk.Stack {
         RESORT_TABLE: resortTable.tableName,
         LOG_LEVEL: 'INFO',
       },
-      logRetention: logs.RetentionDays.ONE_MONTH,
+      logGroup: new logs.LogGroup(this, 'ScrapeLogGroup', {
+        logGroupName: `/aws/lambda/tools-purgatory-scrape-${e}`,
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      }),
     });
     resortTable.grantReadWriteData(scrapeFn);
 
@@ -216,7 +225,11 @@ export class PurgatoryStack extends cdk.Stack {
           ? `https://${appSubdomain}.${cfg.domainRoot},http://localhost:5173`
           : '*',
       },
-      logRetention: logs.RetentionDays.ONE_MONTH,
+      logGroup: new logs.LogGroup(this, 'ApiLogGroup', {
+        logGroupName: `/aws/lambda/tools-purgatory-api-${e}`,
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      }),
     });
     ingestTable.grantReadWriteData(apiFn);
     resortTable.grantReadData(apiFn);
