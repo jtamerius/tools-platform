@@ -14,24 +14,8 @@ from . import config
 
 logger = logging.getLogger(__name__)
 _ddb = boto3.resource("dynamodb")
-_ssm = boto3.client("ssm")
 _s3 = boto3.client("s3")
-
-_anthropic_client = None
-
-
-def _get_anthropic_client():
-    global _anthropic_client
-    if _anthropic_client is None:
-        api_key = os.environ.get("ANTHROPIC_API_KEY")
-        if not api_key and config.ANTHROPIC_API_KEY_SSM:
-            r = _ssm.get_parameter(Name=config.ANTHROPIC_API_KEY_SSM, WithDecryption=True)
-            api_key = r["Parameter"]["Value"]
-        if not api_key:
-            return None
-        import anthropic
-        _anthropic_client = anthropic.Anthropic(api_key=api_key)
-    return _anthropic_client
+_bedrock = boto3.client("bedrock-runtime", region_name=config.BEDROCK_REGION)
 
 
 SYSTEM_PROMPT = """You are a quality control agent for a traffic camera monitoring system on US-550 in Colorado, supporting a Purgatory Resort crowding prediction model.
@@ -86,7 +70,6 @@ def check_and_increment_counter() -> bool:
         invocations = int(r["Attributes"].get("invocations", 0))
         cap = int(r["Attributes"].get("cap", config.AGENT_MONTHLY_CAP))
         if invocations > cap:
-            # Roll back the over-cap increment
             table.update_item(
                 Key={"pk": "AGENT_COUNTER", "sk": month},
                 UpdateExpression="SET invocations = invocations - :one",
@@ -118,11 +101,6 @@ def _check_propagation(record: dict, last_n: list[dict]) -> Optional[dict]:
 
 
 def _call_llm(record: dict, last_n: list[dict], neighbors: list[dict], image_b64: Optional[str] = None) -> Optional[dict]:
-    client = _get_anthropic_client()
-    if client is None:
-        logger.warning("anthropic client unavailable")
-        return None
-
     try:
         sk = record["sk"]
         dt = datetime.fromisoformat(sk.rstrip("Z"))
@@ -152,13 +130,17 @@ def _call_llm(record: dict, last_n: list[dict], neighbors: list[dict], image_b64
         })
 
     try:
-        resp = client.messages.create(
-            model=config.ANTHROPIC_MODEL,
-            max_tokens=300,
-            system=SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": content}],
+        response = _bedrock.invoke_model(
+            modelId=config.BEDROCK_MODEL_ID,
+            body=json.dumps({
+                "anthropic_version": "bedrock-2023-05-31",
+                "max_tokens": 300,
+                "system": SYSTEM_PROMPT,
+                "messages": [{"role": "user", "content": content}],
+            }),
         )
-        text = resp.content[0].text.strip()
+        result = json.loads(response["body"].read())
+        text = result["content"][0]["text"].strip()
         if text.startswith("```"):
             text = text.strip("`").lstrip("json").strip()
         parsed = json.loads(text)

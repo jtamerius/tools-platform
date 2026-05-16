@@ -18,8 +18,8 @@ YOLO_CLASSES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
 AGENT_PROMPT_VERSION = os.environ.get("AGENT_PROMPT_VERSION", "v1")
 AGENT_MONTHLY_CAP = int(os.environ.get("AGENT_MONTHLY_CAP", "200"))
 AGENT_TIER1_CONFIDENCE_THRESHOLD = 0.85
-ANTHROPIC_API_KEY_SSM = os.environ.get("ANTHROPIC_API_KEY_SSM", "")
-ANTHROPIC_MODEL = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+BEDROCK_MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
+BEDROCK_REGION = os.environ.get("BEDROCK_REGION", "us-east-1")
 
 FLAG_VISIBILITY_MILES = 0.5
 FLAG_YOLO_CONFIDENCE_MIN = 0.4

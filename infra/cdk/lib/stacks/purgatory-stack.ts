@@ -109,11 +109,6 @@ export class PurgatoryStack extends cdk.Stack {
       lifecycleRules: [{ description: 'Keep last 5 images', maxImageCount: 5, rulePriority: 1 }],
     });
 
-    // ── Anthropic API key SSM parameter name (SecureString must be created out-of-band) ─
-    // CFN cannot create SecureString params; expect this to be pre-populated manually
-    // for staging+production. Reference name only — the Lambda reads at runtime.
-    const anthropicKeySsmName = `/tools/${e}/purgatory/anthropic-api-key`;
-
     // ── Ingest Lambda (container image) ─────────────────────────────────────
     // Image tag is overridden by the GHA workflow during deploys; we provision
     // with a placeholder tag here, expecting the CI pipeline to push an image
@@ -134,8 +129,8 @@ export class PurgatoryStack extends cdk.Stack {
         INGEST_TABLE: ingestTable.tableName,
         CAM_CONFIG_TABLE: camConfigTable.tableName,
         AGENT_COUNTER_TABLE: agentCounterTable.tableName,
-        ANTHROPIC_API_KEY_SSM: anthropicKeySsmName,
-        ANTHROPIC_MODEL: 'claude-haiku-4-5-20251001',
+        BEDROCK_MODEL_ID: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+        BEDROCK_REGION: cfg.region,
         AGENT_MONTHLY_CAP: '200',
         AGENT_PROMPT_VERSION: 'v1',
         LOG_LEVEL: 'INFO',
@@ -147,8 +142,8 @@ export class PurgatoryStack extends cdk.Stack {
     camConfigTable.grantReadData(ingestFn);
     agentCounterTable.grantReadWriteData(ingestFn);
     ingestFn.addToRolePolicy(new iam.PolicyStatement({
-      actions: ['ssm:GetParameter'],
-      resources: [`arn:aws:ssm:${cfg.region}:${cfg.account}:parameter${anthropicKeySsmName}`],
+      actions: ['bedrock:InvokeModel'],
+      resources: [`arn:aws:bedrock:${cfg.region}::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0`],
     }));
     // Allow self-invoke for fan-out
     ingestFn.grantInvoke(ingestFn);
