@@ -53,34 +53,21 @@ def _post(query: str, variables: dict) -> dict:
     return r.json()
 
 
-def fetch_image_captured_at(cotrip_cam_id: str, filename: str) -> Optional[str]:
-    """Find the cache-buster timestamp on the image URL for this cam view.
+def fetch_image_captured_at(cotrip_cam_id: str, filename: str, image_url: str = None) -> Optional[str]:
+    """Return the image capture timestamp via Last-Modified header on the source image.
 
-    Returns ISO 8601 UTC string, or None if not discoverable.
+    Falls back to None if the HEAD request fails or the header is absent.
     """
-    try:
-        data = _post(MAP_FEATURES_QUERY, {
-            "input": {
-                **CORRIDOR_BBOX,
-                "nonClusterableUris": ["dashboard"],
-                "layerSlugs": ["normalCameras"],
-            },
-        })
-    except Exception as e:
-        logger.warning("mapFeaturesQuery failed: %s", e)
+    if not image_url:
         return None
-
-    features = (data.get("data") or {}).get("mapFeaturesQuery", {}).get("mapFeatures", []) or []
-    for f in features:
-        for v in (f.get("views") or []):
-            url = v.get("url") or v.get("uri") or ""
-            if filename in url and "?" in url:
-                ts_str = url.split("?", 1)[1].split("&", 1)[0]
-                try:
-                    ts_ms = int(ts_str)
-                    return datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).isoformat().replace("+00:00", "Z")
-                except ValueError:
-                    pass
+    try:
+        r = requests.head(image_url, headers={"User-Agent": HEADERS["User-Agent"]}, timeout=10)
+        lm = r.headers.get("Last-Modified") or r.headers.get("last-modified")
+        if lm:
+            from email.utils import parsedate_to_datetime
+            return parsedate_to_datetime(lm).astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    except Exception as e:
+        logger.warning("fetch_image_captured_at HEAD failed: %s", e)
     return None
 
 

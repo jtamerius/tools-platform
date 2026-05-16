@@ -122,8 +122,7 @@ def process(cam_id: str) -> dict:
     record["s3_key"] = s3_key
     record["s3_tier"] = "STANDARD"
 
-    # image_captured_at from GraphQL cache-buster
-    image_captured_at = cotrip.fetch_image_captured_at(cfg.get("cotrip_cam_id", ""), filename or "")
+    image_captured_at = cotrip.fetch_image_captured_at(cfg.get("cotrip_cam_id", ""), filename or "", image_url=image_url)
     if image_captured_at:
         record["image_captured_at"] = image_captured_at
 
