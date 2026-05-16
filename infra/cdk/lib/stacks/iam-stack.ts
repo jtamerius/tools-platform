@@ -207,7 +207,7 @@ export class IamStack extends cdk.Stack {
     }));
 
     this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
-      sid: 'ECRPushSolarHail',
+      sid: 'ECRPushAndRead',
       actions: [
         'ecr:BatchCheckLayerAvailability',
         'ecr:GetDownloadUrlForLayer',
@@ -217,8 +217,21 @@ export class IamStack extends cdk.Stack {
         'ecr:UploadLayerPart',
         'ecr:CompleteLayerUpload',
         'ecr:DescribeRepositories',
+        'ecr:DescribeImages',
+        'ecr:PutLifecyclePolicy',
       ],
-      resources: [`arn:aws:ecr:${cfg.region}:${cfg.account}:repository/tools-solarhail-pipeline-${e}`],
+      resources: [
+        `arn:aws:ecr:${cfg.region}:${cfg.account}:repository/tools-solarhail-pipeline-${e}`,
+        `arn:aws:ecr:${cfg.region}:${cfg.account}:repository/tools-purgatory-ingest-${e}`,
+      ],
+    }));
+
+    // ECR CreateRepository — needed for first-time bootstrap of new app ECR repos.
+    // Account-scoped because CreateRepository can't be restricted by resource.
+    this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
+      sid: 'ECRCreateRepository',
+      actions: ['ecr:CreateRepository'],
+      resources: ['*'],
     }));
 
     // PassRole to Batch execution and job roles (needed during CDK Batch stack deploy)

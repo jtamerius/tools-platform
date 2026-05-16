@@ -102,11 +102,10 @@ export class PurgatoryStack extends cdk.Stack {
     });
 
     // ── ECR: ingest Lambda container image ──────────────────────────────────
-    const ingestRepo = new ecr.Repository(this, 'IngestRepo', {
-      repositoryName: `tools-purgatory-ingest-${e}`,
-      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
-      lifecycleRules: [{ description: 'Keep last 5 images', maxImageCount: 5, rulePriority: 1 }],
-    });
+    // The repo is created/managed by the CI bootstrap step (so the placeholder
+    // image can be pushed before this stack creates the Lambda). CDK references
+    // the existing repo by name — lifecycle policy is set in the CI bootstrap.
+    const ingestRepo = ecr.Repository.fromRepositoryName(this, 'IngestRepo', `tools-purgatory-ingest-${e}`);
 
     // ── Ingest Lambda (container image) ─────────────────────────────────────
     // Image tag is overridden by the GHA workflow during deploys; we provision

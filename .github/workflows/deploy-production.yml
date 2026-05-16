@@ -1257,6 +1257,10 @@ jobs:
           ECR_REPO="606196119553.dkr.ecr.us-east-1.amazonaws.com/tools-purgatory-ingest-production"
           aws ecr create-repository --repository-name tools-purgatory-ingest-production \
             --region us-east-1 --no-cli-pager 2>/dev/null || true
+          aws ecr put-lifecycle-policy \
+            --repository-name tools-purgatory-ingest-production \
+            --region us-east-1 --no-cli-pager \
+            --lifecycle-policy-text '{"rules":[{"rulePriority":1,"description":"Keep last 5 images","selection":{"tagStatus":"any","countType":"imageCountMoreThan","countNumber":5},"action":{"type":"expire"}}]}' >/dev/null
           if ! aws ecr describe-images --repository-name tools-purgatory-ingest-production \
               --image-ids imageTag=latest --region us-east-1 --no-cli-pager 2>/dev/null; then
             docker pull public.ecr.aws/lambda/python:3.12
