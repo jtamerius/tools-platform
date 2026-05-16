@@ -145,8 +145,12 @@ export class PurgatoryStack extends cdk.Stack {
       actions: ['bedrock:InvokeModel'],
       resources: [`arn:aws:bedrock:${cfg.region}::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0`],
     }));
-    // Allow self-invoke for fan-out
-    ingestFn.grantInvoke(ingestFn);
+    // Allow self-invoke for fan-out — use literal ARN to avoid CDK circular dependency
+    // (grantInvoke(ingestFn) embeds the function's CFn token into its own role policy)
+    ingestFn.addToRolePolicy(new iam.PolicyStatement({
+      actions: ['lambda:InvokeFunction'],
+      resources: [`arn:aws:lambda:${cfg.region}:${cfg.account}:function:tools-purgatory-ingest-${e}`],
+    }));
 
     // ── EventBridge: every 15 minutes → ingest fanout (no payload) ──────────
     new events.Rule(this, 'IngestSchedule', {
