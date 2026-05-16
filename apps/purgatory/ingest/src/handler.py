@@ -184,3 +184,4 @@ def handler(event, context):
     except Exception as e:
         logger.exception("ingest failed for %s", cam_id)
         return {"error": str(e), "cam_id": cam_id}
+
