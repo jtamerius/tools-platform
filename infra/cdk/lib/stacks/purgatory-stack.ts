@@ -6,7 +6,6 @@ import * as ddb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2';
 import * as ssm from 'aws-cdk-lib/aws-ssm';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -153,13 +152,21 @@ export class PurgatoryStack extends cdk.Stack {
     }));
 
     // ── EventBridge: every 15 minutes → ingest fanout (no payload) ──────────
-    new events.Rule(this, 'IngestSchedule', {
-      ruleName: `tools-purgatory-ingest-${e}`,
+    // Use CfnRule + CfnPermission with literal ARN strings to avoid the CDK
+    // circular dependency that targets.LambdaFunction introduces via
+    // rule.node.addDependency(fn.permissionsNode).
+    const ingestFnArn = `arn:aws:lambda:${cfg.region}:${cfg.account}:function:tools-purgatory-ingest-${e}`;
+    new events.CfnRule(this, 'IngestSchedule', {
+      name: `tools-purgatory-ingest-${e}`,
       description: `Every 15 minutes — Purgatory cam ingest fanout (${e})`,
-      schedule: events.Schedule.rate(cdk.Duration.minutes(15)),
-      targets: [new targets.LambdaFunction(ingestFn, {
-        event: events.RuleTargetInput.fromObject({}),
-      })],
+      scheduleExpression: 'rate(15 minutes)',
+      targets: [{ arn: ingestFnArn, id: 'IngestFanout', input: '{}' }],
+    });
+    new lambda.CfnPermission(this, 'IngestSchedulePermission', {
+      functionName: ingestFnArn,
+      action: 'lambda:InvokeFunction',
+      principal: 'events.amazonaws.com',
+      sourceArn: `arn:aws:events:${cfg.region}:${cfg.account}:rule/tools-purgatory-ingest-${e}`,
     });
 
     // ── Scrape Lambda (Python zip) ──────────────────────────────────────────
@@ -191,11 +198,18 @@ export class PurgatoryStack extends cdk.Stack {
     });
     resortTable.grantReadWriteData(scrapeFn);
 
-    new events.Rule(this, 'ScrapeSchedule', {
-      ruleName: `tools-purgatory-scrape-${e}`,
+    const scrapeFnArn = `arn:aws:lambda:${cfg.region}:${cfg.account}:function:tools-purgatory-scrape-${e}`;
+    new events.CfnRule(this, 'ScrapeSchedule', {
+      name: `tools-purgatory-scrape-${e}`,
       description: `Every 15 minutes — Purgatory resort scrape (${e})`,
-      schedule: events.Schedule.rate(cdk.Duration.minutes(15)),
-      targets: [new targets.LambdaFunction(scrapeFn)],
+      scheduleExpression: 'rate(15 minutes)',
+      targets: [{ arn: scrapeFnArn, id: 'ScrapeTrigger', input: '{}' }],
+    });
+    new lambda.CfnPermission(this, 'ScrapeSchedulePermission', {
+      functionName: scrapeFnArn,
+      action: 'lambda:InvokeFunction',
+      principal: 'events.amazonaws.com',
+      sourceArn: `arn:aws:events:${cfg.region}:${cfg.account}:rule/tools-purgatory-scrape-${e}`,
     });
 
     // ── Review-UI API Lambda + API Gateway ──────────────────────────────────

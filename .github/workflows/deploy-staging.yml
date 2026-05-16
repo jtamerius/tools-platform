@@ -1152,6 +1152,21 @@ jobs:
           node-version: '20'
           cache: 'npm'
           cache-dependency-path: infra/cdk/package-lock.json
+
+      - name: Bootstrap ECR + placeholder image (first deploy only)
+        uses: aws-actions/amazon-ecr-login@v2
+      - name: Push placeholder if no image exists
+        run: |
+          ECR_REPO="606196119553.dkr.ecr.us-east-1.amazonaws.com/tools-purgatory-ingest-staging"
+          aws ecr create-repository --repository-name tools-purgatory-ingest-staging \
+            --region us-east-1 --no-cli-pager 2>/dev/null || true
+          if ! aws ecr describe-images --repository-name tools-purgatory-ingest-staging \
+              --image-ids imageTag=latest --region us-east-1 --no-cli-pager 2>/dev/null; then
+            docker pull public.ecr.aws/lambda/python:3.12
+            docker tag public.ecr.aws/lambda/python:3.12 "$ECR_REPO:latest"
+            docker push "$ECR_REPO:latest"
+          fi
+
       - run: cd infra/cdk && npm ci
       - run: |
           cd infra/cdk
