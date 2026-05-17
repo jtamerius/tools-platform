@@ -161,8 +161,8 @@ def handler(event, context):
         # EventBridge fanout: if invoked with no cam_id, kick off every active cam.
         table = _ddb.Table(config.CAM_CONFIG_TABLE)
         r = table.scan(
-            FilterExpression="active = :a",
-            ExpressionAttributeValues={":a": True},
+            FilterExpression="active = :a AND cam_type = :t",
+            ExpressionAttributeValues={":a": True, ":t": "traffic"},
             ProjectionExpression="cam_id",
         )
         lam = boto3.client("lambda")
