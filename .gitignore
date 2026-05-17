@@ -147,3 +147,10 @@ playwright/.cache/
 .stylelintcache
 *.tgz
 apps/news-scraper/output/
+
+# =============================================================================
+# Purgatory ML — local training artifacts (never commit)
+# =============================================================================
+purgatory_dataset/
+runs/
+*.pt
