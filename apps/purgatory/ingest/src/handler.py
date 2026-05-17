@@ -120,7 +120,7 @@ def process(cam_id: str) -> dict:
 
     # ── RWIS — fetch once per tick, attached to RWIS-only and partner cam ─────
     if cam_type == "rwis_only" or cam_id == config.RWIS_PARTNER_CAM:
-        rwis = cotrip.fetch_rwis(cfg.get("cotrip_cam_id") or config.RWIS_COTRIP_CAM_ID)
+        rwis = cotrip.fetch_rwis(config.RWIS_COTRIP_CAM_ID)
         record.update(rwis)
 
     if cam_type == "rwis_only":

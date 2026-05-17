@@ -62,18 +62,31 @@ AWS_PROFILE=jtam aws s3 ls s3://tools-purgatory-raw-production-606196119553/mode
   --recursive | grep metadata.json
 ```
 
-Then train (replace `vN` with the next version):
+Then train (replace `vN` with the next version).
 
+**Always start from the previous model's `best.pt`** — faster convergence, better results since the model already knows this camera context. Only use `yolov8n.pt` if there is no previous model.
+
+Download the previous active model first:
 ```bash
+AWS_PROFILE=jtam aws s3 cp \
+  s3://tools-purgatory-raw-production-606196119553/models/shared/vPREV/model.pt \
+  prev_best.pt
+```
+
+Then train — launch the live dashboard first, then start training:
+```bash
+python apps/purgatory/scripts/training_dashboard.py &
 yolo train \
   data=purgatory_dataset/data.yaml \
-  model=yolov8n.pt \
-  epochs=50 \
+  model=prev_best.pt \
+  epochs=100 \
   imgsz=640 \
   name=purgatory_vN
 ```
 
-Runs on Apple M2 MPS automatically (~5–15 min for <200 images). Output: `runs/detect/purgatory_vN/weights/best.pt`.
+The dashboard auto-finds the latest `results.csv` and refreshes every 15 seconds. To watch a specific run: `python apps/purgatory/scripts/training_dashboard.py runs/detect/purgatory_vN/results.csv`
+
+Runs on Apple M2 MPS automatically. Output: `runs/detect/purgatory_vN/weights/best.pt`.
 
 ### Interpreting results
 

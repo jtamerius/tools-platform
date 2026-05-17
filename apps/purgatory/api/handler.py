@@ -121,16 +121,19 @@ def _search(params):
             cond = cond & Key("sk").gte(start)
         elif end:
             cond = cond & Key("sk").lte(end)
-        r = table.query(KeyConditionExpression=cond, Limit=500, ScanIndexForward=False)
+        r = table.query(
+            KeyConditionExpression=cond,
+            FilterExpression=Attr("s3_key").exists(),
+            Limit=500,
+            ScanIndexForward=False,
+        )
         items = r.get("Items", [])
     else:
         # Multi-cam scan with filter — Phase 1 volume only.
-        filt = None
-        if start: filt = (filt & Attr("sk").gte(start)) if filt else Attr("sk").gte(start)
-        if end:   filt = (filt & Attr("sk").lte(end)) if filt else Attr("sk").lte(end)
-        kw = {"Limit": 500}
-        if filt is not None:
-            kw["FilterExpression"] = filt
+        filt = Attr("s3_key").exists()
+        if start: filt = filt & Attr("sk").gte(start)
+        if end:   filt = filt & Attr("sk").lte(end)
+        kw = {"Limit": 500, "FilterExpression": filt}
         r = table.scan(**kw)
         items = r.get("Items", [])
 

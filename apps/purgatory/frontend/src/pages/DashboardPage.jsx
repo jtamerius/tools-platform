@@ -58,7 +58,7 @@ export default function DashboardPage({ api }) {
   }, [hours, api])
 
   // Pull RWIS fields from the most recent 952-N record
-  const latest952 = (histories['952-N'] ?? []).slice().sort((a, b) => b.sk < a.sk ? -1 : 1)[0]
+  const latest952 = (histories['952-N'] ?? [])[0]
   const rwisFields = [
     { key: 'Visibility',  val: fmt(latest952?.rwis_visibility_mi, 'mi') },
     { key: 'Pavement',    val: fmt(latest952?.rwis_pavement_status) },
