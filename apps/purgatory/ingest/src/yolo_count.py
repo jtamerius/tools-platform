@@ -18,6 +18,14 @@ from . import config
 _model_cache: dict[str | None, YOLO] = {}
 _s3 = boto3.client("s3")
 
+# Class names that count as vehicles (covers both COCO yolov8n and single-class custom models)
+_VEHICLE_NAMES = {"car", "motorcycle", "bus", "truck", "vehicle"}
+
+
+def _vehicle_classes(model: YOLO) -> set[int]:
+    """Return the set of class IDs the model reports as vehicle types."""
+    return {cls_id for cls_id, name in model.names.items() if name.lower() in _VEHICLE_NAMES}
+
 
 def _get_model(s3_key: Optional[str] = None) -> YOLO:
     if s3_key not in _model_cache:
@@ -62,6 +70,7 @@ def count_vehicles(image_bytes: bytes, zones: Optional[list] = None, roi_polygon
     """
     model = _get_model(model_s3_key)
     infer = _load_inference_params(model_s3_key)
+    valid_classes = _vehicle_classes(model)
     img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
 
     # Build zone polygons. Fall back to legacy roi_polygon if no zones given.
@@ -80,7 +89,7 @@ def count_vehicles(image_bytes: bytes, zones: Optional[list] = None, roi_polygon
         iou=infer["iou"],
         agnostic_nms=infer["agnostic_nms"],
         max_det=infer["max_det"],
-        classes=list(config.YOLO_CLASSES),
+        classes=sorted(valid_classes),
         verbose=False,
     )
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
@@ -93,7 +102,7 @@ def count_vehicles(image_bytes: bytes, zones: Optional[list] = None, roi_polygon
         if r.boxes is None:
             continue
         for box in r.boxes:
-            if int(box.cls.item()) not in config.YOLO_CLASSES:
+            if int(box.cls.item()) not in valid_classes:
                 continue
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             pt = Point((x1 + x2) / 2, y2)
