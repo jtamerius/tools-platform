@@ -8,7 +8,7 @@ const s = {
   title: { fontSize: 18, fontWeight: 600 },
   meta: { color: 'var(--text-muted)', fontSize: 13 },
   image: { width: '100%', borderRadius: 6, background: 'var(--bg)', minHeight: 240, objectFit: 'contain' },
-  row: { display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13 },
+  row: { display: 'flex', justifyContent: 'space-between', padding: '4px 0', fontSize: 13, color: 'var(--text)' },
   key: { color: 'var(--text-muted)' },
   agent: { marginTop: 12, padding: 12, background: 'var(--surface-2)', borderRadius: 6, fontSize: 13 },
   confidence: (c) => ({
