@@ -23,7 +23,7 @@ const styles = {
 
 export default function ReviewPage({ getAccessToken }) {
   const api = useReviewApi(getAccessToken)
-  const [mode, setMode] = useState('queue')
+  const [mode, setMode] = useState('search')
   const [filters, setFilters] = useState({})
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(false)
@@ -35,8 +35,7 @@ export default function ReviewPage({ getAccessToken }) {
     let cancelled = false
     setLoading(true)
     setError(null)
-    const fetcher = mode === 'queue' ? api.fetchQueue : api.fetchSearch
-    fetcher(filters).then((rs) => {
+    api.fetchSearch(filters).then((rs) => {
       if (cancelled) return
       setRecords(rs)
       setCursor(0)
@@ -62,7 +61,6 @@ export default function ReviewPage({ getAccessToken }) {
   return (
     <div style={styles.page}>
       <div style={styles.tabs}>
-        <button style={styles.tab(mode === 'queue')} onClick={() => setMode('queue')}>Queue</button>
         <button style={styles.tab(mode === 'search')} onClick={() => setMode('search')}>Search</button>
         <button style={styles.tab(mode === 'dashboard')} onClick={() => setMode('dashboard')}>Dashboard</button>
         <button style={styles.tab(mode === 'annotate')} onClick={() => setMode('annotate')}>Annotate</button>
@@ -75,17 +73,15 @@ export default function ReviewPage({ getAccessToken }) {
         </Suspense>
       )}
 
-      {mode !== 'dashboard' && mode !== 'annotate' && (
+      {mode === 'search' && (
         <>
-          {mode === 'search' && <FilterBar filters={filters} onChange={setFilters} />}
+          <FilterBar filters={filters} onChange={setFilters} />
 
           {error && <div style={{ color: 'var(--red)' }}>Error: {error}</div>}
           {loading && <div style={styles.empty}>Loading…</div>}
 
           {!loading && !current && (
-            <div style={styles.empty}>
-              {mode === 'queue' ? 'Queue empty — nothing to review.' : 'No records match.'}
-            </div>
+            <div style={styles.empty}>No records match.</div>
           )}
 
           {current && (

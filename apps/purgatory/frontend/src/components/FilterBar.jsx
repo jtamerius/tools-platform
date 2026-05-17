@@ -5,9 +5,9 @@ const s = {
 }
 
 const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
-const DECISIONS = ['', 'keep', 'unusable']
+const DECISIONS = ['', 'keep', 'unusable', 'needs_follow_up']
 const SOURCES = ['', 'tier_1', 'tier_2', 'propagated', 'manual']
-const FLAGGED = [['', 'all'], ['true', 'flagged'], ['false', 'not flagged']]
+const FLAGGED = [['', 'all'], ['true', 'flagged by AI'], ['false', 'not flagged']]
 
 export default function FilterBar({ filters, onChange }) {
   const set = (k, v) => onChange({ ...filters, [k]: v })
@@ -52,7 +52,7 @@ export default function FilterBar({ filters, onChange }) {
           value={filters.visibility_lte ?? ''} onChange={e => set('visibility_lte', e.target.value)} />
       </label>
       <label style={s.field}>
-        flagged
+        AI flagged
         <select style={s.input} value={filters.needs_review ?? ''} onChange={e => set('needs_review', e.target.value)}>
           {FLAGGED.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
         </select>

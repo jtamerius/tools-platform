@@ -19,10 +19,6 @@ export function useReviewApi(getAccessToken) {
     }
 
     return {
-      fetchQueue: async () => {
-        const data = await req('/api/queue')
-        return data.records ?? []
-      },
       fetchSearch: async (filters) => {
         const q = new URLSearchParams()
         Object.entries(filters || {}).forEach(([k, v]) => {
