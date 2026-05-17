@@ -3,7 +3,7 @@ import TrafficPlot from './TrafficPlot'
 
 const s = {
   panel: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, alignItems: 'start' },
-  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 },
+  card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 16, color: 'var(--text)' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   title: { fontSize: 18, fontWeight: 600 },
   meta: { color: 'var(--text-muted)', fontSize: 13 },
