@@ -1,6 +1,7 @@
 """COTRIP GraphQL client — fetches image capture timestamp + RWIS readings."""
 from __future__ import annotations
 import logging
+import re
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -17,6 +18,19 @@ HEADERS = {
     "Origin": "https://www.cotrip.org",
 }
 
+# weatherStationQuery is broken server-side; access RWIS via a nearby camera instead.
+CAMERA_RWIS_QUERY = """
+query {
+    cameraQuery(cameraId: "%s") {
+        camera {
+            nearbyWeatherStation {
+                weatherStationFields
+            }
+        }
+    }
+}
+"""
+
 MAP_FEATURES_QUERY = """
 query MapFeatures($input: MapFeaturesArgs!) {
     mapFeaturesQuery(input: $input) {
@@ -31,21 +45,16 @@ query MapFeatures($input: MapFeaturesArgs!) {
 }
 """
 
-WEATHER_STATION_QUERY = """
-query WeatherStation($rwisId: String!) {
-    weatherStationQuery(rwisId: $rwisId) {
-        weatherStationFields { key value unit }
-    }
-}
-"""
-
 CORRIDOR_BBOX = {"west": -108.0, "south": 37.2, "east": -107.5, "north": 37.65, "zoom": 11}
 
 
-def _post(query: str, variables: dict) -> dict:
+def _post(query: str, variables: dict = None) -> dict:
+    payload = {"query": query}
+    if variables:
+        payload["variables"] = variables
     r = requests.post(
         config.COTRIP_GRAPHQL_URL,
-        json={"query": query, "variables": variables},
+        json=payload,
         headers=HEADERS,
         timeout=15,
     )
@@ -56,10 +65,7 @@ def _post(query: str, variables: dict) -> dict:
 
 
 def fetch_image_captured_at(cotrip_cam_id: str, filename: str, image_url: str = None) -> Optional[str]:
-    """Return the image capture timestamp via Last-Modified header on the source image.
-
-    Falls back to None if the HEAD request fails or the header is absent.
-    """
+    """Return the image capture timestamp via Last-Modified header on the source image."""
     if not image_url:
         return None
     try:
@@ -73,53 +79,69 @@ def fetch_image_captured_at(cotrip_cam_id: str, filename: str, image_url: str = 
     return None
 
 
-# RWIS field key → schema field name. Keys observed from cotrip station 374.
+# Mapping: COTRIP field key → (schema field name, is_numeric)
 RWIS_FIELD_MAP = {
-    "Air Temperature": "rwis_temp_air_f",
-    "Dewpoint": "rwis_temp_dewpoint_f",
-    "Pavement Status": "rwis_pavement_status",
-    "Pavement Temperature": "rwis_pavement_temp_f",
-    "Precipitation Situation": "rwis_precip_situation",
-    "Precipitation Rate": "rwis_precip_rate_in_hr",
-    "Precipitation Past 1 Hour": "rwis_precip_past_1hr_in",
-    "Precipitation Past 24 Hours": "rwis_precip_past_24hr_in",
-    "Visibility": "rwis_visibility_mi",
-    "Average Wind Speed": "rwis_wind_avg_mph",
-    "Max Wind Speed": "rwis_wind_max_mph",
-    "Average Wind Direction": "rwis_wind_avg_direction",
-    "Max Wind Direction": "rwis_wind_max_direction",
-}
-
-NUMERIC_FIELDS = {
-    "rwis_temp_air_f", "rwis_temp_dewpoint_f", "rwis_pavement_temp_f",
-    "rwis_precip_rate_in_hr", "rwis_precip_past_1hr_in", "rwis_precip_past_24hr_in",
-    "rwis_visibility_mi", "rwis_wind_avg_mph", "rwis_wind_max_mph",
+    "TEMP_AIR_TEMPERATURE":       ("rwis_temp_air_f",          True),
+    "TEMP_DEW_POINT":             ("rwis_temp_dewpoint_f",      True),
+    "PAVEMENT_SURFACE_TEMPERATURE": ("rwis_pavement_temp_f",   True),
+    "PAVEMENT_SURFACE_STATUS":    ("rwis_pavement_status",      False),
+    "PRECIP_SITUATION":           ("rwis_precip_situation",     False),
+    "PRECIP_RATE":                ("rwis_precip_rate_in_hr",    True),
+    "PRECIP_PAST_HOUR":           ("rwis_precip_past_1hr_in",   True),
+    "PRECIP_PAST_24_HOURS":       ("rwis_precip_past_24hr_in",  True),
+    "VIS_VISIBILITY":             ("rwis_visibility_mi",        True),
+    "WIND_AVG_SPEED":             ("rwis_wind_avg_mph",         True),
+    "WIND_MAX_SPEED":             ("rwis_wind_max_mph",         True),
+    "WIND_AVG_DIRECTION":         ("rwis_wind_avg_direction",   False),
+    "WIND_MAX_DIRECTION":         ("rwis_wind_max_direction",   False),
 }
 
 
-def fetch_rwis(station_id: str = None) -> dict:
-    """Fetch RWIS readings; returns a dict matching the ingest schema field names."""
-    sid = station_id or config.RWIS_STATION_ID
+def _parse_numeric(display_value: str) -> Optional[float]:
+    m = re.search(r"([\d.]+)", display_value)
+    if m:
+        try:
+            return float(m.group(1))
+        except ValueError:
+            pass
+    return None
+
+
+def fetch_rwis(cotrip_cam_id: str = None) -> dict:
+    """Fetch RWIS readings via the nearby-weather-station field on a COTRIP camera.
+
+    Uses cameraQuery rather than weatherStationQuery (which is broken server-side).
+    """
+    cam_id = cotrip_cam_id or config.RWIS_COTRIP_CAM_ID
     try:
-        data = _post(WEATHER_STATION_QUERY, {"rwisId": sid})
+        data = _post(CAMERA_RWIS_QUERY % cam_id)
     except Exception as e:
-        logger.warning("weatherStationQuery failed: %s", e)
+        logger.warning("RWIS cameraQuery failed (cam %s): %s", cam_id, e)
         return {}
 
-    fields = (data.get("data") or {}).get("weatherStationQuery", {}).get("weatherStationFields", []) or []
+    station = (
+        (data.get("data") or {})
+        .get("cameraQuery", {})
+        .get("camera", {})
+        .get("nearbyWeatherStation")
+    )
+    if not station:
+        logger.warning("RWIS: no nearbyWeatherStation for cam %s", cam_id)
+        return {}
+
+    fields = station.get("weatherStationFields") or {}
     out: dict = {}
-    for f in fields:
-        schema_name = RWIS_FIELD_MAP.get(f.get("key"))
-        if not schema_name:
+    for cotrip_key, (schema_name, is_numeric) in RWIS_FIELD_MAP.items():
+        entry = fields.get(cotrip_key)
+        if not entry:
             continue
-        val = f.get("value")
-        if val in (None, ""):
+        display = entry.get("displayValue", "")
+        if not display or display in ("No Report", "N/A", ""):
             continue
-        if schema_name in NUMERIC_FIELDS:
-            try:
-                out[schema_name] = float(val)
-            except (TypeError, ValueError):
-                pass
+        if is_numeric:
+            val = _parse_numeric(display)
+            if val is not None:
+                out[schema_name] = val
         else:
-            out[schema_name] = str(val)
+            out[schema_name] = display
     return out

@@ -9,6 +9,7 @@ AGENT_COUNTER_TABLE = os.environ["AGENT_COUNTER_TABLE"]
 
 RWIS_STATION_ID = os.environ.get("RWIS_STATION_ID", "374")
 RWIS_PARTNER_CAM = os.environ.get("RWIS_PARTNER_CAM", "952-N")
+RWIS_COTRIP_CAM_ID = os.environ.get("RWIS_COTRIP_CAM_ID", "954")
 COTRIP_GRAPHQL_URL = "https://www.cotrip.org/api/graphql"
 
 YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "/var/task/yolov8n.pt")
