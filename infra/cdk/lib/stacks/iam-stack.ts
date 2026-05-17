@@ -150,7 +150,10 @@ export class IamStack extends cdk.Stack {
         'lambda:PutFunctionConcurrency', 'lambda:DeleteFunctionConcurrency',
         'lambda:GetFunctionConcurrency',
       ],
-      resources: [`arn:aws:lambda:${cfg.region}:${cfg.account}:function:jtamerius-*`],
+      resources: [
+        `arn:aws:lambda:${cfg.region}:${cfg.account}:function:jtamerius-*`,
+        `arn:aws:lambda:${cfg.region}:${cfg.account}:function:tools-*`,
+      ],
     }));
 
     this.gitHubActionsRole.addToPolicy(new iam.PolicyStatement({
