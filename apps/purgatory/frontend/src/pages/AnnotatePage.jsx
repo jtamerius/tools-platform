@@ -3,7 +3,7 @@ import ZoneEditor from '../components/ZoneEditor'
 import BboxEditor from '../components/BboxEditor'
 
 const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
-const CONDITIONS = ['day_clear', 'day_snow', 'night_clear', 'night_snow', 'default']
+const MODEL_CAMS = [...CAMS, 'shared'] // 'shared' = model used by any camera without its own
 const LABEL_MODES = [['all', 'All'], ['unlabeled', 'Unlabeled'], ['labeled', 'Labeled']]
 
 const s = {
@@ -248,7 +248,7 @@ function MetricsRow({ label, value }) {
   )
 }
 
-function VersionPanel({ camId, condition, versions, onRefresh, api }) {
+function VersionPanel({ camId, versions, onRefresh, api }) {
   const [editingId, setEditingId] = useState(null) // version number being edited
   const [editVals, setEditVals] = useState({})
   const [uploading, setUploading] = useState(false)
@@ -258,7 +258,7 @@ function VersionPanel({ camId, condition, versions, onRefresh, api }) {
 
   const activate = async (version) => {
     try {
-      await api.updateModelMeta(camId, condition, version, { active: true })
+      await api.updateModelMeta(camId, version, { active: true })
       onRefresh()
     } catch (e) {
       alert(e.message)
@@ -267,7 +267,7 @@ function VersionPanel({ camId, condition, versions, onRefresh, api }) {
 
   const saveEdit = async (version) => {
     try {
-      await api.updateModelMeta(camId, condition, version, { inference: editVals.inference, metrics: editVals.metrics })
+      await api.updateModelMeta(camId, version, { inference: editVals.inference, metrics: editVals.metrics })
       setEditingId(null)
       onRefresh()
     } catch (e) {
@@ -279,7 +279,7 @@ function VersionPanel({ camId, condition, versions, onRefresh, api }) {
     setUploadStatus(null)
     setUploading(true)
     try {
-      const { upload_url, version } = await api.getModelUploadUrl(camId, condition, newInference)
+      const { upload_url, version } = await api.getModelUploadUrl(camId, newInference)
       const file = fileRef.current?.files?.[0]
       if (!file) { setUploadStatus({ type: 'error', msg: 'No file selected' }); return }
       const res = await fetch(upload_url, { method: 'PUT', body: file, headers: { 'Content-Type': 'application/octet-stream' } })
@@ -296,7 +296,7 @@ function VersionPanel({ camId, condition, versions, onRefresh, api }) {
   if (versions.length === 0) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        <div style={s.muted}>No versions uploaded for {camId} / {condition}.</div>
+        <div style={s.muted}>No versions uploaded for {camId}.</div>
         <UploadForm fileRef={fileRef} inference={newInference} setInference={setNewInference}
           onUpload={startUpload} uploading={uploading} status={uploadStatus} />
       </div>
@@ -391,7 +391,6 @@ function UploadForm({ fileRef, inference, setInference, onUpload, uploading, sta
 }
 
 function ExportPanel({ camId, api }) {
-  const [condition, setCondition] = useState('')
   const [split, setSplit] = useState('70/15/15')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
@@ -402,9 +401,7 @@ function ExportPanel({ camId, api }) {
     setResult(null)
     setError(null)
     try {
-      const opts = { split }
-      if (condition) opts.condition = condition
-      const data = await api.exportLabels(camId, opts)
+      const data = await api.exportLabels(camId, { split })
       setResult(data)
     } catch (e) {
       setError(e.message)
@@ -417,13 +414,6 @@ function ExportPanel({ camId, api }) {
     <div style={s.card}>
       <div style={s.cardTitle}>Export labeled dataset (YOLO format)</div>
       <div style={s.row}>
-        <label style={s.label}>
-          Condition
-          <select style={{ ...s.select, marginLeft: 6 }} value={condition} onChange={e => setCondition(e.target.value)}>
-            <option value="">all</option>
-            {CONDITIONS.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
-        </label>
         <label style={s.label}>
           Split (train/val/test)
           <input style={{ ...s.input, width: 100, marginLeft: 6 }} value={split} onChange={e => setSplit(e.target.value)} />
@@ -453,80 +443,38 @@ function ExportPanel({ camId, api }) {
 }
 
 function ModelsTab({ camId, api }) {
-  const [models, setModels] = useState(null)
+  const [versions, setVersions] = useState([])
   const [loading, setLoading] = useState(false)
-  const [selectedCell, setSelectedCell] = useState(null) // {condition}
 
   const load = () => {
     if (!camId) return
     setLoading(true)
     api.fetchModels(camId)
-      .then(data => setModels(data.models))
-      .catch(() => setModels({}))
+      .then(data => setVersions(data.versions || []))
+      .catch(() => setVersions([]))
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { setModels(null); setSelectedCell(null); load() }, [camId])
+  useEffect(() => { setVersions([]); load() }, [camId])
 
   if (loading) return <div style={s.muted}>Loading models…</div>
 
-  const activeVersion = (cond) => models?.[cond]?.find(m => m.active)
+  const isShared = camId === 'shared'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Model grid */}
       <div style={s.card}>
-        <div style={s.cardTitle}>Model versions — {camId}</div>
-        <div style={{ display: 'grid', gridTemplateColumns: `auto repeat(${CONDITIONS.length}, 1fr)`, gap: 1, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
-          <div style={{ ...s.gridCell('var(--bg)'), fontWeight: 600 }}></div>
-          {CONDITIONS.map(c => (
-            <div key={c} style={{ ...s.gridCell('var(--bg)'), fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>{c}</div>
-          ))}
-          <div style={s.gridCell('var(--bg)')}>
-            <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{camId}</span>
-          </div>
-          {CONDITIONS.map(cond => {
-            const active = activeVersion(cond)
-            const isSelected = selectedCell?.condition === cond
-            return (
-              <div
-                key={cond}
-                style={{
-                  ...s.gridCell(isSelected ? 'var(--accent)33' : active ? '#34d39933' : 'var(--surface)'),
-                  cursor: 'pointer',
-                  flexDirection: 'column',
-                  gap: 2,
-                  borderBottom: isSelected ? `2px solid var(--accent)` : 'none',
-                }}
-                onClick={() => setSelectedCell(isSelected ? null : { condition: cond })}
-              >
-                {active
-                  ? <><span style={{ color: '#34d399', fontWeight: 600 }}>✓ v{active.version}</span>
-                      <span style={{ fontSize: 10, color: 'var(--text-muted)' }}>{active.metrics?.mAP50 ? `mAP ${active.metrics.mAP50}` : 'no metrics'}</span></>
-                  : <span style={{ color: 'var(--text-muted)' }}>—</span>
-                }
-              </div>
-            )
-          })}
+        <div style={s.cardTitle}>
+          {isShared ? 'Shared model (fallback for all cameras)' : `Models — ${camId}`}
         </div>
+        {isShared && (
+          <div style={{ ...s.muted, marginBottom: 10, fontSize: 12 }}>
+            A model activated here is used by any camera that has no camera-specific model.
+          </div>
+        )}
+        <VersionPanel camId={camId} versions={versions} onRefresh={load} api={api} />
       </div>
-
-      {selectedCell && (
-        <div style={s.card}>
-          <div style={s.cardTitle}>
-            {camId} / {selectedCell.condition} — version history
-          </div>
-          <VersionPanel
-            camId={camId}
-            condition={selectedCell.condition}
-            versions={models?.[selectedCell.condition] || []}
-            onRefresh={load}
-            api={api}
-          />
-        </div>
-      )}
-
-      <ExportPanel camId={camId} api={api} />
+      {!isShared && <ExportPanel camId={camId} api={api} />}
     </div>
   )
 }
@@ -535,15 +483,24 @@ function ModelsTab({ camId, api }) {
 
 export default function AnnotatePage({ api }) {
   const [camId, setCamId] = useState('952-N')
+  const [modelCamId, setModelCamId] = useState('952-N')
   const [subTab, setSubTab] = useState('zones')
 
   return (
     <div style={s.page}>
       <div style={s.row}>
         <span style={s.label}>Camera</span>
-        <select style={s.select} value={camId} onChange={e => setCamId(e.target.value)}>
-          {CAMS.map(c => <option key={c} value={c}>{c}</option>)}
-        </select>
+        {subTab === 'models' ? (
+          <select style={s.select} value={modelCamId} onChange={e => setModelCamId(e.target.value)}>
+            {MODEL_CAMS.map(c => (
+              <option key={c} value={c}>{c === 'shared' ? 'shared (all cameras)' : c}</option>
+            ))}
+          </select>
+        ) : (
+          <select style={s.select} value={camId} onChange={e => setCamId(e.target.value)}>
+            {CAMS.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+        )}
       </div>
 
       <div style={s.tabs}>
@@ -554,7 +511,7 @@ export default function AnnotatePage({ api }) {
 
       {subTab === 'zones' && <ZonesTab camId={camId} api={api} />}
       {subTab === 'labels' && <LabelsTab camId={camId} api={api} />}
-      {subTab === 'models' && <ModelsTab camId={camId} api={api} />}
+      {subTab === 'models' && <ModelsTab camId={modelCamId} api={api} />}
     </div>
   )
 }

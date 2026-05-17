@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 
-const CLS_COLORS = { 2: '#60a5fa', 3: '#818cf8', 5: '#34d399', 7: '#f59e0b' }
-const CLS_NAMES = { 2: 'car', 3: 'motorcycle', 5: 'bus', 7: 'truck' }
-const CLS_IDS = [2, 3, 5, 7]
+const VEHICLE_COLOR = '#60a5fa'
 const HANDLE_R = 6
 const MIN_BOX = 8
 
@@ -37,7 +35,6 @@ export default function BboxEditor({ imageUrl, initialBoxes = [], imageWidth, im
   const boxesRef = useRef(initialBoxes)
   const [selected, setSelected] = useState(null)
   const [dragging, setDragging] = useState(null) // {type: 'new'|'move'|'resize', ...}
-  const [showClsMenu, setShowClsMenu] = useState(null) // {x, y} for new box cls picker
   const [pendingBox, setPendingBox] = useState(null)
   const [imgRect, setImgRect] = useState({ x: 0, y: 0, w: 1, h: 1 })
   const [imgNatural, setImgNatural] = useState({ w: imageWidth || 1, h: imageHeight || 1 })
@@ -76,19 +73,18 @@ export default function BboxEditor({ imageUrl, initialBoxes = [], imageWidth, im
     allBoxes.forEach((box, bi) => {
       const [cx1, cy1] = toCanvas(box.x1, box.y1)
       const [cx2, cy2] = toCanvas(box.x2, box.y2)
-      const color = CLS_COLORS[box.cls] ?? '#aaa'
       const isSel = bi === selected && !pendingBox
 
-      ctx.strokeStyle = isSel ? '#fff' : color
+      ctx.strokeStyle = isSel ? '#fff' : VEHICLE_COLOR
       ctx.lineWidth = isSel ? 2 : 1.5
       ctx.strokeRect(cx1, cy1, cx2 - cx1, cy2 - cy1)
-      ctx.fillStyle = color + '22'
+      ctx.fillStyle = VEHICLE_COLOR + '22'
       ctx.fillRect(cx1, cy1, cx2 - cx1, cy2 - cy1)
 
       if (isSel) {
         [[cx1, cy1], [cx2, cy1], [cx1, cy2], [cx2, cy2]].forEach(([hx, hy]) => {
           ctx.fillStyle = '#fff'
-          ctx.strokeStyle = color
+          ctx.strokeStyle = VEHICLE_COLOR
           ctx.lineWidth = 1
           ctx.beginPath()
           ctx.rect(hx - HANDLE_R, hy - HANDLE_R, HANDLE_R * 2, HANDLE_R * 2)
@@ -98,9 +94,9 @@ export default function BboxEditor({ imageUrl, initialBoxes = [], imageWidth, im
       }
 
       if (box.cls !== -1) {
-        ctx.fillStyle = color
+        ctx.fillStyle = VEHICLE_COLOR
         ctx.font = '11px monospace'
-        ctx.fillText(CLS_NAMES[box.cls] ?? box.cls, cx1 + 3, cy1 + 13)
+        ctx.fillText('vehicle', cx1 + 3, cy1 + 13)
       }
     })
   }, [boxes, selected, pendingBox, imgRect, toCanvas])
@@ -197,8 +193,10 @@ export default function BboxEditor({ imageUrl, initialBoxes = [], imageWidth, im
       const w = pendingBox.x2 - pendingBox.x1
       const h = pendingBox.y2 - pendingBox.y1
       if (w > MIN_BOX && h > MIN_BOX) {
-        const rect = canvasRef.current.getBoundingClientRect()
-        setShowClsMenu({ x: e.clientX - rect.left, y: e.clientY - rect.top, box: pendingBox })
+        const newBox = { ...pendingBox, cls: 0, source: 'manual' }
+        const next = [...boxesRef.current, newBox]
+        commitBoxes(next)
+        setSelected(next.length - 1)
       }
       setPendingBox(null)
     }
@@ -207,14 +205,6 @@ export default function BboxEditor({ imageUrl, initialBoxes = [], imageWidth, im
       onChange?.(boxesRef.current)
     }
     setDragging(null)
-  }
-
-  const pickClass = (clsId) => {
-    if (!showClsMenu) return
-    const newBox = { ...showClsMenu.box, cls: clsId, source: 'manual' }
-    commitBoxes([...boxes, newBox])
-    setSelected(boxes.length) // index of the new box
-    setShowClsMenu(null)
   }
 
   const deleteSelected = () => {
@@ -234,8 +224,6 @@ export default function BboxEditor({ imageUrl, initialBoxes = [], imageWidth, im
   const s = {
     wrap: { position: 'relative', userSelect: 'none' },
     canvas: { display: 'block', width: '100%', cursor, borderRadius: 4, background: '#0f1117' },
-    clsMenu: { position: 'absolute', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: 6, display: 'flex', flexDirection: 'column', gap: 4, zIndex: 10 },
-    clsBtn: (id) => ({ padding: '3px 10px', borderRadius: 4, background: CLS_COLORS[id] + '33', border: `1px solid ${CLS_COLORS[id]}`, color: 'var(--text)', fontSize: 13, cursor: 'pointer', textAlign: 'left' }),
     toolbar: { display: 'flex', gap: 8, marginTop: 8, alignItems: 'center', fontSize: 12, color: 'var(--text-muted)' },
     btn: { padding: '4px 12px', borderRadius: 4, border: '1px solid var(--border)', background: '#7f1d1d', color: 'var(--text)', fontSize: 13, cursor: 'pointer' },
   }
@@ -252,19 +240,6 @@ export default function BboxEditor({ imageUrl, initialBoxes = [], imageWidth, im
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       />
-      {showClsMenu && (
-        <div style={{ ...s.clsMenu, left: showClsMenu.x, top: showClsMenu.y }}>
-          <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 2 }}>Class</div>
-          {CLS_IDS.map(id => (
-            <button key={id} style={s.clsBtn(id)} onClick={() => pickClass(id)}>
-              {CLS_NAMES[id]}
-            </button>
-          ))}
-          <button style={{ ...s.clsBtn(0), borderColor: 'var(--border)', background: 'transparent' }} onClick={() => setShowClsMenu(null)}>
-            cancel
-          </button>
-        </div>
-      )}
       <div style={s.toolbar}>
         <span>{boxes.length} box{boxes.length !== 1 ? 'es' : ''} · drag to draw · click to select · Del to remove</span>
         {selected != null && (

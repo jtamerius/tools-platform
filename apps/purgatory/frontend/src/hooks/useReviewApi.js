@@ -100,15 +100,15 @@ export function useReviewApi(getAccessToken) {
         const q = new URLSearchParams({ cam_id: camId })
         return req(`/api/models?${q}`)
       },
-      getModelUploadUrl: (camId, condition, inference) =>
+      getModelUploadUrl: (camId, inference) =>
         req('/api/model-upload-url', {
           method: 'POST',
-          body: JSON.stringify({ cam_id: camId, condition, inference }),
+          body: JSON.stringify({ cam_id: camId, inference }),
         }),
-      updateModelMeta: (camId, condition, version, updates) =>
+      updateModelMeta: (camId, version, updates) =>
         req('/api/model-meta', {
           method: 'PATCH',
-          body: JSON.stringify({ cam_id: camId, condition, version, ...updates }),
+          body: JSON.stringify({ cam_id: camId, version, ...updates }),
         }),
       exportLabels: async (camId, opts = {}) => {
         const q = new URLSearchParams({ cam_id: camId, ...opts })

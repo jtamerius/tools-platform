@@ -85,46 +85,38 @@ def count_vehicles(image_bytes: bytes, zones: Optional[list] = None, roi_polygon
     )
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
 
-    counts: dict[str, int] = {name: 0 for name in config.YOLO_CLASSES.values()}
-    counts_by_zone: dict[str, dict[str, int]] = {
-        name: {cls: 0 for cls in config.YOLO_CLASSES.values()}
-        for name, _ in zone_shapes
-    }
+    counts_by_zone: dict[str, int] = {name: 0 for name, _ in zone_shapes}
     confidences: list[float] = []
+    total = 0
 
     for r in results:
         if r.boxes is None:
             continue
         for box in r.boxes:
-            cls_id = int(box.cls.item())
-            class_name = config.YOLO_CLASSES.get(cls_id)
-            if class_name is None:
+            if int(box.cls.item()) not in config.YOLO_CLASSES:
                 continue
             x1, y1, x2, y2 = box.xyxy[0].tolist()
             pt = Point((x1 + x2) / 2, y2)
 
             if zone_shapes:
-                matched_zone = None
                 for zone_name, poly in zone_shapes:
                     if poly.contains(pt):
-                        matched_zone = zone_name
+                        counts_by_zone[zone_name] += 1
+                        total += 1
                         break
-                if matched_zone is None:
-                    continue  # outside all zones
-                counts_by_zone[matched_zone][class_name] += 1
             elif legacy_polygon is not None:
                 if not legacy_polygon.contains(pt):
                     continue
-            # else: no filter — count everything
+                else:
+                    total += 1
+            else:
+                total += 1
 
-            counts[class_name] += 1
             confidences.append(float(box.conf.item()))
 
-    total = sum(counts.values())
     mean_conf = round(sum(confidences) / len(confidences), 3) if confidences else None
     out: dict = {
         "vehicle_count": total,
-        "vehicle_counts": counts,
         "yolo_confidence_mean": mean_conf,
         "yolo_inference_ms": elapsed_ms,
     }

@@ -24,7 +24,9 @@ export default function ZoneEditor({ imageUrl, zones = [], onChange }) {
   const [drawing, setDrawing] = useState(false)
   const [currentPts, setCurrentPts] = useState([])
   const [selected, setSelected] = useState(null) // index of selected zone
-  const [newZoneName, setNewZoneName] = useState('')
+  const ZONE_NAMES = ['Inbound', 'Outbound']
+  const unusedName = ZONE_NAMES.find(n => !zones.some(z => z.name === n)) || 'Inbound'
+  const [newZoneName, setNewZoneName] = useState(unusedName)
   const [addingZone, setAddingZone] = useState(false)
   const [imgNatural, setImgNatural] = useState({ w: 1, h: 1 })
   const [imgDisplayRect, setImgDisplayRect] = useState({ x: 0, y: 0, w: 1, h: 1 })
@@ -188,6 +190,7 @@ export default function ZoneEditor({ imageUrl, zones = [], onChange }) {
   }, [drawing, currentPts, zones, newZoneName, onChange])
 
   const startAddZone = () => {
+    setNewZoneName(unusedName)
     setAddingZone(true)
     setSelected(null)
   }
@@ -207,7 +210,7 @@ export default function ZoneEditor({ imageUrl, zones = [], onChange }) {
     setDrawing(false)
     setCurrentPts([])
     setAddingZone(false)
-    setNewZoneName('')
+    setNewZoneName(unusedName)
   }
 
   const s = {
@@ -268,13 +271,9 @@ export default function ZoneEditor({ imageUrl, zones = [], onChange }) {
         )}
         {addingZone && !drawing && (
           <>
-            <input
-              style={s.input}
-              placeholder="Zone name (e.g. NB)"
-              value={newZoneName}
-              onChange={e => setNewZoneName(e.target.value)}
-              autoFocus
-            />
+            <select style={s.input} value={newZoneName} onChange={e => setNewZoneName(e.target.value)} autoFocus>
+              {ZONE_NAMES.map(n => <option key={n} value={n}>{n}</option>)}
+            </select>
             <button style={s.btn('primary')} onClick={confirmAddZone}>Start Drawing</button>
             <button style={s.btn()} onClick={cancelDrawing}>Cancel</button>
           </>

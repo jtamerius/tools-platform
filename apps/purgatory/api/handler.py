@@ -11,7 +11,7 @@ Routes (all behind Cognito JWT authorizer; `admin` group required):
   PUT    /api/cam-config                       → update cam zones
   GET    /api/label?pk=&sk=                    → fetch labels for an image (S3 or YOLO detections)
   POST   /api/label                            → save labels for an image
-  GET    /api/models?cam_id=                   → list model versions per condition
+  GET    /api/models?cam_id=                   → list model versions for a cam
   POST   /api/model-upload-url                 → presigned S3 PUT URL for a new model version
   PATCH  /api/model-meta                       → update model metadata (activate, params, metrics)
   GET    /api/export-labels                    → export YOLO training dataset zip
@@ -40,6 +40,19 @@ ADMIN_GROUPS = {"admin", "member"}
 
 _ddb = boto3.resource("dynamodb")
 _s3 = boto3.client("s3")
+
+
+def _jpeg_dims(data: bytes) -> tuple[int, int]:
+    """Extract (width, height) from raw JPEG bytes without PIL."""
+    i = 2
+    while i + 8 < len(data):
+        if data[i] != 0xFF:
+            break
+        marker = data[i + 1]
+        if marker in (0xC0, 0xC1, 0xC2):
+            return (data[i + 7] << 8) | data[i + 8], (data[i + 5] << 8) | data[i + 6]
+        i += 2 + ((data[i + 2] << 8) | data[i + 3])
+    return 0, 0
 
 
 def _cors(origin: str) -> dict:
@@ -269,6 +282,16 @@ def _get_label(params):
     image_width = int(item.get("image_width") or 0) or None
     image_height = int(item.get("image_height") or 0) or None
 
+    # For records ingested before image dimensions were stored, read from JPEG header
+    if (not image_width or not image_height) and item.get("s3_key"):
+        try:
+            head = _s3.get_object(Bucket=S3_BUCKET, Key=item["s3_key"], Range="bytes=0-65535")["Body"].read()
+            image_width, image_height = _jpeg_dims(head)
+            if not image_width:
+                image_width = image_height = None
+        except Exception:
+            pass
+
     try:
         obj = _s3.get_object(Bucket=S3_BUCKET, Key=label_key)
         label_text = obj["Body"].read().decode("utf-8")
@@ -305,7 +328,17 @@ def _post_label(body):
     if not pk or not sk:
         return {"error": "pk and sk required"}, 400
     if not image_width or not image_height:
-        return {"error": "image_width and image_height required"}, 400
+        # Try to auto-detect from the stored S3 image
+        try:
+            table = _ddb.Table(INGEST_TABLE)
+            s3_key = table.get_item(Key={"pk": pk, "sk": sk}).get("Item", {}).get("s3_key")
+            if s3_key:
+                head = _s3.get_object(Bucket=S3_BUCKET, Key=s3_key, Range="bytes=0-65535")["Body"].read()
+                image_width, image_height = _jpeg_dims(head)
+        except Exception:
+            pass
+    if not image_width or not image_height:
+        return {"error": "image_width and image_height required and could not be auto-detected"}, 400
 
     cam_id = pk.replace("CAM#", "")
     label_key = f"labels/{cam_id}/{sk}.txt"
@@ -345,7 +378,6 @@ def _post_label(body):
 # ── Model management ──────────────────────────────────────────────────────────
 
 MODEL_S3_PREFIX = "models/"
-CONDITIONS = ["day_clear", "day_snow", "night_clear", "night_snow", "default"]
 
 
 def _list_models(params):
@@ -354,7 +386,7 @@ def _list_models(params):
         return {"error": "cam_id required"}, 400
     prefix = f"{MODEL_S3_PREFIX}{cam_id}/"
     paginator = _s3.get_paginator("list_objects_v2")
-    result: dict[str, list] = {c: [] for c in CONDITIONS}
+    versions = []
     for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix):
         for obj in page.get("Contents", []):
             key = obj["Key"]
@@ -362,34 +394,25 @@ def _list_models(params):
                 continue
             try:
                 meta = json.loads(_s3.get_object(Bucket=S3_BUCKET, Key=key)["Body"].read())
-                cond = meta.get("condition", "default")
-                if cond not in result:
-                    result[cond] = []
-                result[cond].append(meta)
+                versions.append(meta)
             except Exception:
                 pass
-    for cond in result:
-        result[cond].sort(key=lambda m: m.get("version", 0), reverse=True)
-    return {"models": result}
+    versions.sort(key=lambda m: m.get("version", 0), reverse=True)
+    return {"versions": versions}
 
 
 def _model_upload_url(body):
     cam_id = body.get("cam_id")
-    condition = body.get("condition", "default")
     inference = body.get("inference", {})
     if not cam_id:
         return {"error": "cam_id required"}, 400
-    if condition not in CONDITIONS:
-        return {"error": f"condition must be one of {CONDITIONS}"}, 400
 
-    # Determine next version number
-    prefix = f"{MODEL_S3_PREFIX}{cam_id}/{condition}/"
+    prefix = f"{MODEL_S3_PREFIX}{cam_id}/"
     paginator = _s3.get_paginator("list_objects_v2")
     max_ver = 0
     for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix):
         for obj in page.get("Contents", []):
-            parts = obj["Key"].split("/")
-            for part in parts:
+            for part in obj["Key"].split("/"):
                 if part.startswith("v") and part[1:].isdigit():
                     max_ver = max(max_ver, int(part[1:]))
     version = max_ver + 1
@@ -402,18 +425,13 @@ def _model_upload_url(body):
     metadata = {
         "version": version,
         "cam_id": cam_id,
-        "condition": condition,
         "uploaded_at": datetime.now(tz=timezone.utc).isoformat().replace("+00:00", "Z"),
         "active": False,
         "inference": default_inference,
         "metrics": {},
     }
-    _s3.put_object(
-        Bucket=S3_BUCKET,
-        Key=meta_key,
-        Body=json.dumps(metadata).encode("utf-8"),
-        ContentType="application/json",
-    )
+    _s3.put_object(Bucket=S3_BUCKET, Key=meta_key,
+                   Body=json.dumps(metadata).encode("utf-8"), ContentType="application/json")
     upload_url = _s3.generate_presigned_url(
         "put_object",
         Params={"Bucket": S3_BUCKET, "Key": model_key, "ContentType": "application/octet-stream"},
@@ -424,12 +442,11 @@ def _model_upload_url(body):
 
 def _patch_model_meta(body):
     cam_id = body.get("cam_id")
-    condition = body.get("condition", "default")
     version = body.get("version")
     if not cam_id or not version:
         return {"error": "cam_id and version required"}, 400
 
-    meta_key = f"{MODEL_S3_PREFIX}{cam_id}/{condition}/v{version}/metadata.json"
+    meta_key = f"{MODEL_S3_PREFIX}{cam_id}/v{version}/metadata.json"
     try:
         obj = _s3.get_object(Bucket=S3_BUCKET, Key=meta_key)
         meta = json.loads(obj["Body"].read())
@@ -441,8 +458,7 @@ def _patch_model_meta(body):
     if "metrics" in body:
         meta.setdefault("metrics", {}).update(body["metrics"])
     if body.get("active") is True:
-        # Deactivate all other versions in this cam/condition slot
-        prefix = f"{MODEL_S3_PREFIX}{cam_id}/{condition}/"
+        prefix = f"{MODEL_S3_PREFIX}{cam_id}/"
         paginator = _s3.get_paginator("list_objects_v2")
         for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix):
             for obj in page.get("Contents", []):
@@ -461,12 +477,8 @@ def _patch_model_meta(body):
     elif body.get("active") is False:
         meta["active"] = False
 
-    _s3.put_object(
-        Bucket=S3_BUCKET,
-        Key=meta_key,
-        Body=json.dumps(meta).encode("utf-8"),
-        ContentType="application/json",
-    )
+    _s3.put_object(Bucket=S3_BUCKET, Key=meta_key,
+                   Body=json.dumps(meta).encode("utf-8"), ContentType="application/json")
     return {"ok": True, "metadata": meta}
 
 
@@ -554,7 +566,7 @@ def _export_labels(params):
         yaml = (
             f"path: .\n"
             f"train: images/train\nval: images/val\ntest: images/test\n"
-            f"nc: 4\nnames: [car, motorcycle, bus, truck]\n"
+            f"nc: 1\nnames: [vehicle]\n"
             f"# cam_id: {cam_id}\n# exported: {datetime.now(tz=timezone.utc).isoformat()}\n"
             f"# split: {train_pct}/{val_pct}/{test_pct}\n"
             f"# train={len(train_recs)} val={len(val_recs)} test={len(test_recs)}\n"
