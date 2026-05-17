@@ -1306,6 +1306,10 @@ jobs:
           docker build -t "$ECR_URI:$SHA" -t "$ECR_URI:latest" apps/purgatory/ingest/
           docker push "$ECR_URI:$SHA"
           docker push "$ECR_URI:latest"
+          aws lambda update-function-code \
+            --function-name tools-purgatory-ingest-production \
+            --image-uri "$ECR_URI:$SHA" \
+            --no-cli-pager
 
   # -----------------------------------------------------------------------
   # Job: Deploy Purgatory frontend via Amplify
