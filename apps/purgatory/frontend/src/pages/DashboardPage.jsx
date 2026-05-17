@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import MultiCamPlot from '../components/MultiCamPlot'
 import CamMap from '../components/CamMap'
 
-const HOUR_OPTIONS = [6, 12, 24, 48]
+const HOUR_OPTIONS = [1, 3, 6, 12, 24, 48]
 
 const s = {
   page: { display: 'flex', flexDirection: 'column', gap: 16 },
@@ -100,7 +100,7 @@ export default function DashboardPage({ api }) {
       <div>
         <div style={{ ...s.label, marginBottom: 8 }}>
           Current conditions — RWIS station 374
-          {latest952 && <span style={{ marginLeft: 8, color: 'var(--text-faint)' }}>({latest952.sk})</span>}
+          {latest952 && <span style={{ marginLeft: 8, color: 'var(--text-faint)' }}>({new Date(latest952.sk).toLocaleString('en-US', { timeZone: 'America/Denver', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZoneName: 'short' })})</span>}
         </div>
         <div style={s.rwisGrid}>
           {rwisFields.map(({ key, val }) => (
