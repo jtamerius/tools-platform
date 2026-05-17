@@ -17,6 +17,7 @@
   "dependencies": {
     "@deck.gl/core": "~9.2.0",
     "@deck.gl/mapbox": "~9.2.0",
-    "@deck.gl/widgets": "~9.2.0"
+    "@deck.gl/widgets": "~9.2.0",
+    "leaflet": "^1.9.4"
   }
 }

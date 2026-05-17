@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import RecordPanel from '../components/RecordPanel'
 import FilterBar from '../components/FilterBar'
+import DashboardPage from './DashboardPage'
 import { useReviewApi } from '../hooks/useReviewApi'
 
 const styles = {
@@ -28,6 +29,7 @@ export default function ReviewPage({ getAccessToken }) {
   const [cursor, setCursor] = useState(0)
 
   useEffect(() => {
+    if (mode === 'dashboard') return
     let cancelled = false
     setLoading(true)
     setError(null)
@@ -60,29 +62,36 @@ export default function ReviewPage({ getAccessToken }) {
       <div style={styles.tabs}>
         <button style={styles.tab(mode === 'queue')} onClick={() => setMode('queue')}>Queue</button>
         <button style={styles.tab(mode === 'search')} onClick={() => setMode('search')}>Search</button>
+        <button style={styles.tab(mode === 'dashboard')} onClick={() => setMode('dashboard')}>Dashboard</button>
       </div>
 
-      {mode === 'search' && <FilterBar filters={filters} onChange={setFilters} />}
+      {mode === 'dashboard' && <DashboardPage api={api} />}
 
-      {error && <div style={{ color: 'var(--red)' }}>Error: {error}</div>}
-      {loading && <div style={styles.empty}>Loading…</div>}
+      {mode !== 'dashboard' && (
+        <>
+          {mode === 'search' && <FilterBar filters={filters} onChange={setFilters} />}
 
-      {!loading && !current && (
-        <div style={styles.empty}>
-          {mode === 'queue' ? 'Queue empty — nothing to review.' : 'No records match.'}
-        </div>
-      )}
+          {error && <div style={{ color: 'var(--red)' }}>Error: {error}</div>}
+          {loading && <div style={styles.empty}>Loading…</div>}
 
-      {current && (
-        <RecordPanel
-          record={current}
-          api={api}
-          onDecide={decide}
-          onNext={() => setCursor(c => Math.min(c + 1, records.length - 1))}
-          onPrev={() => setCursor(c => Math.max(c - 1, 0))}
-          index={cursor}
-          total={records.length}
-        />
+          {!loading && !current && (
+            <div style={styles.empty}>
+              {mode === 'queue' ? 'Queue empty — nothing to review.' : 'No records match.'}
+            </div>
+          )}
+
+          {current && (
+            <RecordPanel
+              record={current}
+              api={api}
+              onDecide={decide}
+              onNext={() => setCursor(c => Math.min(c + 1, records.length - 1))}
+              onPrev={() => setCursor(c => Math.max(c - 1, 0))}
+              index={cursor}
+              total={records.length}
+            />
+          )}
+        </>
       )}
     </div>
   )

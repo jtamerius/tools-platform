@@ -46,6 +46,16 @@ export function useReviewApi(getAccessToken) {
         const data = await req(`/api/history?${q}`)
         return data.records ?? []
       },
+      fetchMultiHistory: async (hours = 24) => {
+        const cams = ['952-N', '952-S', '957-N', '1053-N']
+        const results = await Promise.all(
+          cams.map(id =>
+            req(`/api/history?${new URLSearchParams({ cam_id: id, hours: String(hours) })}`)
+              .then(d => [id, d.records ?? []])
+          )
+        )
+        return Object.fromEntries(results)
+      },
       submitDecision: (pk, sk, decision) =>
         req('/api/decisions', {
           method: 'POST',
