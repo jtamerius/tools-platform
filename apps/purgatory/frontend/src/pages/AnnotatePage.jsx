@@ -186,6 +186,7 @@ function LabelsTab({ camId, api }) {
       await api.saveLabel(currentRec.pk, currentRec.sk, boxes, labelData.image_width, labelData.image_height)
       setStatus({ type: 'ok', msg: `Saved ${boxes.length} box(es)` })
       setQueue(prev => prev.map((r, i) => i === cursor ? { ...r, labeled: true, label_count: boxes.length } : r))
+      setTimeout(() => nav(1), 600)
     } catch (e) {
       setStatus({ type: 'error', msg: e.message })
     } finally {
