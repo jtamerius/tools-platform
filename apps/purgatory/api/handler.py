@@ -42,8 +42,12 @@ _ddb = boto3.resource("dynamodb")
 _s3 = boto3.client("s3")
 
 
-def _jpeg_dims(data: bytes) -> tuple[int, int]:
-    """Extract (width, height) from raw JPEG bytes without PIL."""
+def _image_dims(data: bytes) -> tuple[int, int]:
+    """Extract (width, height) from raw JPEG or PNG bytes without PIL."""
+    if data[:8] == b'\x89PNG\r\n\x1a\n':
+        import struct
+        return struct.unpack('>II', data[16:24])
+    # JPEG SOF scan
     i = 2
     while i + 8 < len(data):
         if data[i] != 0xFF:
@@ -286,7 +290,7 @@ def _get_label(params):
     if (not image_width or not image_height) and item.get("s3_key"):
         try:
             head = _s3.get_object(Bucket=S3_BUCKET, Key=item["s3_key"], Range="bytes=0-65535")["Body"].read()
-            image_width, image_height = _jpeg_dims(head)
+            image_width, image_height = _image_dims(head)
             if not image_width:
                 image_width = image_height = None
         except Exception:
@@ -334,7 +338,7 @@ def _post_label(body):
             s3_key = table.get_item(Key={"pk": pk, "sk": sk}).get("Item", {}).get("s3_key")
             if s3_key:
                 head = _s3.get_object(Bucket=S3_BUCKET, Key=s3_key, Range="bytes=0-65535")["Body"].read()
-                image_width, image_height = _jpeg_dims(head)
+                image_width, image_height = _image_dims(head)
         except Exception:
             pass
     if not image_width or not image_height:
