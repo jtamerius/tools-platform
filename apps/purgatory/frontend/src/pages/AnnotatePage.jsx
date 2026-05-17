@@ -3,7 +3,6 @@ import ZoneEditor from '../components/ZoneEditor'
 import BboxEditor from '../components/BboxEditor'
 
 const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
-const MODEL_CAMS = [...CAMS, 'shared'] // 'shared' = model used by any camera without its own
 const LABEL_MODES = [['all', 'All'], ['unlabeled', 'Unlabeled'], ['labeled', 'Labeled']]
 
 const s = {
@@ -409,7 +408,7 @@ function UploadForm({ fileRef, inference, setInference, onUpload, uploading, sta
   )
 }
 
-function ExportPanel({ camId, api }) {
+function ExportPanel({ api }) {
   const [split, setSplit] = useState('70/15/15')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
@@ -420,7 +419,7 @@ function ExportPanel({ camId, api }) {
     setResult(null)
     setError(null)
     try {
-      const data = await api.exportLabels(camId, { split })
+      const data = await api.exportLabels('all', { split })
       setResult(data)
     } catch (e) {
       setError(e.message)
@@ -431,13 +430,13 @@ function ExportPanel({ camId, api }) {
 
   return (
     <div style={s.card}>
-      <div style={s.cardTitle}>Export labeled dataset (YOLO format)</div>
+      <div style={s.cardTitle}>Export all labeled data (YOLO format — all cameras)</div>
       <div style={s.row}>
         <label style={s.label}>
           Split (train/val/test)
           <input style={{ ...s.input, width: 100, marginLeft: 6 }} value={split} onChange={e => setSplit(e.target.value)} />
         </label>
-        <button style={s.btn('primary')} onClick={run} disabled={loading || !camId}>
+        <button style={s.btn('primary')} onClick={run} disabled={loading}>
           {loading ? 'Exporting…' : 'Export ZIP'}
         </button>
       </div>
@@ -461,12 +460,12 @@ function ExportPanel({ camId, api }) {
   )
 }
 
-function ModelsTab({ camId, api }) {
+function ModelsTab({ api }) {
+  const camId = 'shared'
   const [versions, setVersions] = useState([])
   const [loading, setLoading] = useState(false)
 
   const load = () => {
-    if (!camId) return
     setLoading(true)
     api.fetchModels(camId)
       .then(data => setVersions(data.versions || []))
@@ -474,26 +473,17 @@ function ModelsTab({ camId, api }) {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => { setVersions([]); load() }, [camId])
+  useEffect(() => { setVersions([]); load() }, [])
 
   if (loading) return <div style={s.muted}>Loading models…</div>
-
-  const isShared = camId === 'shared'
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div style={s.card}>
-        <div style={s.cardTitle}>
-          {isShared ? 'Shared model (fallback for all cameras)' : `Models — ${camId}`}
-        </div>
-        {isShared && (
-          <div style={{ ...s.muted, marginBottom: 10, fontSize: 12 }}>
-            A model activated here is used by any camera that has no camera-specific model.
-          </div>
-        )}
+        <div style={s.cardTitle}>Shared model — trained on all cameras</div>
         <VersionPanel camId={camId} versions={versions} onRefresh={load} api={api} />
       </div>
-      {!isShared && <ExportPanel camId={camId} api={api} />}
+      <ExportPanel api={api} />
     </div>
   )
 }
@@ -502,25 +492,18 @@ function ModelsTab({ camId, api }) {
 
 export default function AnnotatePage({ api }) {
   const [camId, setCamId] = useState('952-N')
-  const [modelCamId, setModelCamId] = useState('952-N')
   const [subTab, setSubTab] = useState('zones')
 
   return (
     <div style={s.page}>
-      <div style={s.row}>
-        <span style={s.label}>Camera</span>
-        {subTab === 'models' ? (
-          <select style={s.select} value={modelCamId} onChange={e => setModelCamId(e.target.value)}>
-            {MODEL_CAMS.map(c => (
-              <option key={c} value={c}>{c === 'shared' ? 'shared (all cameras)' : c}</option>
-            ))}
-          </select>
-        ) : (
+      {subTab !== 'models' && (
+        <div style={s.row}>
+          <span style={s.label}>Camera</span>
           <select style={s.select} value={camId} onChange={e => setCamId(e.target.value)}>
             {CAMS.map(c => <option key={c} value={c}>{c}</option>)}
           </select>
-        )}
-      </div>
+        </div>
+      )}
 
       <div style={s.tabs}>
         {[['zones', 'Zones'], ['labels', 'Labels'], ['models', 'Models']].map(([v, l]) => (
@@ -530,7 +513,7 @@ export default function AnnotatePage({ api }) {
 
       {subTab === 'zones' && <ZonesTab camId={camId} api={api} />}
       {subTab === 'labels' && <LabelsTab camId={camId} api={api} />}
-      {subTab === 'models' && <ModelsTab camId={modelCamId} api={api} />}
+      {subTab === 'models' && <ModelsTab api={api} />}
     </div>
   )
 }

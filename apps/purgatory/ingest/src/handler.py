@@ -22,30 +22,23 @@ _ddb = boto3.resource("dynamodb")
 _s3 = boto3.client("s3")
 
 
-def _resolve_model_key(cam_id: str) -> Optional[str]:
-    """Return S3 key for the active model for this cam.
-
-    Resolution order:
-      1. models/{cam_id}/   — camera-specific active version
-      2. models/shared/     — shared model used by cams without their own
-      3. None               — fall back to baked-in yolov8n.pt
-    """
-    for search_id in (cam_id, "shared"):
-        prefix = f"{config.MODEL_S3_PREFIX}{search_id}/"
-        try:
-            resp = _s3.list_objects_v2(Bucket=config.S3_BUCKET, Prefix=prefix)
-        except Exception:
+def _resolve_model_key() -> Optional[str]:
+    """Return S3 key for the active shared model, or None (baked-in yolov8n.pt fallback)."""
+    prefix = f"{config.MODEL_S3_PREFIX}shared/"
+    try:
+        resp = _s3.list_objects_v2(Bucket=config.S3_BUCKET, Prefix=prefix)
+    except Exception:
+        return None
+    for obj in resp.get("Contents", []):
+        key = obj["Key"]
+        if not key.endswith("/metadata.json"):
             continue
-        for obj in resp.get("Contents", []):
-            key = obj["Key"]
-            if not key.endswith("/metadata.json"):
-                continue
-            try:
-                meta = json.loads(_s3.get_object(Bucket=config.S3_BUCKET, Key=key)["Body"].read())
-                if meta.get("active"):
-                    return key.replace("metadata.json", "model.pt")
-            except Exception:
-                pass
+        try:
+            meta = json.loads(_s3.get_object(Bucket=config.S3_BUCKET, Key=key)["Body"].read())
+            if meta.get("active"):
+                return key.replace("metadata.json", "model.pt")
+        except Exception:
+            pass
     return None
 
 

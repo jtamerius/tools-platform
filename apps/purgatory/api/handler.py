@@ -483,12 +483,7 @@ def _patch_model_meta(body):
 
 
 def _export_labels(params):
-    cam_id = params.get("cam_id")
-    if not cam_id:
-        return {"error": "cam_id required"}, 400
-    condition_filter = params.get("condition")
-    start = params.get("start")
-    end = params.get("end")
+    cam_id = params.get("cam_id", "all")
     split_str = params.get("split", "70/15/15")
     try:
         split_parts = [int(x) for x in split_str.split("/")]
@@ -497,40 +492,34 @@ def _export_labels(params):
         return {"error": "split must be like 70/15/15"}, 400
 
     table = _ddb.Table(INGEST_TABLE)
-    kw: dict = {"KeyConditionExpression": Key("pk").eq(f"CAM#{cam_id}")}
-    if start and end:
-        kw["KeyConditionExpression"] = kw["KeyConditionExpression"] & Key("sk").between(start, end)
-    elif start:
-        kw["KeyConditionExpression"] = kw["KeyConditionExpression"] & Key("sk").gte(start)
-    elif end:
-        kw["KeyConditionExpression"] = kw["KeyConditionExpression"] & Key("sk").lte(end)
-    kw["FilterExpression"] = Attr("labeled").eq(True) & Attr("s3_key").exists()
+
+    if cam_id == "all":
+        cam_table = _ddb.Table(CAM_CONFIG_TABLE)
+        cam_items = cam_table.scan(
+            FilterExpression=Attr("active").eq(True) & Attr("cam_type").eq("traffic"),
+            ProjectionExpression="cam_id",
+        ).get("Items", [])
+        cam_ids = [c["cam_id"] for c in cam_items]
+    else:
+        cam_ids = [cam_id]
 
     records = []
-    while True:
-        r = table.query(**kw)
-        records.extend(r.get("Items", []))
-        if "LastEvaluatedKey" not in r:
-            break
-        kw["ExclusiveStartKey"] = r["LastEvaluatedKey"]
-
-    if condition_filter:
-        def _cond(rec):
-            solar = float(rec.get("solar_altitude_deg") or -90)
-            pavement = str(rec.get("rwis_pavement_status") or "").lower()
-            precip = str(rec.get("rwis_precip_situation") or "").lower()
-            snowy = "snow" in pavement or "ice" in pavement or "snow" in precip
-            is_day = solar >= 10
-            if is_day and not snowy: return "day_clear"
-            if is_day and snowy: return "day_snow"
-            if not is_day and not snowy: return "night_clear"
-            return "night_snow"
-        records = [r for r in records if _cond(r) == condition_filter]
+    for cid in cam_ids:
+        kw: dict = {
+            "KeyConditionExpression": Key("pk").eq(f"CAM#{cid}"),
+            "FilterExpression": Attr("labeled").eq(True) & Attr("s3_key").exists(),
+        }
+        while True:
+            r = table.query(**kw)
+            records.extend(r.get("Items", []))
+            if "LastEvaluatedKey" not in r:
+                break
+            kw["ExclusiveStartKey"] = r["LastEvaluatedKey"]
 
     records.sort(key=lambda r: r.get("sk", ""))
     n = len(records)
     if n == 0:
-        return {"error": "no labeled records found for this cam/filter"}, 404
+        return {"error": "no labeled records found"}, 404
 
     n_train = int(n * train_pct / 100)
     n_val = int(n * val_pct / 100)
@@ -544,37 +533,38 @@ def _export_labels(params):
             for rec in split_recs:
                 s3_key = rec.get("s3_key", "")
                 sk = rec.get("sk", "")
+                rec_cam_id = rec.get("pk", "").replace("CAM#", "") or cam_id
                 filename = s3_key.split("/")[-1] if s3_key else f"{sk}.jpg"
                 stem = filename.rsplit(".", 1)[0]
+                # Prefix cam_id to avoid filename collisions when merging cameras
+                prefixed = f"{rec_cam_id}_{filename}"
+                prefixed_stem = f"{rec_cam_id}_{stem}"
 
-                # Image
                 try:
                     img_obj = _s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
-                    zf.writestr(f"images/{split_name}/{filename}", img_obj["Body"].read())
+                    zf.writestr(f"images/{split_name}/{prefixed}", img_obj["Body"].read())
                 except Exception:
                     continue
 
-                # Label
-                label_key = f"labels/{cam_id}/{sk}.txt"
+                label_key = f"labels/{rec_cam_id}/{sk}.txt"
                 try:
                     lbl_obj = _s3.get_object(Bucket=S3_BUCKET, Key=label_key)
-                    zf.writestr(f"labels/{split_name}/{stem}.txt", lbl_obj["Body"].read())
+                    zf.writestr(f"labels/{split_name}/{prefixed_stem}.txt", lbl_obj["Body"].read())
                 except Exception:
-                    zf.writestr(f"labels/{split_name}/{stem}.txt", b"")
+                    zf.writestr(f"labels/{split_name}/{prefixed_stem}.txt", b"")
 
-        # data.yaml
         yaml = (
             f"path: .\n"
             f"train: images/train\nval: images/val\ntest: images/test\n"
             f"nc: 1\nnames: [vehicle]\n"
-            f"# cam_id: {cam_id}\n# exported: {datetime.now(tz=timezone.utc).isoformat()}\n"
+            f"# exported: {datetime.now(tz=timezone.utc).isoformat()}\n"
             f"# split: {train_pct}/{val_pct}/{test_pct}\n"
             f"# train={len(train_recs)} val={len(val_recs)} test={len(test_recs)}\n"
         )
         zf.writestr("data.yaml", yaml)
 
     buf.seek(0)
-    export_key = f"exports/{cam_id}/{datetime.now(tz=timezone.utc).strftime('%Y%m%dT%H%M%S')}.zip"
+    export_key = f"exports/all/{datetime.now(tz=timezone.utc).strftime('%Y%m%dT%H%M%S')}.zip"
     _s3.put_object(Bucket=S3_BUCKET, Key=export_key, Body=buf.read(), ContentType="application/zip")
     download_url = _s3.generate_presigned_url(
         "get_object",
