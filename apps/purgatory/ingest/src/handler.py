@@ -154,7 +154,7 @@ def process(cam_id: str) -> dict:
     record.update(solar.solar_position(float(cfg["lat"]), float(cfg["lon"]), now))
 
     # ── YOLO ──────────────────────────────────────────────────────────────────
-    model_key = _resolve_model_key(cam_id)
+    model_key = _resolve_model_key()
     if model_key:
         record["model_s3_key"] = model_key
     yolo_result = yolo_count.count_vehicles(
