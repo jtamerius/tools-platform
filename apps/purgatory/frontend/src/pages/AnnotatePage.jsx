@@ -89,11 +89,29 @@ function ZonesTab({ camId, api }) {
     }
   }
 
+  const ZONE_COLORS_MAP = { Inbound: '#60a5fa', Outbound: '#f59e0b' }
+
   if (loading) return <div style={s.muted}>Loading…</div>
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-      {latestRecord && <div style={s.muted}>Latest image: {latestRecord.sk}</div>}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+        {['Inbound', 'Outbound'].map(name => {
+          const exists = zones.some(z => z.name === name)
+          const color = ZONE_COLORS_MAP[name]
+          return (
+            <span key={name} style={{
+              padding: '3px 12px', borderRadius: 12, fontSize: 12, fontWeight: 600,
+              background: exists ? color + '33' : 'var(--surface)',
+              border: `1px solid ${exists ? color : 'var(--border)'}`,
+              color: exists ? color : 'var(--text-muted)',
+            }}>
+              {exists ? '✓' : '—'} {name}
+            </span>
+          )
+        })}
+        {latestRecord && <span style={{ ...s.muted, marginLeft: 4 }}>image: {latestRecord.sk}</span>}
+      </div>
       {imageUrl
         ? <ZoneEditor imageUrl={imageUrl} zones={zones} onChange={setZones} />
         : <div style={{ ...s.card, textAlign: 'center', ...s.muted }}>No recent image available for {camId}</div>

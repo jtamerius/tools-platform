@@ -70,10 +70,10 @@ export default function ZoneEditor({ imageUrl, zones = [], onChange }) {
       ctx.moveTo(poly[0][0], poly[0][1])
       for (let i = 1; i < poly.length; i++) ctx.lineTo(poly[i][0], poly[i][1])
       ctx.closePath()
-      ctx.fillStyle = color + '33' // 20% opacity
+      ctx.fillStyle = color + '55' // 33% opacity — visible but not blocking road detail
       ctx.fill()
       ctx.strokeStyle = isSelected ? '#fff' : color
-      ctx.lineWidth = isSelected ? 2 : 1.5
+      ctx.lineWidth = isSelected ? 2.5 : 2
       ctx.stroke()
 
       // Vertices
@@ -84,18 +84,22 @@ export default function ZoneEditor({ imageUrl, zones = [], onChange }) {
         ctx.fill()
       })
 
-      // Label
+      // Label with background pill
       if (poly.length >= 3) {
         const centX = poly.reduce((s, p) => s + p[0], 0) / poly.length
         const centY = poly.reduce((s, p) => s + p[1], 0) / poly.length
-        ctx.fillStyle = '#fff'
-        ctx.font = 'bold 12px monospace'
+        const label = zone.name || `Zone ${zi + 1}`
+        ctx.font = 'bold 13px system-ui, sans-serif'
         ctx.textAlign = 'center'
         ctx.textBaseline = 'middle'
-        ctx.shadowColor = '#000'
-        ctx.shadowBlur = 4
-        ctx.fillText(zone.name || `Zone ${zi + 1}`, centX, centY)
-        ctx.shadowBlur = 0
+        const tw = ctx.measureText(label).width
+        const pad = 6
+        ctx.fillStyle = color + 'cc'
+        ctx.beginPath()
+        ctx.roundRect(centX - tw / 2 - pad, centY - 10, tw + pad * 2, 20, 4)
+        ctx.fill()
+        ctx.fillStyle = '#fff'
+        ctx.fillText(label, centX, centY)
       }
     })
 
@@ -155,7 +159,7 @@ export default function ZoneEditor({ imageUrl, zones = [], onChange }) {
         const [fcx, fcy] = toCanvas(...currentPts[0])
         if (dist(cx, cy, fcx, fcy) < HIT_RADIUS) {
           const color = ZONE_COLORS[zones.length % ZONE_COLORS.length]
-          onChange([...zones, { name: newZoneName || `Zone ${zones.length + 1}`, polygon: currentPts, color }])
+          onChange([...zones.filter(z => z.name !== newZoneName), { name: newZoneName, polygon: currentPts, color }])
           setCurrentPts([])
           setDrawing(false)
           setAddingZone(false)
@@ -182,7 +186,7 @@ export default function ZoneEditor({ imageUrl, zones = [], onChange }) {
     if (!drawing || currentPts.length < 3) return
     e.preventDefault()
     const color = ZONE_COLORS[zones.length % ZONE_COLORS.length]
-    onChange([...zones, { name: newZoneName || `Zone ${zones.length + 1}`, polygon: currentPts, color }])
+    onChange([...zones.filter(z => z.name !== newZoneName), { name: newZoneName, polygon: currentPts, color }])
     setCurrentPts([])
     setDrawing(false)
     setAddingZone(false)
