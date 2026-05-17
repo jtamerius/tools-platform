@@ -84,8 +84,8 @@ export default function RecordPanel({ record, api, onDecide, onNext, onPrev, ind
       <div>
         <div style={s.card}>
           <div style={s.row}>
-            <span style={{ fontWeight: 600 }}>Total vehicles</span>
-            <span style={{ fontWeight: 600 }}>
+            <span style={{ fontWeight: 600, color: 'var(--text)' }}>Total vehicles</span>
+            <span style={{ fontWeight: 600, color: 'var(--text)' }}>
               {record.vehicle_counts_by_zone
                 ? Object.values(record.vehicle_counts_by_zone).reduce((a, b) => Number(a) + Number(b), 0)
                 : fmt(record.vehicle_count)}
@@ -95,7 +95,7 @@ export default function RecordPanel({ record, api, onDecide, onNext, onPrev, ind
             ? Object.entries(record.vehicle_counts_by_zone).map(([zone, n]) => (
                 <div key={zone} style={{ ...s.row, paddingLeft: 12 }}>
                   <span style={s.key}>{zone}</span>
-                  <span>{fmt(n)}</span>
+                  <span style={{ color: 'var(--text)' }}>{fmt(n)}</span>
                 </div>
               ))
             : null
