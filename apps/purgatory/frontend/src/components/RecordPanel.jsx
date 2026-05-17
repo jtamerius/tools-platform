@@ -83,25 +83,26 @@ export default function RecordPanel({ record, api, onDecide, onNext, onPrev, ind
 
       <div>
         <div style={s.card}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <strong>
-              Vehicle count:{' '}
+          <div style={s.row}>
+            <span style={{ fontWeight: 600 }}>Total vehicles</span>
+            <span style={{ fontWeight: 600 }}>
               {record.vehicle_counts_by_zone
                 ? Object.values(record.vehicle_counts_by_zone).reduce((a, b) => Number(a) + Number(b), 0)
                 : fmt(record.vehicle_count)}
-            </strong>
-            {record.traffic_score_sample_n != null && record.traffic_score_sample_n < 30 && (
-              <span style={s.meta}>insufficient history (n={record.traffic_score_sample_n})</span>
-            )}
+            </span>
           </div>
           {record.vehicle_counts_by_zone
-            ? <div style={s.meta}>
-                {Object.entries(record.vehicle_counts_by_zone).map(([zone, n]) => (
-                  <span key={zone}>{zone}: {fmt(n)} &nbsp;</span>
-                ))}
-              </div>
+            ? Object.entries(record.vehicle_counts_by_zone).map(([zone, n]) => (
+                <div key={zone} style={{ ...s.row, paddingLeft: 12 }}>
+                  <span style={s.key}>{zone}</span>
+                  <span>{fmt(n)}</span>
+                </div>
+              ))
             : null
           }
+          {record.traffic_score_sample_n != null && record.traffic_score_sample_n < 30 && (
+            <div style={{ ...s.meta, marginBottom: 4 }}>insufficient history (n={record.traffic_score_sample_n})</div>
+          )}
 
           <div style={{ marginTop: 12 }}>
             {rwis.map(([k, v]) => (
