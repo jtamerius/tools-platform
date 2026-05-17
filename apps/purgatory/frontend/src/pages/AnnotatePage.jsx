@@ -62,10 +62,11 @@ function ZonesTab({ camId, api }) {
     setLoading(true)
     Promise.all([
       api.fetchCamConfig(camId),
-      api.fetchLabelQueue(camId, 6, 'all'),
+      api.fetchLabelQueue(camId, 48, 'all'),
     ]).then(([cfg, recs]) => {
       setZones(cfg.zones || [])
-      const rec = recs.slice().sort((a, b) => b.sk < a.sk ? -1 : 1)[0]
+      const daytime = recs.filter(r => parseFloat(r.solar_altitude_deg ?? -90) >= 10)
+      const rec = daytime.sort((a, b) => b.sk < a.sk ? -1 : 1)[0] || null
       setLatestRecord(rec || null)
       if (rec?.pk && rec?.sk) {
         return api.fetchImage(rec.pk, rec.sk)
@@ -114,7 +115,7 @@ function ZonesTab({ camId, api }) {
       </div>
       {imageUrl
         ? <ZoneEditor imageUrl={imageUrl} zones={zones} onChange={setZones} />
-        : <div style={{ ...s.card, textAlign: 'center', ...s.muted }}>No recent image available for {camId}</div>
+        : <div style={{ ...s.card, textAlign: 'center', ...s.muted }}>No daytime image found in the last 48h for {camId}</div>
       }
       <div style={s.row}>
         <button style={s.btn('primary')} onClick={save} disabled={saving}>
