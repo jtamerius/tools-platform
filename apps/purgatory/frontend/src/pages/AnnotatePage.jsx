@@ -81,7 +81,7 @@ function ZonesTab({ camId, api }) {
     setStatus(null)
     try {
       await api.saveCamZones(camId, zones)
-      setStatus({ type: 'ok', msg: `Saved ${zones.length} zone(s). Re-seed cam config to activate in ingest.` })
+      setStatus({ type: 'ok', msg: `Saved ${zones.length} zone(s). Active on next ingest tick.` })
     } catch (e) {
       setStatus({ type: 'error', msg: e.message })
     } finally {

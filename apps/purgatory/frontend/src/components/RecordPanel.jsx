@@ -84,17 +84,24 @@ export default function RecordPanel({ record, api, onDecide, onNext, onPrev, ind
       <div>
         <div style={s.card}>
           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-            <strong>Vehicle count: {fmt(record.vehicle_count)}</strong>
+            <strong>
+              Vehicle count:{' '}
+              {record.vehicle_counts_by_zone
+                ? Object.values(record.vehicle_counts_by_zone).reduce((a, b) => Number(a) + Number(b), 0)
+                : fmt(record.vehicle_count)}
+            </strong>
             {record.traffic_score_sample_n != null && record.traffic_score_sample_n < 30 && (
               <span style={s.meta}>insufficient history (n={record.traffic_score_sample_n})</span>
             )}
           </div>
-          {record.vehicle_counts && (
-            <div style={s.meta}>
-              car {fmt(record.vehicle_counts.car)} · truck {fmt(record.vehicle_counts.truck)} ·
-              bus {fmt(record.vehicle_counts.bus)} · motorcycle {fmt(record.vehicle_counts.motorcycle)}
-            </div>
-          )}
+          {record.vehicle_counts_by_zone
+            ? <div style={s.meta}>
+                {Object.entries(record.vehicle_counts_by_zone).map(([zone, n]) => (
+                  <span key={zone}>{zone}: {fmt(n)} &nbsp;</span>
+                ))}
+              </div>
+            : null
+          }
 
           <div style={{ marginTop: 12 }}>
             {rwis.map(([k, v]) => (

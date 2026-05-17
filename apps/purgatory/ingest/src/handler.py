@@ -133,12 +133,14 @@ def process(cam_id: str) -> dict:
         raise ValueError(f"No image_url for {cam_id}")
 
     image_bytes = _fetch_image(image_url)
-    s3_key = f"raw/{cam_id}/{sk}.jpg"
+    ext = image_url.rsplit(".", 1)[-1].lower() if "." in image_url else "jpg"
+    s3_key = f"raw/{cam_id}/{sk}.{ext}"
+    content_type = "image/png" if ext == "png" else "image/jpeg"
     _s3.put_object(
         Bucket=config.S3_BUCKET,
         Key=s3_key,
         Body=image_bytes,
-        ContentType="image/jpeg",
+        ContentType=content_type,
     )
     record["s3_key"] = s3_key
     record["s3_tier"] = "STANDARD"

@@ -49,6 +49,8 @@ def _post(query: str, variables: dict) -> dict:
         headers=HEADERS,
         timeout=15,
     )
+    if not r.ok:
+        logger.warning("COTRIP %s %s — body: %s", r.status_code, r.url, r.text[:500])
     r.raise_for_status()
     return r.json()
 

@@ -60,6 +60,14 @@ export class PurgatoryStack extends cdk.Stack {
           ],
         },
       ],
+      cors: [
+        {
+          allowedOrigins: ['https://purg.jtamerius.com', 'http://localhost:5173'],
+          allowedMethods: [s3.HttpMethods.GET],
+          allowedHeaders: ['*'],
+          maxAge: 3600,
+        },
+      ],
     });
 
     // ── DynamoDB tables ─────────────────────────────────────────────────────
