@@ -87,7 +87,7 @@ export default function DashboardPage({ api }) {
         <div style={s.card}>
           <div style={s.cardTitle}>Vehicle counts — US-550 corridor</div>
           {hasData
-            ? <MultiCamPlot histories={histories} />
+            ? <MultiCamPlot histories={histories} hours={hours} />
             : <div style={s.empty}>{loading ? 'Loading…' : 'No data for this period.'}</div>
           }
         </div>

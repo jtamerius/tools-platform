@@ -22,7 +22,11 @@ export const CAM_COLORS = {
 
 const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
 
-export default function MultiCamPlot({ histories }) {
+export default function MultiCamPlot({ histories, hours }) {
+  const now = new Date()
+  const xEnd = toMT(now.toISOString())
+  const xStart = toMT(new Date(now - hours * 3600 * 1000).toISOString())
+
   const traces = CAMS.map(id => {
     const recs = (histories[id] ?? []).slice().sort((a, b) => a.sk < b.sk ? -1 : 1)
     return {
@@ -45,7 +49,7 @@ export default function MultiCamPlot({ histories }) {
         paper_bgcolor: 'transparent',
         plot_bgcolor: 'transparent',
         font: { color: '#e5e7eb', size: 11 },
-        xaxis: { gridcolor: '#2b2f3d', tickangle: -30, title: 'MT' },
+        xaxis: { gridcolor: '#2b2f3d', tickangle: -30, title: 'MT', range: [xStart, xEnd] },
         yaxis: { gridcolor: '#2b2f3d', title: 'vehicles', rangemode: 'tozero' },
         legend: {
           bgcolor: 'rgba(26,29,39,0.8)',
