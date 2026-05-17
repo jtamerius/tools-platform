@@ -1,3 +1,4 @@
+// Dashboard: multi-cam plot + camera map + RWIS strip
 import { useEffect, useState } from 'react'
 import MultiCamPlot from '../components/MultiCamPlot'
 import CamMap from '../components/CamMap'
