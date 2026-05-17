@@ -1253,11 +1253,12 @@ jobs:
             --query Parameter.Value --output text --no-cli-pager)" >> "$GITHUB_ENV"
           echo "VITE_ENV=staging" >> "$GITHUB_ENV"
 
-      - name: Install and build
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Build
         working-directory: apps/purgatory/frontend
-        run: |
-          npm install --legacy-peer-deps
-          npm run build
+        run: npm run build
 
       - name: Package and deploy to Amplify
         id: deploy
