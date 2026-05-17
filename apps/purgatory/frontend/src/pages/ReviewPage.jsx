@@ -23,7 +23,7 @@ const styles = {
 
 export default function ReviewPage({ getAccessToken }) {
   const api = useReviewApi(getAccessToken)
-  const [mode, setMode] = useState('search')
+  const [mode, setMode] = useState('dashboard')
   const [filters, setFilters] = useState({})
   const [records, setRecords] = useState([])
   const [loading, setLoading] = useState(false)
