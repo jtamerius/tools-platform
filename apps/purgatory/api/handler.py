@@ -1,17 +1,27 @@
 """Review-UI API Lambda — read/write for the React review app.
 
 Routes (all behind Cognito JWT authorizer; `admin` group required):
-  GET  /api/queue                            → records needing review
-  GET  /api/search?cam_id=&start=&end=&...   → filtered search
-  GET  /api/image?pk=&sk=                    → presigned S3 URL
-  GET  /api/neighbors?sk=                    → same-timestamp records for other cams
-  GET  /api/history?cam_id=&hours=24         → last N hours for a cam
-  POST /api/decisions                        → record a manual decision
+  GET    /api/queue                            → records needing review
+  GET    /api/search?cam_id=&start=&end=&...   → filtered search
+  GET    /api/image?pk=&sk=                    → presigned S3 URL
+  GET    /api/neighbors?sk=                    → same-timestamp records for other cams
+  GET    /api/history?cam_id=&hours=24         → last N hours for a cam
+  POST   /api/decisions                        → record a manual decision
+  GET    /api/cam-config?cam_id=               → fetch cam config (includes zones)
+  PUT    /api/cam-config                       → update cam zones
+  GET    /api/label?pk=&sk=                    → fetch labels for an image (S3 or YOLO detections)
+  POST   /api/label                            → save labels for an image
+  GET    /api/models?cam_id=                   → list model versions per condition
+  POST   /api/model-upload-url                 → presigned S3 PUT URL for a new model version
+  PATCH  /api/model-meta                       → update model metadata (activate, params, metrics)
+  GET    /api/export-labels                    → export YOLO training dataset zip
 """
 from __future__ import annotations
+import io
 import json
 import logging
 import os
+import zipfile
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
@@ -38,7 +48,7 @@ def _cors(origin: str) -> dict:
     return {
         "Access-Control-Allow-Origin": allow,
         "Access-Control-Allow-Headers": "Content-Type,Authorization",
-        "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+        "Access-Control-Allow-Methods": "GET,POST,PUT,PATCH,OPTIONS",
         "Content-Type": "application/json",
     }
 
@@ -202,6 +212,372 @@ def _decision(body):
     return {"ok": True}
 
 
+def _get_cam_config(params):
+    cam_id = params.get("cam_id")
+    if not cam_id:
+        return {"error": "cam_id required"}, 400
+    table = _ddb.Table(CAM_CONFIG_TABLE)
+    r = table.get_item(Key={"cam_id": cam_id})
+    item = r.get("Item")
+    if not item:
+        return {"error": "not found"}, 404
+    return {"cam_config": item}
+
+
+def _put_cam_config(body):
+    cam_id = body.get("cam_id")
+    zones = body.get("zones")
+    if not cam_id:
+        return {"error": "cam_id required"}, 400
+    table = _ddb.Table(CAM_CONFIG_TABLE)
+    r = table.get_item(Key={"cam_id": cam_id})
+    if not r.get("Item"):
+        return {"error": "cam_id not found"}, 404
+    table.update_item(
+        Key={"cam_id": cam_id},
+        UpdateExpression="SET #z = :z, roi_version = roi_version + :one",
+        ExpressionAttributeNames={"#z": "zones"},
+        ExpressionAttributeValues={":z": zones or [], ":one": Decimal("1")},
+    )
+    return {"ok": True}
+
+
+# ── Labels ────────────────────────────────────────────────────────────────────
+
+YOLO_CLASS_NAMES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
+
+def _get_label(params):
+    pk = params.get("pk"); sk = params.get("sk")
+    if not pk or not sk:
+        return {"error": "pk and sk required"}, 400
+
+    # Try to fetch manually saved label file from S3
+    cam_id = pk.replace("CAM#", "")
+    label_key = f"labels/{cam_id}/{sk}.txt"
+    boxes = []
+    source = "yolo"
+    image_width = None
+    image_height = None
+
+    # Get image dimensions and YOLO detections from the ingest record
+    table = _ddb.Table(INGEST_TABLE)
+    r = table.get_item(Key={"pk": pk, "sk": sk})
+    item = r.get("Item")
+    if not item:
+        return {"error": "record not found"}, 404
+
+    image_width = int(item.get("image_width") or 0) or None
+    image_height = int(item.get("image_height") or 0) or None
+
+    try:
+        obj = _s3.get_object(Bucket=S3_BUCKET, Key=label_key)
+        label_text = obj["Body"].read().decode("utf-8")
+        if image_width and image_height:
+            for line in label_text.strip().splitlines():
+                parts = line.split()
+                if len(parts) == 5:
+                    cls_id, cx, cy, w, h = int(parts[0]), *[float(p) for p in parts[1:]]
+                    x1 = (cx - w / 2) * image_width
+                    y1 = (cy - h / 2) * image_height
+                    x2 = (cx + w / 2) * image_width
+                    y2 = (cy + h / 2) * image_height
+                    boxes.append({"cls": cls_id, "x1": x1, "y1": y1, "x2": x2, "y2": y2, "source": "manual"})
+        source = "manual"
+    except _s3.exceptions.NoSuchKey:
+        # Fall back to YOLO detections stored in the record
+        pass
+
+    return {
+        "boxes": boxes,
+        "source": source,
+        "image_width": image_width,
+        "image_height": image_height,
+        "labeled": bool(item.get("labeled")),
+        "label_count": int(item.get("label_count") or 0),
+    }
+
+
+def _post_label(body):
+    pk = body.get("pk"); sk = body.get("sk")
+    boxes = body.get("boxes", [])
+    image_width = body.get("image_width")
+    image_height = body.get("image_height")
+    if not pk or not sk:
+        return {"error": "pk and sk required"}, 400
+    if not image_width or not image_height:
+        return {"error": "image_width and image_height required"}, 400
+
+    cam_id = pk.replace("CAM#", "")
+    label_key = f"labels/{cam_id}/{sk}.txt"
+
+    # Write YOLO format: class cx cy w h (normalized)
+    lines = []
+    for box in boxes:
+        cls_id = int(box["cls"])
+        x1, y1, x2, y2 = float(box["x1"]), float(box["y1"]), float(box["x2"]), float(box["y2"])
+        cx = ((x1 + x2) / 2) / image_width
+        cy = ((y1 + y2) / 2) / image_height
+        w = (x2 - x1) / image_width
+        h = (y2 - y1) / image_height
+        lines.append(f"{cls_id} {cx:.6f} {cy:.6f} {w:.6f} {h:.6f}")
+
+    _s3.put_object(
+        Bucket=S3_BUCKET,
+        Key=label_key,
+        Body="\n".join(lines).encode("utf-8"),
+        ContentType="text/plain",
+    )
+
+    # Update DDB record
+    table = _ddb.Table(INGEST_TABLE)
+    table.update_item(
+        Key={"pk": pk, "sk": sk},
+        UpdateExpression="SET labeled = :t, label_count = :n, labeled_at = :ts",
+        ExpressionAttributeValues={
+            ":t": True,
+            ":n": Decimal(str(len(boxes))),
+            ":ts": datetime.now(tz=timezone.utc).isoformat().replace("+00:00", "Z"),
+        },
+    )
+    return {"ok": True, "label_count": len(boxes)}
+
+
+# ── Model management ──────────────────────────────────────────────────────────
+
+MODEL_S3_PREFIX = "models/"
+CONDITIONS = ["day_clear", "day_snow", "night_clear", "night_snow", "default"]
+
+
+def _list_models(params):
+    cam_id = params.get("cam_id")
+    if not cam_id:
+        return {"error": "cam_id required"}, 400
+    prefix = f"{MODEL_S3_PREFIX}{cam_id}/"
+    paginator = _s3.get_paginator("list_objects_v2")
+    result: dict[str, list] = {c: [] for c in CONDITIONS}
+    for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            key = obj["Key"]
+            if not key.endswith("/metadata.json"):
+                continue
+            try:
+                meta = json.loads(_s3.get_object(Bucket=S3_BUCKET, Key=key)["Body"].read())
+                cond = meta.get("condition", "default")
+                if cond not in result:
+                    result[cond] = []
+                result[cond].append(meta)
+            except Exception:
+                pass
+    for cond in result:
+        result[cond].sort(key=lambda m: m.get("version", 0), reverse=True)
+    return {"models": result}
+
+
+def _model_upload_url(body):
+    cam_id = body.get("cam_id")
+    condition = body.get("condition", "default")
+    inference = body.get("inference", {})
+    if not cam_id:
+        return {"error": "cam_id required"}, 400
+    if condition not in CONDITIONS:
+        return {"error": f"condition must be one of {CONDITIONS}"}, 400
+
+    # Determine next version number
+    prefix = f"{MODEL_S3_PREFIX}{cam_id}/{condition}/"
+    paginator = _s3.get_paginator("list_objects_v2")
+    max_ver = 0
+    for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix):
+        for obj in page.get("Contents", []):
+            parts = obj["Key"].split("/")
+            for part in parts:
+                if part.startswith("v") and part[1:].isdigit():
+                    max_ver = max(max_ver, int(part[1:]))
+    version = max_ver + 1
+    version_prefix = f"{prefix}v{version}/"
+    meta_key = f"{version_prefix}metadata.json"
+    model_key = f"{version_prefix}model.pt"
+
+    default_inference = {"conf": 0.45, "iou": 0.50, "agnostic_nms": True, "max_det": 50}
+    default_inference.update(inference)
+    metadata = {
+        "version": version,
+        "cam_id": cam_id,
+        "condition": condition,
+        "uploaded_at": datetime.now(tz=timezone.utc).isoformat().replace("+00:00", "Z"),
+        "active": False,
+        "inference": default_inference,
+        "metrics": {},
+    }
+    _s3.put_object(
+        Bucket=S3_BUCKET,
+        Key=meta_key,
+        Body=json.dumps(metadata).encode("utf-8"),
+        ContentType="application/json",
+    )
+    upload_url = _s3.generate_presigned_url(
+        "put_object",
+        Params={"Bucket": S3_BUCKET, "Key": model_key, "ContentType": "application/octet-stream"},
+        ExpiresIn=3600,
+    )
+    return {"version": version, "upload_url": upload_url, "model_key": model_key}
+
+
+def _patch_model_meta(body):
+    cam_id = body.get("cam_id")
+    condition = body.get("condition", "default")
+    version = body.get("version")
+    if not cam_id or not version:
+        return {"error": "cam_id and version required"}, 400
+
+    meta_key = f"{MODEL_S3_PREFIX}{cam_id}/{condition}/v{version}/metadata.json"
+    try:
+        obj = _s3.get_object(Bucket=S3_BUCKET, Key=meta_key)
+        meta = json.loads(obj["Body"].read())
+    except _s3.exceptions.NoSuchKey:
+        return {"error": "version not found"}, 404
+
+    if "inference" in body:
+        meta["inference"].update(body["inference"])
+    if "metrics" in body:
+        meta.setdefault("metrics", {}).update(body["metrics"])
+    if body.get("active") is True:
+        # Deactivate all other versions in this cam/condition slot
+        prefix = f"{MODEL_S3_PREFIX}{cam_id}/{condition}/"
+        paginator = _s3.get_paginator("list_objects_v2")
+        for page in paginator.paginate(Bucket=S3_BUCKET, Prefix=prefix):
+            for obj in page.get("Contents", []):
+                key = obj["Key"]
+                if not key.endswith("/metadata.json") or key == meta_key:
+                    continue
+                try:
+                    other = json.loads(_s3.get_object(Bucket=S3_BUCKET, Key=key)["Body"].read())
+                    if other.get("active"):
+                        other["active"] = False
+                        _s3.put_object(Bucket=S3_BUCKET, Key=key,
+                                       Body=json.dumps(other).encode(), ContentType="application/json")
+                except Exception:
+                    pass
+        meta["active"] = True
+    elif body.get("active") is False:
+        meta["active"] = False
+
+    _s3.put_object(
+        Bucket=S3_BUCKET,
+        Key=meta_key,
+        Body=json.dumps(meta).encode("utf-8"),
+        ContentType="application/json",
+    )
+    return {"ok": True, "metadata": meta}
+
+
+def _export_labels(params):
+    cam_id = params.get("cam_id")
+    if not cam_id:
+        return {"error": "cam_id required"}, 400
+    condition_filter = params.get("condition")
+    start = params.get("start")
+    end = params.get("end")
+    split_str = params.get("split", "70/15/15")
+    try:
+        split_parts = [int(x) for x in split_str.split("/")]
+        train_pct, val_pct, test_pct = split_parts[0], split_parts[1], split_parts[2]
+    except Exception:
+        return {"error": "split must be like 70/15/15"}, 400
+
+    table = _ddb.Table(INGEST_TABLE)
+    kw: dict = {"KeyConditionExpression": Key("pk").eq(f"CAM#{cam_id}")}
+    if start and end:
+        kw["KeyConditionExpression"] = kw["KeyConditionExpression"] & Key("sk").between(start, end)
+    elif start:
+        kw["KeyConditionExpression"] = kw["KeyConditionExpression"] & Key("sk").gte(start)
+    elif end:
+        kw["KeyConditionExpression"] = kw["KeyConditionExpression"] & Key("sk").lte(end)
+    kw["FilterExpression"] = Attr("labeled").eq(True) & Attr("s3_key").exists()
+
+    records = []
+    while True:
+        r = table.query(**kw)
+        records.extend(r.get("Items", []))
+        if "LastEvaluatedKey" not in r:
+            break
+        kw["ExclusiveStartKey"] = r["LastEvaluatedKey"]
+
+    if condition_filter:
+        def _cond(rec):
+            solar = float(rec.get("solar_altitude_deg") or -90)
+            pavement = str(rec.get("rwis_pavement_status") or "").lower()
+            precip = str(rec.get("rwis_precip_situation") or "").lower()
+            snowy = "snow" in pavement or "ice" in pavement or "snow" in precip
+            is_day = solar >= 10
+            if is_day and not snowy: return "day_clear"
+            if is_day and snowy: return "day_snow"
+            if not is_day and not snowy: return "night_clear"
+            return "night_snow"
+        records = [r for r in records if _cond(r) == condition_filter]
+
+    records.sort(key=lambda r: r.get("sk", ""))
+    n = len(records)
+    if n == 0:
+        return {"error": "no labeled records found for this cam/filter"}, 404
+
+    n_train = int(n * train_pct / 100)
+    n_val = int(n * val_pct / 100)
+    train_recs = records[:n_train]
+    val_recs = records[n_train:n_train + n_val]
+    test_recs = records[n_train + n_val:]
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for split_name, split_recs in [("train", train_recs), ("val", val_recs), ("test", test_recs)]:
+            for rec in split_recs:
+                s3_key = rec.get("s3_key", "")
+                sk = rec.get("sk", "")
+                filename = s3_key.split("/")[-1] if s3_key else f"{sk}.jpg"
+                stem = filename.rsplit(".", 1)[0]
+
+                # Image
+                try:
+                    img_obj = _s3.get_object(Bucket=S3_BUCKET, Key=s3_key)
+                    zf.writestr(f"images/{split_name}/{filename}", img_obj["Body"].read())
+                except Exception:
+                    continue
+
+                # Label
+                label_key = f"labels/{cam_id}/{sk}.txt"
+                try:
+                    lbl_obj = _s3.get_object(Bucket=S3_BUCKET, Key=label_key)
+                    zf.writestr(f"labels/{split_name}/{stem}.txt", lbl_obj["Body"].read())
+                except Exception:
+                    zf.writestr(f"labels/{split_name}/{stem}.txt", b"")
+
+        # data.yaml
+        yaml = (
+            f"path: .\n"
+            f"train: images/train\nval: images/val\ntest: images/test\n"
+            f"nc: 4\nnames: [car, motorcycle, bus, truck]\n"
+            f"# cam_id: {cam_id}\n# exported: {datetime.now(tz=timezone.utc).isoformat()}\n"
+            f"# split: {train_pct}/{val_pct}/{test_pct}\n"
+            f"# train={len(train_recs)} val={len(val_recs)} test={len(test_recs)}\n"
+        )
+        zf.writestr("data.yaml", yaml)
+
+    buf.seek(0)
+    export_key = f"exports/{cam_id}/{datetime.now(tz=timezone.utc).strftime('%Y%m%dT%H%M%S')}.zip"
+    _s3.put_object(Bucket=S3_BUCKET, Key=export_key, Body=buf.read(), ContentType="application/zip")
+    download_url = _s3.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": S3_BUCKET, "Key": export_key},
+        ExpiresIn=3600,
+    )
+    return {
+        "download_url": download_url,
+        "train": len(train_recs),
+        "val": len(val_recs),
+        "test": len(test_recs),
+        "total": n,
+    }
+
+
 def handler(event, context):
     ctx_http = (event.get("requestContext") or {}).get("http") or {}
     method = ctx_http.get("method", "GET")
@@ -233,6 +609,34 @@ def handler(event, context):
         if path == "/api/decisions" and method == "POST":
             body = json.loads(event.get("body") or "{}")
             r = _decision(body)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/cam-config" and method == "GET":
+            r = _get_cam_config(params)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/cam-config" and method == "PUT":
+            body = json.loads(event.get("body") or "{}")
+            r = _put_cam_config(body)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/label" and method == "GET":
+            r = _get_label(params)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/label" and method == "POST":
+            body = json.loads(event.get("body") or "{}")
+            r = _post_label(body)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/models" and method == "GET":
+            r = _list_models(params)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/model-upload-url" and method == "POST":
+            body = json.loads(event.get("body") or "{}")
+            r = _model_upload_url(body)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/model-meta" and method == "PATCH":
+            body = json.loads(event.get("body") or "{}")
+            r = _patch_model_meta(body)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/export-labels" and method == "GET":
+            r = _export_labels(params)
             return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
         if path == "/health":
             return _resp(200, {"ok": True}, origin)

@@ -4,7 +4,7 @@ const s = {
   input: { padding: '6px 10px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)', fontSize: 13 },
 }
 
-const CAMS = ['952-N', '952-S', '957-N', '1053-N']
+const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
 const DECISIONS = ['', 'keep', 'unusable']
 const SOURCES = ['', 'tier_1', 'tier_2', 'propagated', 'manual']
 const FLAGGED = [['', 'all'], ['true', 'flagged'], ['false', 'not flagged']]

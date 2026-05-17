@@ -6,10 +6,16 @@ export const CAM_COLORS = {
   '952-N':  '#60a5fa',
   '952-S':  '#818cf8',
   '957-N':  '#34d399',
+  '957-S':  '#86efac',
   '1053-N': '#f59e0b',
+  '3285-N': '#f472b6',
+  '3287-N': '#fb923c',
+  '3288-N': '#a78bfa',
+  '3289-S': '#22d3ee',
+  '3291-E': '#e879f9',
 }
 
-const CAMS = ['952-N', '952-S', '957-N', '1053-N']
+const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
 
 export default function MultiCamPlot({ histories }) {
   const traces = CAMS.map(id => {

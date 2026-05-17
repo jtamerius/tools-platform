@@ -4,6 +4,7 @@ EventBridge passes {"cam_id": "..."} as the input. Each cam_id is fanned out
 across parallel invocations so heavy work (YOLO) stays single-purpose.
 """
 from __future__ import annotations
+import json
 import logging
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -19,6 +20,44 @@ logger = logging.getLogger(__name__)
 
 _ddb = boto3.resource("dynamodb")
 _s3 = boto3.client("s3")
+
+
+def _resolve_model_key(cam_id: str, record: dict) -> Optional[str]:
+    """Return S3 key for the active model version best matching current conditions.
+
+    Resolution order:
+      1. models/{cam_id}/{condition}/v{N}/model.pt  (condition-specific active)
+      2. models/{cam_id}/default/v{N}/model.pt      (cam default active)
+      3. None → baked-in yolov8n.pt fallback
+    """
+    solar_alt = float(record.get("solar_altitude_deg") or -90)
+    pavement = str(record.get("rwis_pavement_status") or "").lower()
+    precip = str(record.get("rwis_precip_situation") or "").lower()
+    is_snowy = "snow" in pavement or "ice" in pavement or "snow" in precip
+    is_day = solar_alt >= 10
+    condition = (
+        "day_clear" if (is_day and not is_snowy) else
+        "day_snow" if (is_day and is_snowy) else
+        "night_clear" if (not is_day and not is_snowy) else
+        "night_snow"
+    )
+    prefix = f"{config.MODEL_S3_PREFIX}{cam_id}/"
+    for cond in (condition, "default"):
+        cond_prefix = f"{prefix}{cond}/"
+        try:
+            resp = _s3.list_objects_v2(Bucket=config.S3_BUCKET, Prefix=cond_prefix)
+        except Exception:
+            continue
+        meta_keys = [o["Key"] for o in resp.get("Contents", []) if o["Key"].endswith("/metadata.json")]
+        for meta_key in meta_keys:
+            try:
+                obj = _s3.get_object(Bucket=config.S3_BUCKET, Key=meta_key)
+                meta = json.loads(obj["Body"].read())
+                if meta.get("active"):
+                    return meta_key.replace("metadata.json", "model.pt")
+            except Exception:
+                pass
+    return None
 
 
 def _now_iso() -> str:
@@ -126,12 +165,21 @@ def process(cam_id: str) -> dict:
     if image_captured_at:
         record["image_captured_at"] = image_captured_at
 
-    # ── YOLO + image stats + solar ───────────────────────────────────────────
-    yolo_result = yolo_count.count_vehicles(image_bytes, cfg.get("roi_polygon"))
-    record.update(yolo_result)
+    # ── Image stats + solar (needed before model resolution) ─────────────────
     record.update(image_stats.compute_stats(image_bytes))
-
     record.update(solar.solar_position(float(cfg["lat"]), float(cfg["lon"]), now))
+
+    # ── YOLO (model resolved from S3 based on condition) ─────────────────────
+    model_key = _resolve_model_key(cam_id, record)
+    if model_key:
+        record["model_s3_key"] = model_key
+    yolo_result = yolo_count.count_vehicles(
+        image_bytes,
+        zones=cfg.get("zones"),
+        roi_polygon=cfg.get("roi_polygon"),
+        model_s3_key=model_key,
+    )
+    record.update(yolo_result)
 
     # ── Flagging ─────────────────────────────────────────────────────────────
     flag = flagging.evaluate(record, now)

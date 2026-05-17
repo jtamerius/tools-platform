@@ -5,7 +5,13 @@ const ALL_CAMS = [
   { id: '952-N',    lat: 37.62193,  lon: -107.8119,  mp: 48.6,  driveMin: 2,  type: 'traffic' },
   { id: '952-S',    lat: 37.62193,  lon: -107.8119,  mp: 48.6,  driveMin: 2,  type: 'traffic' },
   { id: '957-N',    lat: 37.32353,  lon: -107.85171, mp: 25.65, driveMin: 23, type: 'traffic' },
+  { id: '957-S',    lat: 37.32353,  lon: -107.85171, mp: 25.65, driveMin: 23, type: 'traffic' },
   { id: '1053-N',   lat: 37.22151,  lon: -107.84669, mp: 16.25, driveMin: 33, type: 'traffic' },
+  { id: '3285-N',   lat: 37.30661,  lon: -107.86523, mp: 24.15, driveMin: 35, type: 'traffic' },
+  { id: '3287-N',   lat: 37.28976,  lon: -107.87508, mp: 22.60, driveMin: 37, type: 'traffic' },
+  { id: '3288-N',   lat: 37.28738,  lon: -107.87594, mp: 22.40, driveMin: 37, type: 'traffic' },
+  { id: '3289-S',   lat: 37.28226,  lon: -107.87801, mp: 22.05, driveMin: 38, type: 'traffic' },
+  { id: '3291-E',   lat: 37.27392,  lon: -107.88357, mp: 21.30, driveMin: 40, type: 'traffic' },
   { id: '954-RWIS', lat: 37.26881,  lon: -107.88429, mp: 20.95, driveMin: 28, type: 'rwis' },
 ]
 

@@ -14,6 +14,8 @@ COTRIP_GRAPHQL_URL = "https://www.cotrip.org/api/graphql"
 YOLO_MODEL_PATH = os.environ.get("YOLO_MODEL_PATH", "/var/task/yolov8n.pt")
 YOLO_CONFIDENCE = float(os.environ.get("YOLO_CONFIDENCE", "0.25"))
 YOLO_CLASSES = {2: "car", 3: "motorcycle", 5: "bus", 7: "truck"}
+MODEL_S3_PREFIX = "models/"
+YOLO_DEFAULT_INFERENCE = {"conf": 0.25, "iou": 0.45, "agnostic_nms": True, "max_det": 50}
 
 AGENT_PROMPT_VERSION = os.environ.get("AGENT_PROMPT_VERSION", "v1")
 AGENT_MONTHLY_CAP = int(os.environ.get("AGENT_MONTHLY_CAP", "200"))

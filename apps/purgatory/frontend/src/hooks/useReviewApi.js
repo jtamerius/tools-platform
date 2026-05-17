@@ -47,7 +47,7 @@ export function useReviewApi(getAccessToken) {
         return data.records ?? []
       },
       fetchMultiHistory: async (hours = 24) => {
-        const cams = ['952-N', '952-S', '957-N', '1053-N']
+        const cams = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
         const results = await Promise.all(
           cams.map(id =>
             req(`/api/history?${new URLSearchParams({ cam_id: id, hours: String(hours) })}`)
@@ -61,6 +61,59 @@ export function useReviewApi(getAccessToken) {
           method: 'POST',
           body: JSON.stringify({ pk, sk, decision }),
         }),
+
+      // Cam config / zones
+      fetchCamConfig: async (camId) => {
+        const q = new URLSearchParams({ cam_id: camId })
+        const data = await req(`/api/cam-config?${q}`)
+        return data.cam_config
+      },
+      saveCamZones: (camId, zones) =>
+        req('/api/cam-config', {
+          method: 'PUT',
+          body: JSON.stringify({ cam_id: camId, zones }),
+        }),
+
+      // Labeling
+      fetchLabel: async (pk, sk) => {
+        const q = new URLSearchParams({ pk, sk })
+        return req(`/api/label?${q}`)
+      },
+      saveLabel: (pk, sk, boxes, imageWidth, imageHeight) =>
+        req('/api/label', {
+          method: 'POST',
+          body: JSON.stringify({ pk, sk, boxes, image_width: imageWidth, image_height: imageHeight }),
+        }),
+      fetchLabelQueue: async (camId, hours = 48, mode = 'all') => {
+        const q = new URLSearchParams({ cam_id: camId, hours: String(hours) })
+        const data = await req(`/api/history?${q}`)
+        const records = (data.records ?? [])
+          .filter(r => r.s3_key)
+          .sort((a, b) => a.sk < b.sk ? -1 : 1)
+        if (mode === 'unlabeled') return records.filter(r => !r.labeled)
+        if (mode === 'labeled') return records.filter(r => r.labeled)
+        return records
+      },
+
+      // Model management
+      fetchModels: async (camId) => {
+        const q = new URLSearchParams({ cam_id: camId })
+        return req(`/api/models?${q}`)
+      },
+      getModelUploadUrl: (camId, condition, inference) =>
+        req('/api/model-upload-url', {
+          method: 'POST',
+          body: JSON.stringify({ cam_id: camId, condition, inference }),
+        }),
+      updateModelMeta: (camId, condition, version, updates) =>
+        req('/api/model-meta', {
+          method: 'PATCH',
+          body: JSON.stringify({ cam_id: camId, condition, version, ...updates }),
+        }),
+      exportLabels: async (camId, opts = {}) => {
+        const q = new URLSearchParams({ cam_id: camId, ...opts })
+        return req(`/api/export-labels?${q}`)
+      },
     }
   }, [getAccessToken])
 }

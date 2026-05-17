@@ -269,8 +269,8 @@ export class PurgatoryStack extends cdk.Stack {
     });
     ingestTable.grantReadWriteData(apiFn);
     resortTable.grantReadData(apiFn);
-    camConfigTable.grantReadData(apiFn);
-    rawBucket.grantRead(apiFn);
+    camConfigTable.grantReadWriteData(apiFn);
+    rawBucket.grantReadWrite(apiFn);
 
     const allowedOrigins = isProd
       ? [`https://${appSubdomain}.${cfg.domainRoot}`, 'http://localhost:5173']
@@ -282,7 +282,7 @@ export class PurgatoryStack extends cdk.Stack {
       protocolType: 'HTTP',
       corsConfiguration: {
         allowOrigins: allowedOrigins,
-        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization'],
         allowCredentials: false,
         maxAge: 300,
@@ -310,6 +310,10 @@ export class PurgatoryStack extends cdk.Stack {
     for (const route of [
       'GET /api/queue', 'GET /api/search', 'GET /api/image',
       'GET /api/neighbors', 'GET /api/history', 'POST /api/decisions',
+      'GET /api/cam-config', 'PUT /api/cam-config',
+      'GET /api/label', 'POST /api/label',
+      'GET /api/models', 'POST /api/model-upload-url',
+      'PATCH /api/model-meta', 'GET /api/export-labels',
     ]) {
       new apigwv2.CfnRoute(this, `Route-${route.replace(/[^a-zA-Z0-9]/g, '')}`, {
         apiId: httpApi.ref,
