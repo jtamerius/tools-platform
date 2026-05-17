@@ -1,4 +1,6 @@
-import Plot from 'react-plotly.js'
+import Plotly from 'plotly.js-dist-min'
+import createPlotlyComponent from 'react-plotly.js/factory'
+const Plot = createPlotlyComponent(Plotly)
 
 export default function TrafficPlot({ history, highlightSk }) {
   if (!history.length) return <div style={{ color: 'var(--text-muted)', padding: 8 }}>No history</div>

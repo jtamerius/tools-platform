@@ -1,4 +1,6 @@
-import Plot from 'react-plotly.js'
+import Plotly from 'plotly.js-dist-min'
+import createPlotlyComponent from 'react-plotly.js/factory'
+const Plot = createPlotlyComponent(Plotly)
 
 export const CAM_COLORS = {
   '952-N':  '#60a5fa',
