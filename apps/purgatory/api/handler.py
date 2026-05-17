@@ -202,6 +202,7 @@ def _history(params):
             start.isoformat().replace("+00:00", "Z"),
             end.isoformat().replace("+00:00", "Z"),
         ),
+        ScanIndexForward=False,
     )
     return {"records": r.get("Items", [])}
 

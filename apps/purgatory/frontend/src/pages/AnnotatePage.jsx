@@ -155,7 +155,7 @@ function LabelsTab({ camId, api }) {
     if (!camId) return
     setLoading(true)
     api.fetchLabelQueue(camId, 48, mode)
-      .then(recs => setQueue(recs.slice().sort((a, b) => a.labeled - b.labeled || a.sk > b.sk ? 1 : -1)))
+      .then(recs => setQueue(recs.slice().sort((a, b) => (a.labeled - b.labeled) || (b.sk > a.sk ? 1 : -1))))
       .catch(e => setStatus({ type: 'error', msg: e.message }))
       .finally(() => setLoading(false))
   }, [camId, mode, api])
