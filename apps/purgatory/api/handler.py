@@ -116,6 +116,9 @@ def _search(params):
         if c and (rec.get("agent_confidence") or 1) > float(c): return False
         v = params.get("visibility_lte")
         if v and (rec.get("rwis_visibility_mi") or 99) > float(v): return False
+        nr = params.get("needs_review")
+        if nr == "true" and not rec.get("needs_review"): return False
+        if nr == "false" and rec.get("needs_review"): return False
         return True
 
     items = [i for i in items if keep(i)]

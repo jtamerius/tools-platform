@@ -7,6 +7,7 @@ const s = {
 const CAMS = ['952-N', '952-S', '957-N', '1053-N']
 const DECISIONS = ['', 'keep', 'unusable']
 const SOURCES = ['', 'tier_1', 'tier_2', 'propagated', 'manual']
+const FLAGGED = [['', 'all'], ['true', 'flagged'], ['false', 'not flagged']]
 
 export default function FilterBar({ filters, onChange }) {
   const set = (k, v) => onChange({ ...filters, [k]: v })
@@ -49,6 +50,12 @@ export default function FilterBar({ filters, onChange }) {
         visibility ≤ (mi)
         <input style={s.input} type="number" step="0.1"
           value={filters.visibility_lte ?? ''} onChange={e => set('visibility_lte', e.target.value)} />
+      </label>
+      <label style={s.field}>
+        flagged
+        <select style={s.input} value={filters.needs_review ?? ''} onChange={e => set('needs_review', e.target.value)}>
+          {FLAGGED.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+        </select>
       </label>
     </div>
   )
