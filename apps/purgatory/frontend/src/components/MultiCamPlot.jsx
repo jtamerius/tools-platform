@@ -2,6 +2,11 @@ import Plotly from 'plotly.js-dist-min'
 import createPlotlyComponent from 'react-plotly.js/factory'
 const Plot = createPlotlyComponent(Plotly)
 
+// Convert UTC ISO string to a tz-naive string in America/Denver so Plotly renders MT labels.
+// Uses 'sv' locale which produces "YYYY-MM-DD HH:MM:SS" — Plotly reads it as a local datetime.
+export const toMT = (utcStr) =>
+  new Date(utcStr).toLocaleString('sv', { timeZone: 'America/Denver' }).replace(' ', 'T')
+
 export const CAM_COLORS = {
   '952-N':  '#60a5fa',
   '952-S':  '#818cf8',
@@ -22,7 +27,7 @@ export default function MultiCamPlot({ histories }) {
     const recs = (histories[id] ?? []).slice().sort((a, b) => a.sk < b.sk ? -1 : 1)
     return {
       name: id,
-      x: recs.map(r => r.sk),
+      x: recs.map(r => toMT(r.sk)),
       y: recs.map(r => r.vehicle_count ?? 0),
       type: 'scatter',
       mode: 'lines+markers',
@@ -40,7 +45,7 @@ export default function MultiCamPlot({ histories }) {
         paper_bgcolor: 'transparent',
         plot_bgcolor: 'transparent',
         font: { color: '#e5e7eb', size: 11 },
-        xaxis: { gridcolor: '#2b2f3d', tickangle: -30 },
+        xaxis: { gridcolor: '#2b2f3d', tickangle: -30, title: 'MT' },
         yaxis: { gridcolor: '#2b2f3d', title: 'vehicles', rangemode: 'tozero' },
         legend: {
           bgcolor: 'rgba(26,29,39,0.8)',

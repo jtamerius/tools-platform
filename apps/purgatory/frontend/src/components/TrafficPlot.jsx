@@ -1,13 +1,15 @@
 import Plotly from 'plotly.js-dist-min'
 import createPlotlyComponent from 'react-plotly.js/factory'
+import { toMT } from './MultiCamPlot'
 const Plot = createPlotlyComponent(Plotly)
 
 export default function TrafficPlot({ history, highlightSk }) {
   if (!history.length) return <div style={{ color: 'var(--text-muted)', padding: 8 }}>No history</div>
 
-  const xs = history.map(h => h.sk)
+  const xs = history.map(h => toMT(h.sk))
   const ys = history.map(h => h.vehicle_count ?? 0)
-  const highlight = history.findIndex(h => h.sk === highlightSk)
+  const highlightX = highlightSk ? toMT(highlightSk) : null
+  const highlight = highlightX ? xs.indexOf(highlightX) : -1
 
   return (
     <Plot
