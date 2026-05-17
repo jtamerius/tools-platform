@@ -3,6 +3,7 @@
 EventBridge passes {"cam_id": "..."} as the input. Each cam_id is fanned out
 across parallel invocations so heavy work (YOLO) stays single-purpose.
 """
+
 from __future__ import annotations
 import json
 import logging

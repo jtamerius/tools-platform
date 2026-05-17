@@ -172,6 +172,10 @@ jobs:
               - 'apps/purgatory/ingest/Dockerfile'
               - 'apps/purgatory/ingest/requirements.txt'
               - 'apps/purgatory/ingest/src/**'
+            infra-iam:
+              - 'infra/cdk/lib/stacks/iam-stack.ts'
+              - 'infra/cdk/lib/config.ts'
+              - 'infra/cdk/bin/app.ts'
             weather-collector:
               - 'apps/weather_app/ensemble-plumes/**'
             finance-tracker:
@@ -228,7 +232,32 @@ jobs:
           out=$(npx cdk deploy tools-shared-dns-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
 
   # -----------------------------------------------------------------------
-  # Job 2c–f: Deploy Amplify stacks (one per app)
+  # Job 2c: Deploy IAM stack
+  # -----------------------------------------------------------------------
+  deploy-iam-production:
+    name: Deploy IAM — Production
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.infra-iam == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: infra/cdk/package-lock.json
+      - run: cd infra/cdk && npm ci
+      - name: Deploy CDK stack
+        run: |
+          cd infra/cdk
+          out=$(npx cdk deploy tools-shared-iam-production -c env=production --require-approval never --no-cli-pager 2>&1) && echo "$out" || { echo "$out"; echo "$out" | grep -q "ChangeSetNotFoundException\|no changes\|AlreadyExistsException" && exit 0 || exit 1; }
+
+  # -----------------------------------------------------------------------
+  # Job 2d–g: Deploy Amplify stacks (one per app)
   # -----------------------------------------------------------------------
   deploy-amplify-landing-production:
     name: Deploy Amplify (landing-page) — Production
@@ -1282,12 +1311,15 @@ jobs:
     needs:
       - detect-changes
       - deploy-purgatory-app-production
+      - deploy-iam-production
     if: |
       always() &&
       needs.detect-changes.result == 'success' &&
       needs.detect-changes.outputs.purgatory-ingest == 'true' &&
       (needs.deploy-purgatory-app-production.result == 'success' ||
-       needs.deploy-purgatory-app-production.result == 'skipped')
+       needs.deploy-purgatory-app-production.result == 'skipped') &&
+      (needs.deploy-iam-production.result == 'success' ||
+       needs.deploy-iam-production.result == 'skipped')
     environment: production
     steps:
       - uses: actions/checkout@v4
