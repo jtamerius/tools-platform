@@ -1,31 +1,70 @@
-// Dashboard: multi-cam plot + camera map + RWIS strip
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import MultiCamPlot from '../components/MultiCamPlot'
+import AggregatePlot from '../components/AggregatePlot'
 import CamMap from '../components/CamMap'
 
-const HOUR_OPTIONS = [1, 3, 6, 12, 24, 48]
+const HOUR_OPTIONS = [1, 3, 6, 24, 48, 168]
+const hourLabel = h => h === 168 ? '1w' : `${h}h`
+
+const CAM_GROUPS = [
+  { id: '952',  label: 'MP 48.6',  N: '952-N',  S: '952-S' },
+  { id: '957',  label: 'MP 25.65', N: '957-N',  S: '957-S' },
+  { id: '1053', label: 'MP 16.25', N: '1053-N'             },
+  { id: '3285', label: '3285-N',   N: '3285-N'             },
+  { id: '3287', label: '3287-N',   N: '3287-N'             },
+  { id: '3288', label: '3288-N',   N: '3288-N'             },
+  { id: '3289', label: '3289-S',   S: '3289-S'             },
+  { id: '3291', label: '3291-E',   E: '3291-E'             },
+]
+
+function getSelectedCamIds(camSel) {
+  return CAM_GROUPS.flatMap(g => {
+    if (!camSel[g.id]?.enabled) return []
+    const dir = camSel[g.id].dir
+    const ids = []
+    if (g.N && (dir === 'N' || dir === 'both')) ids.push(g.N)
+    if (g.S && (dir === 'S' || dir === 'both')) ids.push(g.S)
+    if (g.E) ids.push(g.E)
+    return ids
+  })
+}
 
 const s = {
   page: { display: 'flex', flexDirection: 'column', gap: 16 },
-  controls: { display: 'flex', alignItems: 'center', gap: 8 },
+  controls: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
   label: { fontSize: 12, color: 'var(--text-muted)' },
   hourBtn: (active) => ({
-    padding: '4px 12px',
-    borderRadius: 4,
-    border: '1px solid var(--border)',
+    padding: '4px 12px', borderRadius: 4, border: '1px solid var(--border)',
     background: active ? 'var(--accent)' : 'var(--surface)',
     color: active ? '#000' : 'var(--text)',
-    fontSize: 13,
-    fontWeight: active ? 600 : 400,
+    fontSize: 13, fontWeight: active ? 600 : 400,
   }),
+  plusBtn: {
+    padding: '4px 12px', borderRadius: 4, border: '1px solid var(--border)',
+    background: 'var(--surface)', color: 'var(--text)', fontSize: 13,
+  },
   grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
   card: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: 16 },
   cardTitle: { fontSize: 13, fontWeight: 600, marginBottom: 12, color: 'var(--text-muted)' },
   rwisGrid: { display: 'flex', flexWrap: 'wrap', gap: 8 },
   rwisItem: { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 16px', minWidth: 120 },
   rwisKey: { fontSize: 11, color: 'var(--text-muted)', marginBottom: 4 },
-  rwisVal: { fontSize: 16, fontWeight: 600 },
+  rwisVal: { fontSize: 16, fontWeight: 600, color: 'var(--text)' },
   empty: { padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 },
+  camRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
+  camChip: (enabled) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 4,
+    padding: '3px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12,
+    border: `1px solid ${enabled ? 'var(--accent)' : 'var(--border)'}`,
+    background: enabled ? 'rgba(96,165,250,0.12)' : 'var(--surface-2)',
+    color: enabled ? 'var(--accent)' : 'var(--text-muted)',
+  }),
+  dirBtn: (active) => ({
+    padding: '2px 6px', borderRadius: 3, fontSize: 11, cursor: 'pointer',
+    border: '1px solid var(--border)',
+    background: active ? 'var(--accent)' : 'transparent',
+    color: active ? '#000' : 'var(--text-muted)',
+  }),
 }
 
 function fmt(v, unit = '') {
@@ -39,6 +78,9 @@ export default function DashboardPage({ api }) {
   const [histories, setHistories] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [camSel, setCamSel] = useState(() =>
+    Object.fromEntries(CAM_GROUPS.map(g => [g.id, { enabled: g.id === '952', dir: 'both' }]))
+  )
 
   useEffect(() => {
     let cancelled = false
@@ -57,39 +99,48 @@ export default function DashboardPage({ api }) {
     return () => { cancelled = true }
   }, [hours, api])
 
-  // Pull RWIS fields from the most recent 952-N record
+  const selectedCamIds = useMemo(() => getSelectedCamIds(camSel), [camSel])
+
   const latest952 = (histories['952-N'] ?? [])[0]
   const rwisFields = [
-    { key: 'Visibility',  val: fmt(latest952?.rwis_visibility_mi, 'mi') },
-    { key: 'Pavement',    val: fmt(latest952?.rwis_pavement_status) },
-    { key: 'Air temp',    val: fmt(latest952?.rwis_temp_air_f, '°F') },
-    { key: 'Precip',      val: fmt(latest952?.rwis_precip_situation) },
-    { key: 'Wind avg',    val: fmt(latest952?.rwis_wind_avg_mph, 'mph') },
-    { key: 'Wind max',    val: fmt(latest952?.rwis_wind_max_mph, 'mph') },
+    { key: 'Visibility', val: fmt(latest952?.rwis_visibility_mi, 'mi') },
+    { key: 'Pavement',   val: fmt(latest952?.rwis_pavement_status) },
+    { key: 'Air temp',   val: fmt(latest952?.rwis_temp_air_f, '°F') },
+    { key: 'Precip',     val: fmt(latest952?.rwis_precip_situation) },
+    { key: 'Wind avg',   val: fmt(latest952?.rwis_wind_avg_mph, 'mph') },
+    { key: 'Wind max',   val: fmt(latest952?.rwis_wind_max_mph, 'mph') },
   ]
 
   const hasData = Object.values(histories).some(r => r.length > 0)
+  const isPreset = HOUR_OPTIONS.includes(hours)
+
+  const toggleCam = id => setCamSel(prev => ({ ...prev, [id]: { ...prev[id], enabled: !prev[id].enabled } }))
+  const setDir = (id, dir) => setCamSel(prev => ({ ...prev, [id]: { ...prev[id], dir } }))
 
   return (
     <div style={s.page}>
+
+      {/* Shared time controls */}
       <div style={s.controls}>
         <span style={s.label}>Show last</span>
         {HOUR_OPTIONS.map(h => (
           <button key={h} style={s.hourBtn(h === hours)} onClick={() => setHours(h)}>
-            {h}h
+            {hourLabel(h)}
           </button>
         ))}
+        <button style={s.plusBtn} onClick={() => setHours(h => h + 12)}>+12h</button>
+        {!isPreset && <span style={s.label}>({hours}h)</span>}
         {loading && <span style={{ ...s.label, marginLeft: 8 }}>Loading…</span>}
         {error && <span style={{ color: 'var(--red)', fontSize: 13 }}>Error: {error}</span>}
       </div>
 
+      {/* Per-camera plot + map */}
       <div style={s.grid}>
         <div style={s.card}>
           <div style={s.cardTitle}>Vehicle counts — US-550 corridor</div>
           {hasData
             ? <MultiCamPlot histories={histories} hours={hours} />
-            : <div style={s.empty}>{loading ? 'Loading…' : 'No data for this period.'}</div>
-          }
+            : <div style={s.empty}>{loading ? 'Loading…' : 'No data for this period.'}</div>}
         </div>
         <div style={s.card}>
           <div style={s.cardTitle}>Camera locations</div>
@@ -97,6 +148,33 @@ export default function DashboardPage({ api }) {
         </div>
       </div>
 
+      {/* Aggregated plot */}
+      <div style={s.card}>
+        <div style={s.cardTitle}>Aggregated vehicle count</div>
+        <div style={s.camRow}>
+          {CAM_GROUPS.map(g => {
+            const sel = camSel[g.id]
+            const isBidi = !!(g.N && g.S)
+            return (
+              <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={s.camChip(sel.enabled)} onClick={() => toggleCam(g.id)}>
+                  {g.label}
+                </div>
+                {sel.enabled && isBidi && (
+                  <div style={{ display: 'flex', gap: 2 }}>
+                    <button style={s.dirBtn(sel.dir === 'N')}    onClick={() => setDir(g.id, 'N')}>N</button>
+                    <button style={s.dirBtn(sel.dir === 'both')} onClick={() => setDir(g.id, 'both')}>N+S</button>
+                    <button style={s.dirBtn(sel.dir === 'S')}    onClick={() => setDir(g.id, 'S')}>S</button>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+        <AggregatePlot histories={histories} hours={hours} selectedCamIds={selectedCamIds} />
+      </div>
+
+      {/* RWIS strip */}
       <div>
         <div style={{ ...s.label, marginBottom: 8 }}>
           Current conditions — RWIS station 374
@@ -111,6 +189,7 @@ export default function DashboardPage({ api }) {
           ))}
         </div>
       </div>
+
     </div>
   )
 }
