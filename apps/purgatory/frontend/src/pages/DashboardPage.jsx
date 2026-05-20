@@ -7,14 +7,14 @@ const HOUR_OPTIONS = [1, 3, 6, 24, 48, 168]
 const hourLabel = h => h === 168 ? '1w' : `${h}h`
 
 const CAM_GROUPS = [
-  { id: '952',  label: 'MP 48.6',  N: '952-N',  S: '952-S' },
-  { id: '957',  label: 'MP 25.65', N: '957-N',  S: '957-S' },
-  { id: '1053', label: 'MP 16.25', N: '1053-N'             },
-  { id: '3285', label: '3285-N',   N: '3285-N'             },
-  { id: '3287', label: '3287-N',   N: '3287-N'             },
-  { id: '3288', label: '3288-N',   N: '3288-N'             },
-  { id: '3289', label: '3289-S',   S: '3289-S'             },
-  { id: '3291', label: '3291-E',   E: '3291-E'             },
+  { id: '952',  label: '952',  N: '952-N',  S: '952-S'  },
+  { id: '957',  label: '957',  N: '957-N',  S: '957-S'  },
+  { id: '1053', label: '1053', N: '1053-N'              },
+  { id: '3285', label: '3285', N: '3285-N'              },
+  { id: '3287', label: '3287', N: '3287-N'              },
+  { id: '3288', label: '3288', N: '3288-N'              },
+  { id: '3289', label: '3289', S: '3289-S'              },
+  { id: '3291', label: '3291', E: '3291-E'              },
 ]
 
 function getSelectedCamIds(camSel) {
@@ -162,9 +162,9 @@ export default function DashboardPage({ api }) {
                 </div>
                 {sel.enabled && isBidi && (
                   <div style={{ display: 'flex', gap: 2 }}>
-                    <button style={s.dirBtn(sel.dir === 'N')}    onClick={() => setDir(g.id, 'N')}>N</button>
-                    <button style={s.dirBtn(sel.dir === 'both')} onClick={() => setDir(g.id, 'both')}>N+S</button>
-                    <button style={s.dirBtn(sel.dir === 'S')}    onClick={() => setDir(g.id, 'S')}>S</button>
+                    <button style={s.dirBtn(sel.dir === 'N')}    onClick={() => setDir(g.id, 'N')}>Inbound</button>
+                    <button style={s.dirBtn(sel.dir === 'both')} onClick={() => setDir(g.id, 'both')}>Both</button>
+                    <button style={s.dirBtn(sel.dir === 'S')}    onClick={() => setDir(g.id, 'S')}>Outbound</button>
                   </div>
                 )}
               </div>
