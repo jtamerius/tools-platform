@@ -6,28 +6,7 @@ import CamMap from '../components/CamMap'
 const HOUR_OPTIONS = [1, 3, 6, 24, 48, 168]
 const hourLabel = h => h === 168 ? '1w' : `${h}h`
 
-const CAM_GROUPS = [
-  { id: '952',  label: '952',  N: '952-N',  S: '952-S'  },
-  { id: '957',  label: '957',  N: '957-N',  S: '957-S'  },
-  { id: '1053', label: '1053', N: '1053-N'              },
-  { id: '3285', label: '3285', N: '3285-N'              },
-  { id: '3287', label: '3287', N: '3287-N'              },
-  { id: '3288', label: '3288', N: '3288-N'              },
-  { id: '3289', label: '3289', S: '3289-S'              },
-  { id: '3291', label: '3291', E: '3291-E'              },
-]
-
-function getSelectedCamIds(camSel) {
-  return CAM_GROUPS.flatMap(g => {
-    if (!camSel[g.id]?.enabled) return []
-    const dir = camSel[g.id].dir
-    const ids = []
-    if (g.N && (dir === 'N' || dir === 'both')) ids.push(g.N)
-    if (g.S && (dir === 'S' || dir === 'both')) ids.push(g.S)
-    if (g.E) ids.push(g.E)
-    return ids
-  })
-}
+const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
 
 const s = {
   page: { display: 'flex', flexDirection: 'column', gap: 16 },
@@ -79,7 +58,7 @@ export default function DashboardPage({ api }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [camSel, setCamSel] = useState(() =>
-    Object.fromEntries(CAM_GROUPS.map(g => [g.id, { enabled: g.id === '952', dir: 'both' }]))
+    Object.fromEntries(CAMS.map(id => [id, { enabled: id === '952-N' || id === '952-S', dir: 'both' }]))
   )
 
   useEffect(() => {
@@ -99,7 +78,14 @@ export default function DashboardPage({ api }) {
     return () => { cancelled = true }
   }, [hours, api])
 
-  const selectedCamIds = useMemo(() => getSelectedCamIds(camSel), [camSel])
+  const camsWithZones = useMemo(() => {
+    const s = new Set()
+    Object.entries(histories).forEach(([id, recs]) => {
+      if (recs.some(r => r.vehicle_counts_by_zone && Object.keys(r.vehicle_counts_by_zone).length > 0))
+        s.add(id)
+    })
+    return s
+  }, [histories])
 
   const latest952 = (histories['952-N'] ?? [])[0]
   const rwisFields = [
@@ -152,26 +138,26 @@ export default function DashboardPage({ api }) {
       <div style={s.card}>
         <div style={s.cardTitle}>Aggregated vehicle count</div>
         <div style={s.camRow}>
-          {CAM_GROUPS.map(g => {
-            const sel = camSel[g.id]
-            const isBidi = !!(g.N && g.S)
+          {CAMS.map(id => {
+            const sel = camSel[id]
+            const hasZones = camsWithZones.has(id)
             return (
-              <div key={g.id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <div style={s.camChip(sel.enabled)} onClick={() => toggleCam(g.id)}>
-                  {g.label}
+              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                <div style={s.camChip(sel.enabled)} onClick={() => toggleCam(id)}>
+                  {id}
                 </div>
-                {sel.enabled && isBidi && (
+                {sel.enabled && hasZones && (
                   <div style={{ display: 'flex', gap: 2 }}>
-                    <button style={s.dirBtn(sel.dir === 'N')}    onClick={() => setDir(g.id, 'N')}>Inbound</button>
-                    <button style={s.dirBtn(sel.dir === 'both')} onClick={() => setDir(g.id, 'both')}>Both</button>
-                    <button style={s.dirBtn(sel.dir === 'S')}    onClick={() => setDir(g.id, 'S')}>Outbound</button>
+                    <button style={s.dirBtn(sel.dir === 'Inbound')}  onClick={() => setDir(id, 'Inbound')}>Inbound</button>
+                    <button style={s.dirBtn(sel.dir === 'both')}     onClick={() => setDir(id, 'both')}>Both</button>
+                    <button style={s.dirBtn(sel.dir === 'Outbound')} onClick={() => setDir(id, 'Outbound')}>Outbound</button>
                   </div>
                 )}
               </div>
             )
           })}
         </div>
-        <AggregatePlot histories={histories} hours={hours} selectedCamIds={selectedCamIds} />
+        <AggregatePlot histories={histories} hours={hours} camSel={camSel} camsWithZones={camsWithZones} />
       </div>
 
       {/* RWIS strip */}
