@@ -52,7 +52,7 @@ export default function DashboardPage({ api }) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [enabledCams, setEnabledCams] = useState(
-    Object.fromEntries(CAMS.map(id => [id, id === '952-N' || id === '952-S']))
+    Object.fromEntries(CAMS.map(id => [id, true]))
   )
 
   useEffect(() => {
