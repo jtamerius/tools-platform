@@ -47,7 +47,7 @@ function fmt(v, unit = '') {
 }
 
 export default function DashboardPage({ api }) {
-  const [hours, setHours] = useState(24)
+  const [hours, setHours] = useState(168)
   const [histories, setHistories] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
