@@ -32,17 +32,11 @@ const s = {
   empty: { padding: 40, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 },
   camRow: { display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
   camChip: (enabled) => ({
-    display: 'inline-flex', alignItems: 'center', gap: 4,
+    display: 'inline-flex', alignItems: 'center',
     padding: '3px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 12,
     border: `1px solid ${enabled ? 'var(--accent)' : 'var(--border)'}`,
     background: enabled ? 'rgba(96,165,250,0.12)' : 'var(--surface-2)',
     color: enabled ? 'var(--accent)' : 'var(--text-muted)',
-  }),
-  dirBtn: (active) => ({
-    padding: '2px 6px', borderRadius: 3, fontSize: 11, cursor: 'pointer',
-    border: '1px solid var(--border)',
-    background: active ? 'var(--accent)' : 'transparent',
-    color: active ? '#000' : 'var(--text-muted)',
   }),
 }
 
@@ -57,8 +51,8 @@ export default function DashboardPage({ api }) {
   const [histories, setHistories] = useState({})
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [camSel, setCamSel] = useState(() =>
-    Object.fromEntries(CAMS.map(id => [id, { enabled: id === '952-N' || id === '952-S', dir: 'both' }]))
+  const [enabledCams, setEnabledCams] = useState(
+    Object.fromEntries(CAMS.map(id => [id, id === '952-N' || id === '952-S']))
   )
 
   useEffect(() => {
@@ -78,15 +72,6 @@ export default function DashboardPage({ api }) {
     return () => { cancelled = true }
   }, [hours, api])
 
-  const camsWithZones = useMemo(() => {
-    const s = new Set()
-    Object.entries(histories).forEach(([id, recs]) => {
-      if (recs.some(r => r.vehicle_counts_by_zone && Object.keys(r.vehicle_counts_by_zone).length > 0))
-        s.add(id)
-    })
-    return s
-  }, [histories])
-
   const latest952 = (histories['952-N'] ?? [])[0]
   const rwisFields = [
     { key: 'Visibility', val: fmt(latest952?.rwis_visibility_mi, 'mi') },
@@ -99,9 +84,7 @@ export default function DashboardPage({ api }) {
 
   const hasData = Object.values(histories).some(r => r.length > 0)
   const isPreset = HOUR_OPTIONS.includes(hours)
-
-  const toggleCam = id => setCamSel(prev => ({ ...prev, [id]: { ...prev[id], enabled: !prev[id].enabled } }))
-  const setDir = (id, dir) => setCamSel(prev => ({ ...prev, [id]: { ...prev[id], dir } }))
+  const toggleCam = id => setEnabledCams(prev => ({ ...prev, [id]: !prev[id] }))
 
   return (
     <div style={s.page}>
@@ -138,26 +121,13 @@ export default function DashboardPage({ api }) {
       <div style={s.card}>
         <div style={s.cardTitle}>Aggregated vehicle count</div>
         <div style={s.camRow}>
-          {CAMS.map(id => {
-            const sel = camSel[id]
-            const hasZones = camsWithZones.has(id)
-            return (
-              <div key={id} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <div style={s.camChip(sel.enabled)} onClick={() => toggleCam(id)}>
-                  {id}
-                </div>
-                {sel.enabled && hasZones && (
-                  <div style={{ display: 'flex', gap: 2 }}>
-                    <button style={s.dirBtn(sel.dir === 'Inbound')}  onClick={() => setDir(id, 'Inbound')}>Inbound</button>
-                    <button style={s.dirBtn(sel.dir === 'both')}     onClick={() => setDir(id, 'both')}>Both</button>
-                    <button style={s.dirBtn(sel.dir === 'Outbound')} onClick={() => setDir(id, 'Outbound')}>Outbound</button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {CAMS.map(id => (
+            <div key={id} style={s.camChip(enabledCams[id])} onClick={() => toggleCam(id)}>
+              {id}
+            </div>
+          ))}
         </div>
-        <AggregatePlot histories={histories} hours={hours} camSel={camSel} camsWithZones={camsWithZones} />
+        <AggregatePlot histories={histories} hours={hours} enabledCams={enabledCams} />
       </div>
 
       {/* RWIS strip */}
