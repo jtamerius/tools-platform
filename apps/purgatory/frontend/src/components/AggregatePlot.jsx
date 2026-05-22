@@ -27,10 +27,9 @@ function trailingMA(sorted, windowMs) {
   })
 }
 
-const mtHour = sk => {
-  const s = new Date(sk).toLocaleString('sv', { timeZone: 'America/Denver' })
-  return new Date(s).getHours()
-}
+// Extract MT hour directly from the 'sv' locale string (YYYY-MM-DD HH:MM:SS)
+const mtHour = sk =>
+  parseInt(new Date(sk).toLocaleString('sv', { timeZone: 'America/Denver' }).slice(11, 13), 10)
 
 const pctile = (arr, p) => {
   if (!arr.length) return null
@@ -72,7 +71,7 @@ export default function AggregatePlot({ histories, hours, enabledCams }) {
     const outboundSorted = sorted.map(([sk, v]) => [sk, v.outbound])
     const hasZones = sorted.some(([, v]) => v.hasZones)
 
-    // 25/75th percentile by hour of day (MT) across all loaded data
+    // 25/75th percentile per hour-of-day (MT)
     const buckets = Array.from({ length: 24 }, () => [])
     sorted.forEach(([sk, v]) => buckets[mtHour(sk)].push(v.total))
     const hourlyPctiles = buckets.map(b => ({ p25: pctile(b, 25), p75: pctile(b, 75) }))
@@ -81,16 +80,24 @@ export default function AggregatePlot({ histories, hours, enabledCams }) {
   }, [enabledCams, histories])
 
   const xs = totalSorted.map(([sk]) => toMT(sk))
-
   const traces = []
 
-  // Percentile band — push first so it renders behind the data lines
+  // Percentile band — rendered first so it sits behind data lines
   if (showBand && totalSorted.length) {
     const p25y = totalSorted.map(([sk]) => hourlyPctiles[mtHour(sk)]?.p25 ?? null)
     const p75y = totalSorted.map(([sk]) => hourlyPctiles[mtHour(sk)]?.p75 ?? null)
     traces.push(
-      { x: xs, y: p25y, type: 'scatter', mode: 'lines', line: { color: 'transparent', width: 0 }, showlegend: false, hoverinfo: 'skip', name: 'p25' },
-      { x: xs, y: p75y, type: 'scatter', mode: 'lines', fill: 'tonexty', fillcolor: 'rgba(156,163,175,0.15)', line: { color: 'rgba(156,163,175,0.35)', width: 1, dash: 'dot' }, name: 'Typical 25–75%', hoverinfo: 'skip' },
+      {
+        x: xs, y: p25y, type: 'scatter', mode: 'lines',
+        line: { color: 'rgba(156,163,175,0)', width: 0 },
+        showlegend: false, hoverinfo: 'skip', name: '_p25',
+      },
+      {
+        x: xs, y: p75y, type: 'scatter', mode: 'lines',
+        fill: 'tonexty', fillcolor: 'rgba(156,163,175,0.2)',
+        line: { color: 'rgba(156,163,175,0.4)', width: 1, dash: 'dot' },
+        name: 'Typical 25–75%', hoverinfo: 'skip',
+      },
     )
   }
 
@@ -100,7 +107,7 @@ export default function AggregatePlot({ histories, hours, enabledCams }) {
     if (maHours) traces.push({ name: `Total ${maHours}h MA`, x: xs, y: trailingMA(totalSorted, maHours * 3600e3), type: 'scatter', mode: 'lines', line: { color: '#60a5fa', width: 2, dash: 'dot' } })
   }
 
-  // Inbound / Outbound (zone-enabled cams only)
+  // Inbound / Outbound
   if (hasZones) {
     traces.push({ name: 'Inbound', x: xs, y: inboundSorted.map(([, v]) => v), type: 'scatter', mode: 'lines+markers', marker: { size: 3, color: '#34d399' }, line: { color: '#34d399', width: 1.5 } })
     if (maHours) traces.push({ name: `Inbound ${maHours}h MA`, x: xs, y: trailingMA(inboundSorted, maHours * 3600e3), type: 'scatter', mode: 'lines', line: { color: '#34d399', width: 2, dash: 'dot' } })

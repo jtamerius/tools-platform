@@ -8,6 +8,29 @@ const hourLabel = h => h === 168 ? '1w' : `${h}h`
 
 const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
 
+const STAT_WINDOWS = [
+  { label: '15 min', minutes: 15 },
+  { label: '30 min', minutes: 30 },
+  { label: '1 hr',   minutes: 60 },
+  { label: '2 hr',   minutes: 120 },
+  { label: '3 hr',   minutes: 180 },
+  { label: '24 hr',  minutes: 1440 },
+]
+
+const ordinal = n => {
+  if (n == null) return null
+  const s = ['th', 'st', 'nd', 'rd']
+  const v = n % 100
+  return n + (s[(v - 20) % 10] || s[v] || s[0])
+}
+
+const pctColor = p =>
+  p == null ? 'var(--text-muted)'
+  : p >= 75 ? 'var(--red)'
+  : p >= 50 ? 'var(--amber)'
+  : p >= 25 ? 'var(--green)'
+  : 'var(--accent)'
+
 const s = {
   page: { display: 'flex', flexDirection: 'column', gap: 16 },
   controls: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -38,6 +61,8 @@ const s = {
     background: enabled ? 'rgba(96,165,250,0.12)' : 'var(--surface-2)',
     color: enabled ? 'var(--accent)' : 'var(--text-muted)',
   }),
+  statGrid: { display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12 },
+  statItem: { textAlign: 'center', padding: '8px 4px' },
 }
 
 function fmt(v, unit = '') {
@@ -71,6 +96,42 @@ export default function DashboardPage({ api }) {
     })
     return () => { cancelled = true }
   }, [hours, api])
+
+  // Aggregate per-timestamp totals across selected cams
+  const trafficStats = useMemo(() => {
+    const now = new Date()
+    const byTs = {}
+    Object.entries(enabledCams).forEach(([camId, enabled]) => {
+      if (!enabled) return
+      ;(histories[camId] ?? []).forEach(r => {
+        byTs[r.sk] = (byTs[r.sk] ?? 0) + (r.vehicle_count ?? 0)
+      })
+    })
+    const sorted = Object.entries(byTs).sort(([a], [b]) => a < b ? -1 : 1)
+    if (!sorted.length) return null
+
+    // Prefix sums for O(n) rolling window totals
+    const prefix = [0]
+    sorted.forEach(([, v]) => prefix.push(prefix[prefix.length - 1] + v))
+
+    const rollingPctile = (windowIntervals, currentCount) => {
+      if (sorted.length < windowIntervals) return null
+      const totals = []
+      for (let i = windowIntervals; i <= sorted.length; i++)
+        totals.push(prefix[i] - prefix[i - windowIntervals])
+      const below = totals.filter(t => t <= currentCount).length
+      return Math.round(below / totals.length * 100)
+    }
+
+    return STAT_WINDOWS.map(({ label, minutes }) => {
+      const cutoff = new Date(now.getTime() - minutes * 60 * 1000)
+      const recent = sorted.filter(([sk]) => new Date(sk) >= cutoff)
+      const count = recent.reduce((s, [, v]) => s + v, 0)
+      const intervals = Math.round(minutes / 15)
+      const pct = rollingPctile(intervals, count)
+      return { label, count, pct }
+    })
+  }, [histories, enabledCams])
 
   const latest952 = (histories['952-N'] ?? [])[0]
   const rwisFields = [
@@ -116,6 +177,24 @@ export default function DashboardPage({ api }) {
           <CamMap />
         </div>
       </div>
+
+      {/* Traffic stats card */}
+      {trafficStats && (
+        <div style={s.card}>
+          <div style={s.cardTitle}>Traffic summary — selected cameras</div>
+          <div style={s.statGrid}>
+            {trafficStats.map(({ label, count, pct }) => (
+              <div key={label} style={s.statItem}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>{label}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{count}</div>
+                <div style={{ fontSize: 11, marginTop: 4, color: pctColor(pct), fontWeight: 600 }}>
+                  {pct != null ? `${ordinal(pct)} %ile` : '—'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Aggregated plot */}
       <div style={s.card}>
