@@ -39,7 +39,7 @@ const pctile = (arr, p) => {
   return s[lo] + (s[hi] - s[lo]) * (idx - lo)
 }
 
-export default function AggregatePlot({ histories, hours, enabledCams }) {
+export default function AggregatePlot({ histories, hours, enabledCams, onPointClick }) {
   const [maHours, setMaHours] = useState(null)
   const [showBand, setShowBand] = useState(false)
 
@@ -103,7 +103,7 @@ export default function AggregatePlot({ histories, hours, enabledCams }) {
 
   // Total
   if (totalSorted.length) {
-    traces.push({ name: 'Total', x: xs, y: totalSorted.map(([, v]) => v), type: 'scatter', mode: 'lines+markers', marker: { size: 3, color: '#60a5fa' }, line: { color: '#60a5fa', width: 1.5 } })
+    traces.push({ name: 'Total', x: xs, y: totalSorted.map(([, v]) => v), customdata: totalSorted.map(([sk]) => sk), type: 'scatter', mode: 'lines+markers', marker: { size: 3, color: '#60a5fa' }, line: { color: '#60a5fa', width: 1.5 } })
     if (maHours) traces.push({ name: `Total ${maHours}h MA`, x: xs, y: trailingMA(totalSorted, maHours * 3600e3), type: 'scatter', mode: 'lines', line: { color: '#60a5fa', width: 2, dash: 'dot' } })
   }
 
@@ -140,6 +140,10 @@ export default function AggregatePlot({ histories, hours, enabledCams }) {
 
       <Plot
         data={anyEnabled ? traces : []}
+        onClick={onPointClick ? (data) => {
+          const sk = data.points?.[0]?.customdata
+          if (sk) onPointClick(sk)
+        } : undefined}
         layout={{
           ...BASE,
           height: 280,
