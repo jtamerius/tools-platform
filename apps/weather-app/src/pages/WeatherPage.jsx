@@ -407,6 +407,18 @@ export default function WeatherPage() {
     return data
   }, [])
 
+  const prefetchRuns = useCallback((loc) => {
+    const queue = Array.from({ length: MAX_RUN_OFFSET }, (_, i) => i + 1)
+    const worker = async () => {
+      while (queue.length) {
+        const o = queue.shift()
+        await fetchForecast(loc, runIdAtOffset(o), new AbortController().signal).catch(() => {})
+      }
+    }
+    const CONCURRENCY = 6
+    Promise.all(Array.from({ length: CONCURRENCY }, worker))
+  }, [fetchForecast])
+
   function selectLocation(loc, displayName) {
     if (abortRef.current) abortRef.current.abort()
     const ctrl = new AbortController()
@@ -431,6 +443,7 @@ export default function WeatherPage() {
         setForecast(data)
         setBaselineForecast(data)
         setLoading(false)
+        prefetchRuns(loc)  // warm the run cache so the slider is smooth from the first drag
       })
       .catch(err => {
         if (err.name === 'AbortError') return
@@ -467,14 +480,7 @@ export default function WeatherPage() {
         setLoading(false)
         if (runOffset === 0) {
           setBaselineForecast(data)
-          const queue = Array.from({ length: MAX_RUN_OFFSET }, (_, i) => i + 1)
-          const worker = async () => {
-            while (queue.length) {
-              const o = queue.shift()
-              await fetchForecast(selectedLoc, runIdAtOffset(o), new AbortController().signal).catch(() => {})
-            }
-          }
-          Promise.all([worker(), worker()])
+          prefetchRuns(selectedLoc)
         }
       })
       .catch(err => {
