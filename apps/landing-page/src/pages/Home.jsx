@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import HailstonedCard from '../components/HailstonedCard'
 import WeatherCard from '../components/WeatherCard'
+import PurgatoryCard from '../components/PurgatoryCard'
 
 export default function Home() {
   useEffect(() => {
@@ -14,6 +15,7 @@ export default function Home() {
       <div style={S.grid}>
         <HailstonedCard />
         <WeatherCard />
+        <PurgatoryCard />
       </div>
     </main>
   )

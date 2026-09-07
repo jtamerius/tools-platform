@@ -74,7 +74,7 @@ export default function WeatherCard() {
       {/* Body */}
       <div style={S.body}>
         <div style={S.titleRow}>
-          <h3 style={S.title}>
+          <h3 style={S.title} aria-label="Ensemble Weather">
             Ensemble <em style={{ fontStyle: 'normal', color: '#00c8ff' }}>Weather</em>
           </h3>
           <a className="wx-arrow" href={APP_URL} target="_blank" rel="noopener noreferrer"

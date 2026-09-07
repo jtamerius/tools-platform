@@ -87,7 +87,7 @@ export default function HailstonedCard() {
       {/* Body */}
       <div style={S.body}>
         <div style={S.titleRow}>
-          <h3 style={S.title}>
+          <h3 style={S.title} aria-label="Hailstoned">
             Hail<em style={{ fontStyle: 'normal', color: '#00e87a' }}>stoned</em>
           </h3>
           <a className="hs-arrow" href={APP_URL} target="_blank" rel="noopener noreferrer"
