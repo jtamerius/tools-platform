@@ -19,6 +19,7 @@ export default function Apps() {
         {APPS.map((app) => (
           <AppCard
             key={app.id}
+            id={app.id}
             name={app.name}
             description={app.description}
             url={app.url}

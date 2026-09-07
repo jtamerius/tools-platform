@@ -1,4 +1,5 @@
 const APP_URL = 'https://weather.jtamerius.com'
+const ABOUT_URL = '/#/apps/weather-app'
 
 // Ensemble spaghetti lines: clustered start, fanning out rightward
 const LINES = [
@@ -95,6 +96,11 @@ export default function WeatherCard() {
             <span key={t} style={S.tag}>{t}</span>
           ))}
         </div>
+
+        <a href={ABOUT_URL} className="card-about" data-secondary style={S.aboutLink}
+           onClick={e => e.stopPropagation()}>
+          About this project →
+        </a>
       </div>
     </div>
   )
@@ -229,5 +235,12 @@ const S = {
     border: '1px solid #1e2540',
     borderRadius: '4px',
     background: '#12162a',
+  },
+  aboutLink: {
+    fontSize: '11.5px',
+    letterSpacing: '0.02em',
+    marginTop: '4px',
+    textDecoration: 'none',
+    transition: 'color 0.15s',
   },
 }

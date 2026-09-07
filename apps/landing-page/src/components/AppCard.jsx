@@ -1,8 +1,13 @@
-export default function AppCard({ name, description, url, isPublic, requiredGroup }) {
+import { Link } from 'react-router-dom'
+import { hasAppInfo } from '../config/appInfo'
+
+export default function AppCard({ id, name, description, url, isPublic, requiredGroup }) {
   const badgeLabel = isPublic ? 'Public' : requiredGroup === 'admin' ? 'Admin Only' : 'Members Only'
   const badge = isPublic
     ? { label: badgeLabel, bg: '#e8f5e9', color: '#2e7d32' }
     : { label: badgeLabel, bg: '#fff8e1', color: '#f57f17' }
+
+  const infoAvailable = hasAppInfo(id)
 
   function handleMouseEnter(e) {
     e.currentTarget.style.boxShadow = '0 4px 14px rgba(0,0,0,0.12)'
@@ -12,6 +17,49 @@ export default function AppCard({ name, description, url, isPublic, requiredGrou
   function handleMouseLeave(e) {
     e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'
     e.currentTarget.style.transform = 'translateY(0)'
+  }
+
+  const inner = (
+    <>
+      <div style={styles.headerRow}>
+        <span style={styles.name}>{name}</span>
+        <span style={{ ...styles.badge, background: badge.bg, color: badge.color }}>{badge.label}</span>
+      </div>
+      <p style={styles.desc}>{description}</p>
+      {infoAvailable && (
+        <div style={styles.footerRow}>
+          <span style={styles.more}>How it works →</span>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={styles.launch}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`Launch ${name}`}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#111' }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#8a8a86' }}
+          >
+            Launch ↗
+          </a>
+        </div>
+      )}
+    </>
+  )
+
+  // With an info page, the card leads to the write-up and the corner link launches
+  // the app. Without one, the card behaves as it always did and opens the app.
+  if (infoAvailable) {
+    return (
+      <Link
+        to={`/apps/${id}`}
+        style={styles.card}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        aria-label={`About ${name}`}
+      >
+        {inner}
+      </Link>
+    )
   }
 
   return (
@@ -24,11 +72,7 @@ export default function AppCard({ name, description, url, isPublic, requiredGrou
       onMouseLeave={handleMouseLeave}
       aria-label={`Open ${name}`}
     >
-      <div style={styles.headerRow}>
-        <span style={styles.name}>{name}</span>
-        <span style={{ ...styles.badge, background: badge.bg, color: badge.color }}>{badge.label}</span>
-      </div>
-      <p style={styles.desc}>{description}</p>
+      {inner}
     </a>
   )
 }
@@ -77,5 +121,28 @@ const styles = {
     color: '#555',
     lineHeight: 1.5,
     flexGrow: 1,
+  },
+  footerRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '10px',
+    marginTop: '4px',
+    paddingTop: '12px',
+    borderTop: '1px solid #f0f0ec',
+  },
+  more: {
+    fontSize: '0.78rem',
+    fontWeight: 500,
+    color: '#555',
+  },
+  launch: {
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase',
+    color: '#8a8a86',
+    textDecoration: 'none',
+    transition: 'color 0.12s ease',
   },
 }

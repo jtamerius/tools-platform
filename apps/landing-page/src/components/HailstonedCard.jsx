@@ -111,7 +111,7 @@ export default function HailstonedCard() {
           ))}
         </div>
 
-        <a href={ABOUT_URL} data-secondary style={S.aboutLink}
+        <a href={ABOUT_URL} className="card-about" data-secondary style={S.aboutLink}
            onClick={e => e.stopPropagation()}>
           About this project →
         </a>
@@ -252,7 +252,6 @@ const S = {
   },
   aboutLink: {
     fontSize: '11.5px',
-    color: '#5b6480',
     letterSpacing: '0.02em',
     marginTop: '4px',
     textDecoration: 'none',

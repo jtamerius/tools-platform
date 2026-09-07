@@ -79,3 +79,6 @@ button {
   color: #00c8ff !important;
   transform: translate(2px, -2px);
 }
+
+.card-about { color: #5b6480; }
+.card-about:hover { color: #8b93a8; }

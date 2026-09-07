@@ -2,6 +2,7 @@ import { HashRouter, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import About from './pages/About'
 import Apps from './pages/Apps'
+import AppInfo from './pages/AppInfo'
 
 export default function App() {
   return (
@@ -11,6 +12,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/apps" element={<Apps />} />
+          <Route path="/apps/:id" element={<AppInfo />} />
         </Routes>
       </div>
     </HashRouter>
