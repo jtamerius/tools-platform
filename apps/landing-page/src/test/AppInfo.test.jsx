@@ -37,6 +37,21 @@ describe('AppInfo', () => {
     expect(launch.getAttribute('href')).toContain('http')
   })
 
+  it('links the Hailstoned data sources out to their sources', () => {
+    renderAt('/apps/hailstoned')
+    expect(screen.getByRole('link', { name: 'USPVDB' }).getAttribute('href'))
+      .toContain('usgs.gov')
+    expect(screen.getByRole('link', { name: 'DeepSolar' }).getAttribute('href'))
+      .toContain('stanford.edu')
+  })
+
+  it('never leaks internal bucket or resource names into public copy', () => {
+    const blob = JSON.stringify(APP_INFO)
+    for (const leak of ['s3://', 'jtamerius-', 'execute-api', 'amplifyapp', 'arn:']) {
+      expect(blob).not.toContain(leak)
+    }
+  })
+
   it('renders a not-found page for an unknown id', () => {
     renderAt('/apps/nope')
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('No such app')

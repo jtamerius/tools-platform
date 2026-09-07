@@ -111,3 +111,12 @@ button {
 
 .card-about { color: #5b6480; }
 .card-about:hover { color: #8b93a8; }
+
+.info-link {
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  opacity: 0.85;
+  transition: opacity 0.12s ease;
+}
+.info-link:hover { opacity: 1; }

@@ -3,6 +3,24 @@ import SubtleVoronoiCanvas from '../components/SubtleVoronoiCanvas'
 import BackButton from '../components/BackButton'
 import { APP_INFO, appUrl } from '../config/appInfo'
 
+const LINK_RE = /\[([^\]]+)\]\(([^)]+)\)/g
+
+/** Renders [label](url) spans in content strings as external links. */
+function RichText({ text, accent }) {
+  const parts = []
+  let last = 0
+  for (const m of text.matchAll(LINK_RE)) {
+    if (m.index > last) parts.push(text.slice(last, m.index))
+    parts.push(
+      <a key={m.index} href={m[2]} target="_blank" rel="noopener noreferrer"
+         className="info-link" style={{ color: accent }}>{m[1]}</a>
+    )
+    last = m.index + m[0].length
+  }
+  if (last < text.length) parts.push(text.slice(last))
+  return <>{parts}</>
+}
+
 export default function AppInfo() {
   const { id } = useParams()
   const info = APP_INFO[id]
@@ -63,7 +81,7 @@ export default function AppInfo() {
           <section style={S.section}>
             <h2 style={S.sectionHeading}>Overview</h2>
             {info.summary.map((para, i) => (
-              <p key={i} style={S.body}>{para}</p>
+              <p key={i} style={S.body}><RichText text={para} accent={accent} /></p>
             ))}
           </section>
 
@@ -81,7 +99,7 @@ export default function AppInfo() {
                   <span style={{ ...S.node, borderColor: accent, color: accent }}>{i + 1}</span>
                   <div style={S.stepText}>
                     <span style={S.stepLabel}>{step.label}</span>
-                    <span style={S.stepDetail}>{step.detail}</span>
+                    <span style={S.stepDetail}><RichText text={step.detail} accent={accent} /></span>
                   </div>
                 </li>
               ))}
@@ -109,7 +127,7 @@ export default function AppInfo() {
               {info.facts.map(({ label, value }) => (
                 <div key={label} style={S.fact}>
                   <span style={S.factLabel}>{label}</span>
-                  <span style={S.factValue}>{value}</span>
+                  <span style={S.factValue}><RichText text={value} accent={accent} /></span>
                 </div>
               ))}
             </div>

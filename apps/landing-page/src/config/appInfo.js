@@ -3,6 +3,9 @@ import { APPS } from './apps'
 /**
  * Long-form info for each app on the platform — the content behind /#/apps/:id.
  *
+ * Prose fields (summary, pipeline detail, fact value) accept [label](url) spans,
+ * rendered as external links by AppInfo.
+ *
  * `id` matches the registry id in shared/config/src/apps.js where one exists.
  * Hailstoned is showcased on the home page but is not a Cognito-gated platform
  * app, so it carries its own `url` and `access` here.
@@ -36,9 +39,9 @@ export const APP_INFO = {
       'the forecast is genuinely uncertain.',
     ],
     pipeline: [
-      { label: 'Collector Lambda', detail: 'jtamerius-weather-collector (Python 3.12) fires twice daily at 00 and 12 UTC, pulling the latest model runs.' },
-      { label: 'S3 + CloudFront', detail: 'Runs are written as JSON to s3://jtamerius/ and served through a CloudFront distribution with a CORS-with-preflight policy.' },
-      { label: 'Manifest fetch', detail: 'The frontend reads locations/manifest.json to discover available sites, then pulls forecasts/{lat}_{lon}/{run_id}.json on demand.' },
+      { label: 'Collector Lambda', detail: 'A scheduled Python Lambda fires twice daily at 00 and 12 UTC, pulling the latest model runs.' },
+      { label: 'S3 + CloudFront', detail: 'Runs are written as JSON to S3 and served through a CloudFront distribution.' },
+      { label: 'Manifest fetch', detail: 'The frontend reads a manifest to discover available sites, then pulls each forecast run on demand.' },
       { label: 'Native React charts', detail: 'react-plotly.js renders the per-model variable charts and event windows directly — no iframe, no server-rendered images.' },
     ],
     stack: ['React · Vite', 'Plotly', 'Lambda · Python', 'S3 · CloudFront', 'Amplify'],
@@ -61,17 +64,19 @@ export const APP_INFO = {
       'Hail is the dominant weather risk to solar hardware, and the historical record that would let ' +
       'you quantify it is buried in terabytes of radar output. Hailstoned distills months of NOAA MRMS ' +
       'radar history into an H3 hexagon grid and joins it against the locations of actual solar assets.',
-      'Two views share the same hail surface: Commercial maps utility-scale facilities from the USPVDB, ' +
-      'and Home Solar uses DeepSolar residential estimates. Pan and zoom anywhere in the continental US ' +
-      'and the exposure statistics recompute for whatever is in the viewport.',
+      'Two views share the same hail surface: Commercial maps utility-scale facilities from the ' +
+      '[USPVDB](https://www.usgs.gov/centers/geology-energy-and-minerals-science-center/science/solar-energy), ' +
+      'and Home Solar uses [DeepSolar](https://web.stanford.edu/group/deepsolar/ds) residential estimates. ' +
+      'Pan and zoom anywhere in the continental US and the exposure statistics recompute for whatever ' +
+      'is in the viewport.',
       'This one is a portfolio piece rather than a live service — it runs on a fixed historical backfill ' +
       'with no ongoing ingestion, and deploys as a static site to keep its running cost near zero.',
     ],
     pipeline: [
-      { label: 'MRMS radar', detail: 'MESH_Max_30min GRIB2 is streamed straight out of the public noaa-mrms-pds S3 bucket — the raw grids are never persisted locally.' },
+      { label: 'MRMS radar', detail: 'MESH_Max_30min GRIB2 is streamed straight from NOAA’s public MRMS archive — the raw grids are never persisted locally.' },
       { label: 'H3 snapping', detail: 'Hail pixels are snapped to H3 resolution-8 cells, keeping the maximum MESH value observed in each cell.' },
       { label: 'Asset join', detail: 'Precomputed building footprints, USPVDB facilities, and DeepSolar residential estimates are joined per cell into an exposure count.' },
-      { label: 'Nightly Batch job', detail: 'run_conus_day.py executes the whole chain on AWS Batch, writing one compressed CONUS file plus a state aggregation per event day.' },
+      { label: 'Nightly Batch job', detail: 'The whole chain runs on AWS Batch, writing one compressed CONUS file plus a state aggregation per event day.' },
       { label: 'API + Deck.gl', detail: 'An HTTP API serves merged events in weekly chunks; the frontend renders them as an H3HexagonLayer with capacity-scaled facility dots on top.' },
     ],
     stack: ['React', 'Deck.gl · Mapbox', 'H3', 'AWS Batch', 'Lambda · API Gateway', 'Parquet · S3'],
