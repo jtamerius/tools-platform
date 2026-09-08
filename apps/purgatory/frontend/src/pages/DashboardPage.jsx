@@ -1,11 +1,36 @@
 import { useEffect, useMemo, useState } from 'react'
 import MultiCamPlot from '../components/MultiCamPlot'
 import AggregatePlot from '../components/AggregatePlot'
+import HourlyAveragePlot from '../components/HourlyAveragePlot'
 import CamMap from '../components/CamMap'
 import SnapshotPanel from '../components/SnapshotPanel'
 
 const HOUR_OPTIONS = [1, 6, 24, 48, 168]
+const MAX_HOURS = 168 // the API caps /api/history here; longer ranges come from /api/series
+const STALE_MS = 20 * 60 * 1000 // two missed 15-min ticks
+const MIN_COHORT_N = 8 // matches the floor flagging.py already uses
 const hourLabel = h => h === 168 ? '1w' : `${h}h`
+const rangeLabel = h => `${h}h`
+
+/**
+ * Rank a value within its cohort, as a mid-rank percentile.
+ *
+ * Counting `sample <= current` puts a zero above every other zero, and 86% of
+ * frames on 952-N are zeros — so an empty road scored ~87th percentile and
+ * rendered as red "High". Splitting ties gives a zero among all zeros ~50th,
+ * which is what "typical for this hour" should mean.
+ *
+ * Returns null below MIN_COHORT_N: with n=2 the only answers are 50 and 100.
+ */
+const cohortRank = (current, samples) => {
+  if (!samples || samples.length < MIN_COHORT_N) return null
+  let below = 0, equal = 0
+  for (const s of samples) {
+    if (s < current) below++
+    else if (s === current) equal++
+  }
+  return Math.round((below + equal / 2) / samples.length * 100)
+}
 
 const CAMS = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
 
@@ -149,8 +174,10 @@ export default function DashboardPage({ api }) {
       const prefix = [0]
       recs.forEach(r => prefix.push(prefix[prefix.length - 1] + (r.vehicle_count ?? 0)))
 
-      // Current 15-min count
+      // Current 15-min count. A camera that has stopped reporting must not
+      // score as "0 vehicles" — that is indistinguishable from an empty road.
       const recent = recs.filter(r => new Date(r.sk) >= cutoff15)
+      if (!recent.length) return
       const currentCount = recent.reduce((s, r) => s + (r.vehicle_count ?? 0), 0)
 
       // Same-hour windows of 15-min in historical data
@@ -163,10 +190,8 @@ export default function DashboardPage({ api }) {
         }
       }
 
-      if (sameHourTotals.length >= 2) {
-        const below = sameHourTotals.filter(t => t <= currentCount).length
-        result[camId] = Math.round(below / sameHourTotals.length * 100)
-      }
+      const pct = cohortRank(currentCount, sameHourTotals)
+      if (pct != null) result[camId] = pct
     })
     return result
   }, [histories])
@@ -215,13 +240,22 @@ export default function DashboardPage({ api }) {
   }, [histories, enabledCams])
 
   const latest952 = (histories['952-N'] ?? [])[0]
+  // RWIS rides on the 952-N partner record. COTRIP retired the GraphQL API
+  // that fed it on 2026-08-12, so the fields simply stop appearing — without
+  // this the strip renders a full row of em-dashes and looks like a UI bug.
+  const latestRwis = (histories['952-N'] ?? []).find(
+    r => r.rwis_temp_air_f != null || r.rwis_visibility_mi != null
+  )
+  const rwisAgeMs = latestRwis ? Date.now() - new Date(latestRwis.sk).getTime() : null
+  const rwisStale = rwisAgeMs == null || rwisAgeMs > STALE_MS
+  const rwisSource = latestRwis ?? latest952
   const rwisFields = [
-    { key: 'Visibility', val: fmt(latest952?.rwis_visibility_mi, 'mi') },
-    { key: 'Pavement',   val: fmt(latest952?.rwis_pavement_status) },
-    { key: 'Air temp',   val: fmt(latest952?.rwis_temp_air_f, '°F') },
-    { key: 'Precip',     val: fmt(latest952?.rwis_precip_situation) },
-    { key: 'Wind avg',   val: fmt(latest952?.rwis_wind_avg_mph, 'mph') },
-    { key: 'Wind max',   val: fmt(latest952?.rwis_wind_max_mph, 'mph') },
+    { key: 'Visibility', val: fmt(rwisSource?.rwis_visibility_mi, 'mi') },
+    { key: 'Pavement',   val: fmt(rwisSource?.rwis_pavement_status) },
+    { key: 'Air temp',   val: fmt(rwisSource?.rwis_temp_air_f, '°F') },
+    { key: 'Precip',     val: fmt(rwisSource?.rwis_precip_situation) },
+    { key: 'Wind avg',   val: fmt(rwisSource?.rwis_wind_avg_mph, 'mph') },
+    { key: 'Wind max',   val: fmt(rwisSource?.rwis_wind_max_mph, 'mph') },
   ]
 
   const hasData = Object.values(histories).some(r => r.length > 0)
@@ -239,8 +273,11 @@ export default function DashboardPage({ api }) {
             {hourLabel(h)}
           </button>
         ))}
-        <button style={s.plusBtn} onClick={() => setHours(h => h + 12)}>+12h</button>
+        <button style={s.plusBtn} onClick={() => setHours(h => Math.min(h + 12, MAX_HOURS))}>+12h</button>
         {!isPreset && <span style={s.label}>({hours}h)</span>}
+        <span style={{ ...s.label, color: 'var(--text-faint)' }}>
+          longer ranges use the aggregate series below
+        </span>
         {loading && <span style={{ ...s.label, marginLeft: 8 }}>Loading…</span>}
         {error && <span style={{ color: 'var(--red)', fontSize: 13 }}>Error: {error}</span>}
       </div>
@@ -274,19 +311,23 @@ export default function DashboardPage({ api }) {
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 12 }}>
             <div style={s.cardTitle}>Traffic summary — selected cameras</div>
             <div style={{ fontSize: 11, color: 'var(--text-faint)' }}>
-              vs same hour of day · {hours}h window
+              vs same hour of day · {rangeLabel(hours)} window
             </div>
           </div>
           <div style={s.statGrid}>
-            {trafficStats.map(({ label, count, pct, n }) => (
+            {trafficStats.map(({ label, count, pct, n, stale }) => (
               <div key={label} style={s.statItem}>
                 <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 6 }}>{label}</div>
-                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>{count}</div>
+                <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--text)', lineHeight: 1 }}>
+                  {stale ? '—' : count}
+                </div>
                 <div style={{ fontSize: 12, marginTop: 5, color: pctColor(pct), fontWeight: 600 }}>
-                  {pct != null ? pctLabel(pct) : '—'}
+                  {stale ? 'no data' : pct != null ? pctLabel(pct) : '—'}
                 </div>
                 <div style={{ fontSize: 10, marginTop: 2, color: 'var(--text-faint)' }}>
-                  {pct != null ? `${ordinal(pct)} %ile` : n < 2 ? 'need more data' : ''}
+                  {stale ? 'camera not reporting'
+                    : pct != null ? `${ordinal(pct)} %ile · n=${n}`
+                    : `n=${n}, need ${MIN_COHORT_N}`}
                 </div>
               </div>
             ))}
@@ -312,6 +353,12 @@ export default function DashboardPage({ api }) {
         />
       </div>
 
+      {/* All-time hourly averages */}
+      <div style={s.card}>
+        <div style={s.cardTitle}>Average vehicle count by hour of day — all time</div>
+        <HourlyAveragePlot api={api} enabledCams={enabledCams} />
+      </div>
+
       {/* Per-camera plot */}
       <div style={s.card}>
         <div style={s.cardTitle}>Vehicle counts — per camera</div>
@@ -323,13 +370,17 @@ export default function DashboardPage({ api }) {
       {/* RWIS strip */}
       <div>
         <div style={{ ...s.label, marginBottom: 8 }}>
-          Current conditions — RWIS station 374
-          {latest952 && (
-            <span style={{ marginLeft: 8, color: 'var(--text-faint)' }}>
-              ({new Date(latest952.sk).toLocaleString('en-US', {
+          {rwisStale ? 'Last known conditions' : 'Current conditions'} — RWIS station 374
+          {latestRwis ? (
+            <span style={{ marginLeft: 8, color: rwisStale ? 'var(--amber)' : 'var(--text-faint)' }}>
+              ({new Date(latestRwis.sk).toLocaleString('en-US', {
                 timeZone: 'America/Denver', month: 'short', day: 'numeric',
                 hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
-              })})
+              })}{rwisStale && ` — stale, ${Math.floor(rwisAgeMs / 3600000)}h old`})
+            </span>
+          ) : (
+            <span style={{ marginLeft: 8, color: 'var(--amber)' }}>
+              — no RWIS data in this window (upstream feed offline since 2026-08-12)
             </span>
           )}
         </div>

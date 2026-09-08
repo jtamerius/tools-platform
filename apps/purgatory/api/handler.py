@@ -5,7 +5,8 @@ Routes (public — no authorizer; see note below):
   GET    /api/search?cam_id=&start=&end=&...   → filtered search
   GET    /api/image?pk=&sk=                    → presigned S3 URL
   GET    /api/neighbors?sk=                    → same-timestamp records for other cams
-  GET    /api/history?cam_id=&hours=24         → last N hours for a cam
+  GET    /api/history?cam_id=&hours=24         → last N hours for a cam (capped at 168h)
+  GET    /api/series?scale=&start=&end=&cams=  → pre-aggregated cells from the rollup table
   POST   /api/decisions                        → record a manual decision
   GET    /api/cam-config?cam_id=               → fetch cam config (includes zones)
   PUT    /api/cam-config                       → update cam zones
@@ -34,6 +35,7 @@ logger.setLevel(logging.INFO)
 INGEST_TABLE = os.environ["INGEST_TABLE"]
 RESORT_TABLE = os.environ.get("RESORT_TABLE")
 CAM_CONFIG_TABLE = os.environ["CAM_CONFIG_TABLE"]
+ROLLUP_TABLE = os.environ.get("ROLLUP_TABLE")
 S3_BUCKET = os.environ["S3_BUCKET"]
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*")
 
@@ -182,11 +184,18 @@ def _neighbors(params):
     return {"records": out}
 
 
+MAX_HISTORY_HOURS = 168
+
+
 def _history(params):
     cam_id = params.get("cam_id")
     if not cam_id:
         return {"error": "cam_id required"}, 400
-    hours = int(params.get("hours", "24"))
+    # Hard cap. This route paginates a full camera partition with no limit, so
+    # hours=87600 fanned out across 10 cameras pulled the entire ~82 MB table
+    # into the browser on every dashboard load. Anything longer than a week is
+    # a job for /api/series.
+    hours = min(int(params.get("hours", "24")), MAX_HISTORY_HOURS)
     end = datetime.now(tz=timezone.utc)
     start = end - timedelta(hours=hours)
     table = _ddb.Table(INGEST_TABLE)
@@ -204,6 +213,134 @@ def _history(params):
             break
         kwargs["ExclusiveStartKey"] = lek
     return {"records": items}
+
+
+# ── Aggregate series (rollup table) ─────────────────────────────────────────
+
+DEFAULT_SCALE = "day"
+
+
+def _cell_view(item: dict) -> dict:
+    """Project a stored cell into what a chart needs.
+
+    Means are recomputed from the stored sufficient statistics rather than read
+    back from a stored average, so a merged cell and a rebuilt one agree.
+    """
+    n = int(item.get("n") or 0)
+    n_expected = int(item.get("n_expected") or 0)
+    sum_y = float(item.get("sum_y") or 0)
+    sum_y2 = float(item.get("sum_y2") or 0)
+    out = {
+        "sk": item.get("sk"),
+        "cam_id": item.get("cam_id"),
+        "date": item.get("date"),
+        "n": n,
+        "n_expected": n_expected,
+        "n_unusable": int(item.get("n_unusable") or 0),
+        "n_zero": int(item.get("n_zero") or 0),
+        "season": item.get("season"),
+        "epoch": item.get("epoch"),
+        "epoch_mixed": bool(item.get("epoch_mixed")),
+        # Coverage is what tells a reader whether a low number means a quiet
+        # road or a camera that stopped reporting.
+        "coverage": round(n / n_expected, 4) if n_expected else None,
+    }
+    if item.get("hour") is not None:
+        out["hour"] = int(item["hour"])
+    if item.get("dow") is not None:
+        out["dow"] = int(item["dow"])
+        out["dow_name"] = item.get("dow_name")
+    if n:
+        mean = sum_y / n
+        out["mean"] = round(mean, 4)
+        # Population variance from sufficient statistics.
+        out["sd"] = round(max(0.0, sum_y2 / n - mean * mean) ** 0.5, 4)
+    inbound = float(item.get("sum_inbound") or 0)
+    outbound = float(item.get("sum_outbound") or 0)
+    if inbound or outbound:
+        out["direction_share"] = round(inbound / (inbound + outbound), 4)
+    for name in ("conf", "brightness", "edge_density", "solar_alt"):
+        total, count = item.get(f"sum_{name}"), item.get(f"n_{name}")
+        if total is not None and count:
+            out[f"mean_{name}"] = round(float(total) / int(count), 4)
+    return out
+
+
+def _median(values: list[float]):
+    if not values:
+        return None
+    vs = sorted(values)
+    mid = len(vs) // 2
+    return vs[mid] if len(vs) % 2 else (vs[mid - 1] + vs[mid]) / 2
+
+
+def _series(params):
+    """Pre-aggregated cells, per camera plus a corridor summary.
+
+    The corridor value is the MEDIAN of per-camera means, never a sum. A sum is
+    dominated by whichever cameras happen to see the most road, and a camera
+    losing its view reads as a corridor-wide decline — which is exactly how a
+    76% collapse at one camera was previously reported as an 18% seasonal drop.
+    """
+    if not ROLLUP_TABLE:
+        return {"error": "rollup table not configured"}, 503
+
+    scale = params.get("scale", DEFAULT_SCALE)
+    if scale not in ("hour", "day"):
+        return {"error": "scale must be hour or day"}, 400
+    start = params.get("start")
+    end = params.get("end")
+    if not (start and end):
+        return {"error": "start and end are required (YYYY-MM-DD)"}, 400
+    cams = [c for c in (params.get("cams") or "").split(",") if c]
+    if not cams:
+        cfg = _ddb.Table(CAM_CONFIG_TABLE).scan(
+            FilterExpression="active = :a AND cam_type = :t",
+            ExpressionAttributeValues={":a": True, ":t": "traffic"},
+            ProjectionExpression="cam_id",
+        )
+        cams = sorted(i["cam_id"] for i in cfg.get("Items", []))
+
+    prefix = "AGG#HOUR#" if scale == "hour" else "AGG#DAY#"
+    lo = f"{start}T00" if scale == "hour" else start
+    hi = f"{end}T23" if scale == "hour" else end
+
+    table = _ddb.Table(ROLLUP_TABLE)
+    by_cam: dict[str, list] = {}
+    for cam_id in cams:
+        items, kwargs = [], {
+            "KeyConditionExpression": Key("pk").eq(f"{prefix}{cam_id}") & Key("sk").between(lo, hi),
+        }
+        while True:
+            r = table.query(**kwargs)
+            items.extend(r.get("Items", []))
+            lek = r.get("LastEvaluatedKey")
+            if not lek:
+                break
+            kwargs["ExclusiveStartKey"] = lek
+        by_cam[cam_id] = [_cell_view(i) for i in sorted(items, key=lambda x: x["sk"])]
+
+    # Corridor summary keyed by bucket, naming who contributed to each point.
+    buckets: dict[str, list] = {}
+    for cam_id, cells in by_cam.items():
+        for c in cells:
+            buckets.setdefault(c["sk"], []).append((cam_id, c))
+    corridor = []
+    for sk in sorted(buckets):
+        contributors = [(cam, c) for cam, c in buckets[sk] if c.get("mean") is not None]
+        means = [c["mean"] for _, c in contributors]
+        corridor.append({
+            "sk": sk,
+            "median": round(_median(means), 4) if means else None,
+            "n_cams": len(contributors),
+            "cams": sorted(cam for cam, _ in contributors),
+            "coverage": round(_median([c["coverage"] for _, c in contributors
+                                       if c.get("coverage") is not None]) or 0, 4)
+            if contributors else None,
+        })
+
+    return {"scale": scale, "start": start, "end": end,
+            "cams": cams, "by_cam": by_cam, "corridor": corridor}
 
 
 def _decision(body):
@@ -608,6 +745,9 @@ def handler(event, context):
             return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
         if path == "/api/history":
             r = _history(params)
+            return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
+        if path == "/api/series":
+            r = _series(params)
             return _resp(r[1] if isinstance(r, tuple) else 200, r[0] if isinstance(r, tuple) else r, origin)
         if path == "/api/decisions" and method == "POST":
             body = json.loads(event.get("body") or "{}")

@@ -163,6 +163,7 @@ jobs:
               - 'infra/cdk/lib/stacks/purgatory-stack.ts'
               - 'apps/purgatory/ingest/src/**'
               - 'apps/purgatory/scrape/src/**'
+              - 'apps/purgatory/rollup/**'
               - 'apps/purgatory/api/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'

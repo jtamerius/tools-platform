@@ -40,12 +40,21 @@ EventBridge (rate 15 min) → IngestFunction (container Lambda, fan-out)
 EventBridge (rate 15 min) → ScrapeFunction (Python zip Lambda)
   └─ BeautifulSoup scrape of purgatoryresort.com → ResortTable
 
+EventBridge (rate 15 min + nightly cron) → RollupFunction (Python zip Lambda)
+  └─ collapses ingest records into mergeable cells → RollupTable
+       AGG#HOUR#{cam}/{date}T{HH}   sufficient statistics per MT hour
+       AGG#DAY#{cam}/{date}         same, day-rolled from the hour cells
+       DOW#{cam}#{dow}/{date}       pointer rows — "all Tuesdays" is one query
+     incremental = trailing 2h; nightly = trailing 30d (catches late review
+     decisions, which flip `unusable` on old records)
+
 API Gateway HTTP v2 (Cognito JWT, admin group) → ApiFunction (Python zip Lambda):
   GET    /api/queue                  flagged records needing review
   GET    /api/search                 decision/source/visibility/confidence filters
   GET    /api/image?pk=&sk=          presigned S3 URL (600s TTL)
   GET    /api/neighbors?sk=          same-timestamp records across other cams
-  GET    /api/history?cam_id=&hours= last N hours for a cam
+  GET    /api/history?cam_id=&hours= last N hours for a cam (HARD CAP 168h)
+  GET    /api/series?scale=&start=&end=&cams=  aggregate cells (hour|day) + corridor median
   POST   /api/decisions              reviewer keep/unusable/follow_up
   GET    /api/cam-config?cam_id=     fetch cam config (includes zones)
   PUT    /api/cam-config             update cam zones
@@ -143,19 +152,27 @@ infra/cdk/lib/stacks/purgatory-stack.ts   CDK stack (S3, DDB, ECR-referenced, La
 | DynamoDB: cam config | `tools-purgatory-cam-config-{env}` |
 | DynamoDB: resort conditions | `tools-purgatory-resort-{env}` |
 | DynamoDB: agent counter | `tools-purgatory-agent-counter-{env}` |
+| DynamoDB: rollup cells | `tools-purgatory-rollup-{env}` (separate table — see note) |
 | ECR repo | `tools-purgatory-ingest-{env}` (managed by CI bootstrap, not CDK) |
 | Lambda: ingest (container) | `tools-purgatory-ingest-{env}` (3GB, 60s, self-invoke fan-out) |
 | Lambda: scrape | `tools-purgatory-scrape-{env}` (512MB, 60s) |
 | Lambda: review API | `tools-purgatory-api-{env}` (512MB, 30s) |
+| Lambda: rollup | `tools-purgatory-rollup-{env}` (512MB, 5min, stdlib only) |
 | EventBridge: ingest schedule | `tools-purgatory-ingest-{env}` (rate 15 min) |
 | EventBridge: scrape schedule | `tools-purgatory-scrape-{env}` (rate 15 min) |
+| EventBridge: rollup incremental | `tools-purgatory-rollup-incremental-{env}` (rate 15 min) |
+| EventBridge: rollup nightly | `tools-purgatory-rollup-nightly-{env}` (cron 09:15 UTC) |
 | API Gateway HTTP v2 | `tools-purgatory-api-{env}` (Cognito JWT authorizer) |
 | Amplify app (production) | `d1vk0hg4hd7cnv` — branch `main`, domain `purg.jtamerius.com` |
 | CDK stack — backend | `tools-app-purgatory-{env}` |
 | CDK stack — hosting | `tools-shared-amplify-purgatory-{env}` |
 
 SSM parameters (all under `/tools/{env}/purgatory/`):
-`api-url`, `raw-bucket`, `ingest-table`, `cam-config-table`, `resort-table`, `ingest-ecr-uri`
+`api-url`, `raw-bucket`, `ingest-table`, `cam-config-table`, `resort-table`, `rollup-table`, `ingest-ecr-uri`
+
+> **Why the rollup lives in its own table:** `_queue` uses `scan(FilterExpression=..., Limit=100)`
+> and DynamoDB applies `Limit` *before* the filter. ~28k aggregate rows in the ingest table would
+> halve the review queue's yield immediately and keep degrading as history grows.
 
 > **No `anthropic-api-key` SSM param** — the agent uses Bedrock (`bedrock:InvokeModel` IAM permission on the Lambda role).
 
@@ -179,8 +196,11 @@ SSM parameters (all under `/tools/{env}/purgatory/`):
 
 One model trained on labeled images from all cameras. No per-camera models.
 
-- **Current version**: v1 — mAP50 0.815, trained on 95 images (2026-05-17)
-- **S3 location**: `models/shared/v1/model.pt`
+- **Current version**: v5 — mAP50 0.932 (P 0.910 / R 0.880), 1320 images, 10 cams (2026-05-20)
+- **S3 location**: `models/shared/v5/model.pt`
+- **Epoch history**: v1 → v5 all activated 2026-05-17 to 2026-05-20. Every record from
+  `2026-05-20T13:30Z` onward is v5, so anything after that date is directly comparable and needs
+  no cross-detector calibration. Analyses should start there, not at first ingest (2026-05-16).
 - To retrain: see `/model-retrain-purgatory` skill
 
 The ingest handler loads the active shared model at startup via `_resolve_model_key()`. Falls back to the baked-in `yolov8n.pt` if no active model is found in S3.
@@ -210,6 +230,16 @@ AWS_PROFILE=jtam python apps/purgatory/scripts/seed_cam_config.py production
 ```
 
 Idempotent. Bump `roi_version` in the seed JSON when zone polygons change so flagging.py re-evaluates.
+
+### Backfill the rollup cell layer
+
+```bash
+AWS_PROFILE=jtam python apps/purgatory/scripts/backfill_rollup.py production --dry-run
+AWS_PROFILE=jtam python apps/purgatory/scripts/backfill_rollup.py production
+```
+
+Invokes the deployed rollup Lambda in 15-day chunks. Idempotent — safe to re-run. Defaults to
+starting at `2026-05-20` (the v5 detector boundary).
 
 ### Manually trigger an ingest
 
@@ -291,6 +321,35 @@ GitHub Actions paths-filter triggers (prod = `main`, staging = `staging`):
 | COTRIP RWIS | `https://www.cotrip.org/api/graphql` (`WEATHER_STATION_QUERY`) | Station `374`; field map in `cotrip.py` |
 | Image fetch | per-cam `image_url` from cam config | Direct HTTPS GET, no auth |
 | Purgatory resort | `https://www.purgatoryresort.com` | Scraped via BeautifulSoup; selectors are placeholders pending live page audit |
+
+## Known Issues
+
+### RWIS feed offline since 2026-08-12 ⚠️
+
+COTRIP retired `https://www.cotrip.org/api/graphql`. The endpoint now answers with the SPA's
+HTML shell, so `fetch_rwis` fails JSON decoding and every record since carries no `rwis_*`
+fields. The last good reading was `2026-08-12T02:15Z`.
+
+- `fetch_image_captured_at` is **unaffected** — it reads the image's `Last-Modified` header, not
+  GraphQL. Only RWIS is broken.
+- The new platform is REST under `https://api-511x-co.carsprogram.org` (see
+  `https://511.cotrip.org/configs/main.json` → `apis.tg`). `nearbyWeatherStation` no longer
+  appears anywhere in cotrip.org's JS bundle, so the field-level shape has changed too.
+- Blind path probing hits a catch-all `{"healthy":true}` responder. Finding the replacement
+  needs the browser devtools network tab on cotrip.org with a weather station open.
+- The ingest now logs this at ERROR (was WARNING, which is why it went unnoticed for four weeks),
+  and the dashboard labels the conditions strip stale rather than rendering em-dashes.
+
+### Camera view changes, mid-July 2026 ⚠️
+
+`3291-E` lost ~76% of its counts between the weeks of 2026-07-06 and 2026-07-13 (weekly daytime
+mean 7.46 → 0.64) and never recovered. `3285-N` stepped down at the same time. On both, YOLO
+confidence and image brightness are unchanged and `roi_version` never moved — the frame content
+changed, not the model. Compare `raw/3291-E/2026-07-06*` against `raw/3291-E/2026-07-20*`.
+
+This is why the corridor statistic is a **median of per-camera means, never a sum**: the naive sum
+reported an 18.5% June→August corridor decline that was almost entirely this one camera. The
+median puts it at ~4%.
 
 ## Open Work
 

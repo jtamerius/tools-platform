@@ -1,0 +1,4 @@
+# Rollup Lambda runs on stdlib + the boto3 baked into the Python 3.12 runtime.
+# Deliberately empty: the CDK bundler's local tryBundle hook runs `pip install -t`
+# on the build host, so any binary wheel (numpy, scipy, pandas) would ship
+# darwin/arm64 objects into an x86_64 Lambda and fail at import.

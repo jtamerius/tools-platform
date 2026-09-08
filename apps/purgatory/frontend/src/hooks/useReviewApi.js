@@ -35,8 +35,50 @@ export function useReviewApi() {
         const data = await req(`/api/neighbors?${q}`)
         return data.records ?? []
       },
+      // The API caps history at 168h. Anything longer is a job for
+      // fetchSeries, which reads pre-aggregated cells instead of raw records.
+      fetchSeries: async ({ scale = 'day', start, end, cams } = {}) => {
+        const q = new URLSearchParams({ scale, start, end })
+        if (cams && cams.length) q.set('cams', cams.join(','))
+        return req(`/api/series?${q}`)
+      },
+
+      // Split a long range into ~30-day requests. An all-history hour-scale
+      // pull is ~28k cells, which would blow API Gateway's 6 MB response cap
+      // in one shot; the same chunking pattern the solarhail frontend uses.
+      fetchSeriesChunked: async ({ scale = 'hour', start, end, cams, chunkDays = 30 } = {}) => {
+        const ranges = []
+        const last = new Date(`${end}T00:00:00Z`)
+        let cursor = new Date(`${start}T00:00:00Z`)
+        while (cursor <= last) {
+          const chunkEnd = new Date(cursor)
+          chunkEnd.setUTCDate(chunkEnd.getUTCDate() + chunkDays - 1)
+          ranges.push([
+            cursor.toISOString().slice(0, 10),
+            (chunkEnd > last ? last : chunkEnd).toISOString().slice(0, 10),
+          ])
+          cursor = new Date(chunkEnd)
+          cursor.setUTCDate(cursor.getUTCDate() + 1)
+        }
+        const parts = await Promise.all(ranges.map(([s0, e0]) => {
+          const q = new URLSearchParams({ scale, start: s0, end: e0 })
+          if (cams && cams.length) q.set('cams', cams.join(','))
+          return req(`/api/series?${q}`)
+        }))
+        const by_cam = {}
+        const corridor = []
+        for (const part of parts) {
+          for (const [cam, cells] of Object.entries(part.by_cam ?? {})) {
+            (by_cam[cam] ??= []).push(...cells)
+          }
+          corridor.push(...(part.corridor ?? []))
+        }
+        corridor.sort((a, b) => (a.sk < b.sk ? -1 : 1))
+        return { scale, start, end, by_cam, corridor }
+      },
+
       fetchHistory: async (camId, hours = 24) => {
-        const q = new URLSearchParams({ cam_id: camId, hours: String(hours) })
+        const q = new URLSearchParams({ cam_id: camId, hours: String(Math.min(hours, 168)) })
         const data = await req(`/api/history?${q}`)
         return data.records ?? []
       },
@@ -44,7 +86,7 @@ export function useReviewApi() {
         const cams = ['952-N', '952-S', '957-N', '957-S', '1053-N', '3285-N', '3287-N', '3288-N', '3289-S', '3291-E']
         const results = await Promise.allSettled(
           cams.map(id =>
-            req(`/api/history?${new URLSearchParams({ cam_id: id, hours: String(hours) })}`)
+            req(`/api/history?${new URLSearchParams({ cam_id: id, hours: String(Math.min(hours, 168)) })}`)
               .then(d => [id, d.records ?? []])
           )
         )
