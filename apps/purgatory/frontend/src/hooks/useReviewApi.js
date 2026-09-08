@@ -2,15 +2,13 @@ import { useMemo } from 'react'
 
 const API_URL = import.meta.env.VITE_API_URL ?? ''
 
-export function useReviewApi(getAccessToken) {
+export function useReviewApi() {
   return useMemo(() => {
     const req = async (path, opts = {}) => {
-      const token = await getAccessToken()
       const res = await fetch(`${API_URL}${path}`, {
         ...opts,
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
           ...(opts.headers || {}),
         },
       })
@@ -113,5 +111,5 @@ export function useReviewApi(getAccessToken) {
         return req(`/api/export-labels?${q}`)
       },
     }
-  }, [getAccessToken])
+  }, [])
 }

@@ -26,7 +26,7 @@ export interface PurgatoryStackProps extends cdk.StackProps {
  *  - ECR repo for the YOLO ingest container image
  *  - Lambda (container): ingest — fan-out trigger per cam every 15 min
  *  - Lambda (zip): resort scrape every 15 min
- *  - Lambda (zip): review-UI API behind API GW + Cognito JWT
+ *  - Lambda (zip): review-UI API behind API GW (public, no authorizer)
  */
 export class PurgatoryStack extends cdk.Stack {
   public readonly apiUrl: string;
@@ -37,8 +37,6 @@ export class PurgatoryStack extends cdk.Stack {
     const e = cfg.env;
     const isProd = e === 'production';
 
-    const cognitoUserPoolId = ssm.StringParameter.valueFromLookup(this, `/tools/${e}/cognito/user-pool-id`);
-    const cognitoUserPoolClientId = ssm.StringParameter.valueFromLookup(this, `/tools/${e}/cognito/client-id`);
 
     const appSubdomain = 'purg';
 
@@ -286,7 +284,7 @@ export class PurgatoryStack extends cdk.Stack {
 
     const httpApi = new apigwv2.CfnApi(this, 'HttpApi', {
       name: `tools-purgatory-api-${e}`,
-      description: 'Purgatory review-UI API — Cognito JWT protected.',
+      description: 'Purgatory review-UI API — public, no authorizer.',
       protocolType: 'HTTP',
       corsConfiguration: {
         allowOrigins: allowedOrigins,
@@ -294,17 +292,6 @@ export class PurgatoryStack extends cdk.Stack {
         allowHeaders: ['Content-Type', 'Authorization'],
         allowCredentials: false,
         maxAge: 300,
-      },
-    });
-
-    const authorizer = new apigwv2.CfnAuthorizer(this, 'CognitoAuthorizer', {
-      apiId: httpApi.ref,
-      authorizerType: 'JWT',
-      identitySource: ['$request.header.Authorization'],
-      name: 'CognitoJwt',
-      jwtConfiguration: {
-        audience: [cognitoUserPoolClientId],
-        issuer: `https://cognito-idp.${cfg.region}.amazonaws.com/${cognitoUserPoolId}`,
       },
     });
 
@@ -327,8 +314,6 @@ export class PurgatoryStack extends cdk.Stack {
         apiId: httpApi.ref,
         routeKey: route,
         target: `integrations/${integration.ref}`,
-        authorizationType: 'JWT',
-        authorizerId: authorizer.ref,
       });
     }
 

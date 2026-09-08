@@ -127,7 +127,7 @@ export default function PurgatoryCard() {
         </p>
 
         <div style={S.meta}>
-          {['Collecting data', 'Computer vision', 'Serverless', 'Admin only'].map(t => (
+          {['Collecting data', 'Computer vision', 'Time series', 'Serverless'].map(t => (
             <span key={t} style={S.tag}>{t}</span>
           ))}
         </div>

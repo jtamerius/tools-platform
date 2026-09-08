@@ -21,8 +21,8 @@ const styles = {
   empty: { padding: 40, textAlign: 'center', color: 'var(--text-muted)' },
 }
 
-export default function ReviewPage({ getAccessToken }) {
-  const api = useReviewApi(getAccessToken)
+export default function ReviewPage() {
+  const api = useReviewApi()
   const [mode, setMode] = useState('dashboard')
   const [filters, setFilters] = useState({})
   const [records, setRecords] = useState([])

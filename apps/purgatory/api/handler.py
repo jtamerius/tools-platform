@@ -1,6 +1,6 @@
 """Review-UI API Lambda — read/write for the React review app.
 
-Routes (all behind Cognito JWT authorizer; `admin` group required):
+Routes (public — no authorizer; see note below):
   GET    /api/queue                            → records needing review
   GET    /api/search?cam_id=&start=&end=&...   → filtered search
   GET    /api/image?pk=&sk=                    → presigned S3 URL
@@ -36,7 +36,6 @@ RESORT_TABLE = os.environ.get("RESORT_TABLE")
 CAM_CONFIG_TABLE = os.environ["CAM_CONFIG_TABLE"]
 S3_BUCKET = os.environ["S3_BUCKET"]
 ALLOWED_ORIGINS = os.environ.get("ALLOWED_ORIGINS", "*")
-ADMIN_GROUPS = {"admin", "member"}
 
 _ddb = boto3.resource("dynamodb")
 _s3 = boto3.client("s3")
@@ -84,15 +83,6 @@ def _decimal(obj):
 
 def _resp(status: int, body, origin: str = "*"):
     return {"statusCode": status, "headers": _cors(origin), "body": json.dumps(_decimal(body))}
-
-
-def _check_group(event) -> bool:
-    ctx = event.get("requestContext") or {}
-    claims = ((ctx.get("authorizer") or {}).get("jwt") or {}).get("claims") or {}
-    groups = claims.get("cognito:groups") or ""
-    if isinstance(groups, str):
-        groups = [g.strip() for g in groups.replace("[", "").replace("]", "").split(",") if g.strip()]
-    return bool(ADMIN_GROUPS.intersection(groups))
 
 
 def _queue(params):
@@ -200,14 +190,20 @@ def _history(params):
     end = datetime.now(tz=timezone.utc)
     start = end - timedelta(hours=hours)
     table = _ddb.Table(INGEST_TABLE)
-    r = table.query(
-        KeyConditionExpression=Key("pk").eq(f"CAM#{cam_id}") & Key("sk").between(
-            start.isoformat().replace("+00:00", "Z"),
-            end.isoformat().replace("+00:00", "Z"),
-        ),
-        ScanIndexForward=False,
+    cond = Key("pk").eq(f"CAM#{cam_id}") & Key("sk").between(
+        start.isoformat().replace("+00:00", "Z"),
+        end.isoformat().replace("+00:00", "Z"),
     )
-    return {"records": r.get("Items", [])}
+    items = []
+    kwargs = {"KeyConditionExpression": cond, "ScanIndexForward": False}
+    while True:
+        r = table.query(**kwargs)
+        items.extend(r.get("Items", []))
+        lek = r.get("LastEvaluatedKey")
+        if not lek:
+            break
+        kwargs["ExclusiveStartKey"] = lek
+    return {"records": items}
 
 
 def _decision(body):
@@ -598,9 +594,6 @@ def handler(event, context):
 
     if method == "OPTIONS":
         return {"statusCode": 200, "headers": _cors(origin), "body": ""}
-
-    if path != "/health" and not _check_group(event):
-        return _resp(403, {"error": "forbidden"}, origin)
 
     try:
         if path == "/api/queue":

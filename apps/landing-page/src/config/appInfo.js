@@ -99,7 +99,7 @@ export const APP_INFO = {
     name: 'Purgatory Crowding',
     tagline: 'Collecting traffic-camera and weather data to predict ski-day crowding.',
     accent: '#b4530a',
-    access: 'Admin only',
+    access: 'Public',
     status: 'Early — collecting data',
     host: 'purg.jtamerius.com',
     summary: [
@@ -126,7 +126,7 @@ export const APP_INFO = {
       { label: 'Stage', value: 'Data collection only, no model yet' },
       { label: 'Cadence', value: 'Every 15 minutes' },
       { label: 'Inputs', value: 'Traffic cameras · Road weather · Resort conditions' },
-      { label: 'Access', value: 'Admin only' },
+      { label: 'Access', value: 'Public, no sign-in' },
     ],
   },
 

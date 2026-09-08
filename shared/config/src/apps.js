@@ -58,7 +58,7 @@ export const APPS = [
     description: 'Traffic-cam + RWIS ingestion and review for Purgatory Resort crowding prediction.',
     url: isProd ? 'https://purg.jtamerius.com' : 'https://staging.purgatory.amplifyapp.com',
     subdomain: 'purg',
-    isPublic: false,
-    requiredGroup: 'admin',
+    isPublic: true,
+    requiredGroup: null,
   },
 ]
