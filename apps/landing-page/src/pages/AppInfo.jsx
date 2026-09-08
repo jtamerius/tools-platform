@@ -1,5 +1,4 @@
 import { Link, useParams } from 'react-router-dom'
-import SubtleVoronoiCanvas from '../components/SubtleVoronoiCanvas'
 import BackButton from '../components/BackButton'
 import { APP_INFO, appUrl } from '../config/appInfo'
 
@@ -32,7 +31,6 @@ export default function AppInfo() {
 
   return (
     <>
-      <SubtleVoronoiCanvas />
       <BackButton />
       <main style={S.main}>
         <div style={S.content}>
@@ -51,10 +49,11 @@ export default function AppInfo() {
             <p style={S.tagline}>{info.tagline}</p>
 
             <div style={S.headerMeta}>
-              <span style={{ ...S.accessBadge, color: accent, borderColor: accent }}>
+              <span style={{ ...S.statusPill, color: accent, borderColor: accent }}>
                 <span style={{ ...S.pip, background: accent }} />
-                {info.access}
+                {info.status}
               </span>
+              <span style={S.accessBadge}>{info.access}</span>
               <span style={S.host}>{info.host}</span>
               {url && (
                 <a
@@ -152,7 +151,6 @@ export default function AppInfo() {
 function NotFound({ id }) {
   return (
     <>
-      <SubtleVoronoiCanvas />
       <BackButton />
       <main style={S.main}>
         <div style={S.content}>
@@ -231,7 +229,8 @@ const S = {
     flexWrap: 'wrap',
     marginTop: '24px',
   },
-  accessBadge: {
+  // Status leads; access is secondary, so only status carries the accent.
+  statusPill: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: '6px',
@@ -243,6 +242,19 @@ const S = {
     borderRadius: '99px',
     border: '1px solid',
     background: 'var(--surface)',
+  },
+  accessBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    fontSize: '0.7rem',
+    fontWeight: 600,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    padding: '4px 10px',
+    borderRadius: '99px',
+    border: '1px solid var(--border)',
+    background: 'var(--surface)',
+    color: 'var(--text-muted)',
   },
   pip: {
     width: '5px',

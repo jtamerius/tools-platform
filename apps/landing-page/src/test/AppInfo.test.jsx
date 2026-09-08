@@ -1,9 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
-
-// jsdom has no canvas 2D context; the decorative background is not under test.
-vi.mock('../components/SubtleVoronoiCanvas', () => ({ default: () => null }))
 import AppInfo from '../pages/AppInfo'
 import { APP_INFO } from '../config/appInfo'
 
@@ -24,6 +21,7 @@ describe('AppInfo', () => {
       expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(info.name)
       expect(screen.getByText(info.tagline)).toBeDefined()
       expect(screen.getByText(info.host)).toBeDefined()
+      expect(screen.getByText(info.status)).toBeDefined()
       // Every pipeline step and fact label shows up
       for (const step of info.pipeline) expect(screen.getByText(step.label)).toBeDefined()
       for (const fact of info.facts) expect(screen.getByText(fact.label)).toBeDefined()
@@ -50,6 +48,13 @@ describe('AppInfo', () => {
     for (const leak of ['s3://', 'jtamerius-', 'execute-api', 'amplifyapp', 'arn:']) {
       expect(blob).not.toContain(leak)
     }
+  })
+
+  it('says Purgatory is still only collecting data', () => {
+    renderAt('/apps/purgatory')
+    expect(screen.getByText(/Early — collecting data/)).toBeDefined()
+    expect(screen.getByText(/no crowding prediction yet/i)).toBeDefined()
+    expect(screen.getByText('Data collection only, no model yet')).toBeDefined()
   })
 
   it('renders a not-found page for an unknown id', () => {

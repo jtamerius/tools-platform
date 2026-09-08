@@ -121,13 +121,13 @@ export default function PurgatoryCard() {
         </div>
 
         <p style={S.desc}>
-          Counts vehicles on the approach corridor every 15 minutes with a YOLO detector,
-          pairs them with road-weather and resort conditions, and builds the labeled
-          history behind a ski-day crowding forecast.
+          Counts vehicles on the approach to the ski hill every 15 minutes with a YOLO
+          detector, and records road and resort conditions alongside them. Early days —
+          it is collecting and labeling data, with no crowding prediction yet.
         </p>
 
         <div style={S.meta}>
-          {['Computer vision', 'Time series', 'Serverless', 'Admin only'].map(t => (
+          {['Collecting data', 'Computer vision', 'Serverless', 'Admin only'].map(t => (
             <span key={t} style={S.tag}>{t}</span>
           ))}
         </div>
