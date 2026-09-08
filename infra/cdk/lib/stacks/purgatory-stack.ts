@@ -396,19 +396,36 @@ export class PurgatoryStack extends cdk.Stack {
       payloadFormatVersion: '2.0',
     });
 
-    for (const route of [
+    // Read routes the public dashboard needs. authorizationType is set
+    // EXPLICITLY rather than omitted: making the app public deleted the
+    // Cognito authorizer resource from this stack, but dropping the property
+    // from a route template emits no change, so all 15 pre-existing routes
+    // kept pointing at the now-orphaned authorizer and answered 401. The
+    // dashboard has been unable to load any data since. An explicit 'NONE'
+    // is what makes CloudFormation issue the UpdateRoute that clears it.
+    const PUBLIC_READ_ROUTES = [
       'GET /api/queue', 'GET /api/search', 'GET /api/image',
-      'GET /api/neighbors', 'GET /api/history', 'POST /api/decisions',
-      'GET /api/series',
-      'GET /api/cam-config', 'PUT /api/cam-config',
-      'GET /api/label', 'POST /api/label',
-      'GET /api/models', 'POST /api/model-upload-url',
-      'PATCH /api/model-meta', 'GET /api/export-labels',
-    ]) {
+      'GET /api/neighbors', 'GET /api/history', 'GET /api/series',
+      'GET /api/cam-config', 'GET /api/label', 'GET /api/models',
+    ];
+
+    // Mutating routes plus the bulk dataset export. These stay off the public
+    // surface: /api/model-upload-url hands out a presigned S3 PUT and
+    // /api/model-meta activates a version, and the ingest Lambda loads that
+    // file with ultralytics — i.e. unpickles it. Public write access there is
+    // arbitrary code execution in the ingest container, not just vandalism.
+    const RESTRICTED_ROUTES = [
+      'POST /api/decisions', 'PUT /api/cam-config', 'POST /api/label',
+      'POST /api/model-upload-url', 'PATCH /api/model-meta',
+      'GET /api/export-labels',
+    ];
+
+    for (const route of [...PUBLIC_READ_ROUTES, ...RESTRICTED_ROUTES]) {
       new apigwv2.CfnRoute(this, `Route-${route.replace(/[^a-zA-Z0-9]/g, '')}`, {
         apiId: httpApi.ref,
         routeKey: route,
         target: `integrations/${integration.ref}`,
+        ...(PUBLIC_READ_ROUTES.includes(route) ? { authorizationType: 'NONE' } : {}),
       });
     }
 
@@ -417,11 +434,13 @@ export class PurgatoryStack extends cdk.Stack {
       apiId: httpApi.ref,
       routeKey: 'OPTIONS /api/{proxy+}',
       target: `integrations/${integration.ref}`,
+      authorizationType: 'NONE',
     });
     new apigwv2.CfnRoute(this, 'HealthRoute', {
       apiId: httpApi.ref,
       routeKey: 'GET /health',
       target: `integrations/${integration.ref}`,
+      authorizationType: 'NONE',
     });
 
     new apigwv2.CfnStage(this, 'ApiStage', {
