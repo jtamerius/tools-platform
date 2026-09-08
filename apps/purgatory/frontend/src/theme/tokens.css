@@ -1,0 +1,85 @@
+/**
+ * Purgatory design tokens.
+ *
+ * Dark only, deliberately. The hero of this page is a photograph and the whole
+ * deviation encoding is calibrated to read as ink on near-black, where
+ * "typical" recedes into the ground and only deviation carries colour. That
+ * inversion has no honest light-mode equivalent. Every token is defined on
+ * bare :root, so adding a light block later is additive.
+ */
+:root {
+  color-scheme: dark;
+
+  /* ── Ground ─────────────────────────────────────────────────────────── */
+  --ink-900: #070a0f;      /* page ground, full bleed */
+  --ink-800: #0c111a;      /* every panel */
+  --ink-700: #121926;      /* row hover, thumbnail wells, chart plot area */
+  --rule: #202a3c;         /* 1px hairlines, grid gaps */
+  --rule-strong: #2e3b52;  /* hatch stroke, header underline, void dashes */
+
+  /* ── Ink ────────────────────────────────────────────────────────────── */
+  --txt-hi: #e8eef7;       /* numerals, headline, headings — 14.2:1 on --ink-800 */
+  --txt: #a8b6cb;          /* body prose */
+  --txt-lo: #6b7b92;       /* labels, units, column headers — 5.1:1, only >=11px/500 */
+  --txt-faint: #47566b;    /* inline n=, source lines */
+
+  /* ── Deviation — traffic only. Hue = direction of deviation. ─────────── */
+  --dev-far-lo: #4c7dd6;   /* below p10  — unusually quiet */
+  --dev-lo: #3a4e6e;       /* p10–p25 */
+  --dev-typ: #2b3242;      /* p25–p75 — a NON-colour; typical must not read as green */
+  --dev-hi: #e0a63c;       /* p75–p90 */
+  --dev-far-hi: #e5484d;   /* above p90 */
+  --dev-lo-fill: rgba(76, 125, 214, 0.35);
+  --dev-hi-fill: rgba(224, 166, 60, 0.35);
+  --dev-far-hi-fill: rgba(229, 72, 77, 0.35);
+
+  /* ── Health — structurally outside the traffic ramp ──────────────────── */
+  --health-ok: #3fb1a0;    /* teal, not green, so it never reads as traffic-light semantics */
+  --health-lag: #c08a3e;
+  --health-view: #7c3aed;  /* VIOLET. Appears nowhere else on the page. */
+  --health-dark: #4b5563;  /* always rendered as hatch, never as fill */
+
+  /* ── Interaction / life ─────────────────────────────────────────────── */
+  --accent: #62d8f5;       /* today's line, the live dot, selected row, focus ring. Nothing else. */
+  --live: #62d8f5;
+  --focus: 0 0 0 2px var(--ink-900), 0 0 0 4px var(--accent);
+
+  /* ── Marks ──────────────────────────────────────────────────────────── */
+  --band: rgba(232, 238, 247, 0.07);  /* the p25–p75 envelope fill */
+  --ghost: #4a5468;                   /* prior-period lines, 1px, no hover */
+
+  /* ── Type ───────────────────────────────────────────────────────────── */
+  --font-sans: 'Inter Variable', 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --fs-head: clamp(26px, 2.6vw, 34px);
+  --fs-lead: 17px;
+  --fs-h2: 15px;
+  --fs-body: 14px;
+  --fs-num: 13px;
+  --fs-label: 11px;
+  --fs-micro: 10px;
+
+  /* ── Spacing / radius ───────────────────────────────────────────────── */
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
+  --sp-5: 24px; --sp-6: 32px; --sp-7: 56px;
+  --r-chip: 2px; --r-panel: 4px; --r-img: 6px;
+
+  /* Legacy aliases — the Search and Annotate tabs still read these. */
+  --bg: var(--ink-900);
+  --surface: var(--ink-800);
+  --surface-2: var(--ink-700);
+  --border: var(--rule);
+  --text: var(--txt-hi);
+  --text-muted: var(--txt-lo);
+  --text-faint: var(--txt-faint);
+  --green: var(--health-ok);
+  --amber: var(--dev-hi);
+  --red: var(--dev-far-hi);
+  --nav-height: 56px;
+
+  /* Consumed by the shared @tools/ui Nav, which defines none of them. */
+  --nav-bg: rgba(7, 10, 15, 0.86);
+  --max-w: 1440px;
+  --border-subtle: var(--rule);
+  --accent-hover: #8ae6ff;
+}

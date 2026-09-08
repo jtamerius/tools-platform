@@ -1,6 +1,6 @@
 import Plotly from 'plotly.js-dist-min'
 import createPlotlyComponent from 'react-plotly.js/factory'
-import { toMT } from './MultiCamPlot'
+import { toMT } from '../lib/time'
 const Plot = createPlotlyComponent(Plotly)
 
 export default function TrafficPlot({ history, highlightSk }) {

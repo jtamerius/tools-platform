@@ -1257,6 +1257,10 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Test
+        working-directory: apps/purgatory/frontend
+        run: npm test
+
       - name: Build
         working-directory: apps/purgatory/frontend
         run: npm run build

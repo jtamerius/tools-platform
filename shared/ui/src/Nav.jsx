@@ -126,7 +126,9 @@ const s = {
     position: 'sticky',
     top: 0,
     zIndex: 100,
-    background: 'rgba(255,255,255,0.9)',
+    // Token with the historical light value as its default, so a dark app can
+    // opt in without the other six changing at all.
+    background: 'var(--nav-bg, rgba(255,255,255,0.9))',
     backdropFilter: 'blur(12px)',
     WebkitBackdropFilter: 'blur(12px)',
     borderBottom: '1px solid var(--border)',

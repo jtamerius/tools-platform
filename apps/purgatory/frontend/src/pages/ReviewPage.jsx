@@ -1,10 +1,11 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
-import RecordPanel from '../components/RecordPanel'
 import FilterBar from '../components/FilterBar'
-import DashboardPage from './DashboardPage'
+import CorridorPage from './CorridorPage'
 import { useReviewApi } from '../hooks/useReviewApi'
 
 const AnnotatePage = lazy(() => import('./AnnotatePage'))
+// Lazy: RecordPanel pulls in Plotly, which the corridor view no longer needs.
+const RecordPanel = lazy(() => import('../components/RecordPanel'))
 
 const styles = {
   page: { flex: 1, display: 'flex', flexDirection: 'column', padding: 16, gap: 12, maxWidth: 1400, margin: '0 auto', width: '100%' },
@@ -62,11 +63,11 @@ export default function ReviewPage() {
     <div style={styles.page}>
       <div style={styles.tabs}>
         <button style={styles.tab(mode === 'search')} onClick={() => setMode('search')}>Search</button>
-        <button style={styles.tab(mode === 'dashboard')} onClick={() => setMode('dashboard')}>Dashboard</button>
+        <button style={styles.tab(mode === 'dashboard')} onClick={() => setMode('dashboard')}>Corridor</button>
         <button style={styles.tab(mode === 'annotate')} onClick={() => setMode('annotate')}>Annotate</button>
       </div>
 
-      {mode === 'dashboard' && <DashboardPage api={api} />}
+      {mode === 'dashboard' && <CorridorPage api={api} />}
       {mode === 'annotate' && (
         <Suspense fallback={<div style={styles.empty}>Loading…</div>}>
           <AnnotatePage api={api} />
@@ -74,7 +75,7 @@ export default function ReviewPage() {
       )}
 
       {mode === 'search' && (
-        <>
+        <Suspense fallback={<div style={styles.empty}>Loading…</div>}>
           <FilterBar filters={filters} onChange={setFilters} />
 
           {error && <div style={{ color: 'var(--red)' }}>Error: {error}</div>}
@@ -95,7 +96,7 @@ export default function ReviewPage() {
               total={records.length}
             />
           )}
-        </>
+        </Suspense>
       )}
     </div>
   )
