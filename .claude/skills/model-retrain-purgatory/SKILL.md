@@ -157,3 +157,6 @@ Default inference params: `conf=0.45, iou=0.50, agnostic_nms=True, max_det=50`
 | Version | Trained | Images | mAP50 | Notes |
 |---------|---------|--------|-------|-------|
 | v1 | 2026-05-17 | 95 (4 cams) | 0.815 | First model — nighttime images only (labeled overnight) |
+| v3 | 2026-05-18 | 642 (10 cams, latest: 2026-05-18T01:30:00Z) | 0.871 | Full retrain from yolov8n.pt — all cameras, day+night |
+| v4 | 2026-05-19 | 1098 (10 cams, latest: 2026-05-18T23:45:00Z) | 0.938 | Fine-tuned from v3 — 456 new images, P: 0.906, R: 0.904 — metrics inflated by duplicate-across-splits bug |
+| v5 | 2026-05-20 | 1320 (10 cams, latest: 2026-05-20T04:15:00Z) | 0.932 | Fine-tuned from v4 — clean dataset (no split leakage), P: 0.910, R: 0.880 |

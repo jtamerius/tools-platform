@@ -109,6 +109,19 @@ export class PurgatoryStack extends cdk.Stack {
       removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
     });
 
+    // Aggregate cell layer. Deliberately a separate table from the ingest
+    // records: _queue uses scan(Limit=100) and DynamoDB applies Limit BEFORE
+    // the filter, so ~28k aggregate rows in the ingest table would starve the
+    // review queue and keep degrading as history grows.
+    const rollupTable = new ddb.Table(this, 'RollupTable', {
+      tableName: `tools-purgatory-rollup-${e}`,
+      partitionKey: { name: 'pk', type: ddb.AttributeType.STRING },
+      sortKey: { name: 'sk', type: ddb.AttributeType.STRING },
+      billingMode: ddb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: isProd },
+    });
+
     // ── ECR: ingest Lambda container image ──────────────────────────────────
     // The repo is created/managed by the CI bootstrap step (so the placeholder
     // image can be pushed before this stack creates the Lambda). CDK references
@@ -231,6 +244,85 @@ export class PurgatoryStack extends cdk.Stack {
     });
     scrapePermission.node.addDependency(scrapeFn);
 
+    // ── Rollup Lambda (zip) ─────────────────────────────────────────────────
+    // Collapses 15-minute ingest records into mergeable (cam x MT date x hour)
+    // cells so the dashboard can draw a baseline from all history without
+    // pulling the whole table into the browser.
+    const rollupFn = new lambda.Function(this, 'RollupFunction', {
+      functionName: `tools-purgatory-rollup-${e}`,
+      description: `Purgatory rollup (${e}) — hourly/daily aggregate cells`,
+      runtime: lambda.Runtime.PYTHON_3_12,
+      handler: 'src.handler.handler',
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/purgatory/rollup'), {
+        bundling: {
+          image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+          command: [
+            'bash', '-c',
+            'pip install --no-cache-dir -r requirements.txt -t /asset-output && cp -r . /asset-output/',
+          ],
+          local: {
+            tryBundle(outputDir: string): boolean {
+              const srcDir = path.join(__dirname, '../../../../apps/purgatory/rollup');
+              try {
+                execSync(`pip install --no-cache-dir -r ${srcDir}/requirements.txt -t ${outputDir}`, { stdio: 'inherit' });
+                fs.cpSync(srcDir, outputDir, { recursive: true, force: true });
+                return true;
+              } catch { return false; }
+            },
+          },
+        },
+      }),
+      // Stdlib + the runtime's boto3 only — requirements.txt is intentionally
+      // empty. The local tryBundle hook runs pip on the build host, so any
+      // binary wheel would ship host-arch objects into an x86_64 Lambda.
+      timeout: cdk.Duration.minutes(5),
+      memorySize: 512,
+      environment: {
+        INGEST_TABLE: ingestTable.tableName,
+        ROLLUP_TABLE: rollupTable.tableName,
+        CAM_CONFIG_TABLE: camConfigTable.tableName,
+        LOG_LEVEL: 'INFO',
+      },
+      logGroup: new logs.LogGroup(this, 'RollupLogGroup', {
+        logGroupName: `/aws/lambda/tools-purgatory-rollup-${e}`,
+        retention: logs.RetentionDays.ONE_MONTH,
+        removalPolicy: isProd ? cdk.RemovalPolicy.RETAIN : cdk.RemovalPolicy.DESTROY,
+      }),
+    });
+    ingestTable.grantReadData(rollupFn);
+    camConfigTable.grantReadData(rollupFn);
+    rollupTable.grantReadWriteData(rollupFn);
+
+    // CfnRule + CfnPermission with literal ARNs, matching IngestSchedule —
+    // targets.LambdaFunction introduces a circular dependency here.
+    const rollupFnArn = `arn:aws:lambda:${cfg.region}:${cfg.account}:function:tools-purgatory-rollup-${e}`;
+    new events.CfnRule(this, 'RollupIncrementalSchedule', {
+      name: `tools-purgatory-rollup-incremental-${e}`,
+      description: `Every 15 minutes — re-derive the trailing 2h of cells (${e})`,
+      scheduleExpression: 'rate(15 minutes)',
+      targets: [{ arn: rollupFnArn, id: 'RollupIncremental', input: '{"mode":"incremental","hours":2}' }],
+    });
+    // Nightly re-derive catches late review decisions: _decision flips
+    // `unusable` on arbitrarily old records, which changes their cells.
+    new events.CfnRule(this, 'RollupNightlySchedule', {
+      name: `tools-purgatory-rollup-nightly-${e}`,
+      description: `Nightly — re-derive the trailing 30 days of cells (${e})`,
+      scheduleExpression: 'cron(15 9 * * ? *)',
+      targets: [{ arn: rollupFnArn, id: 'RollupNightly', input: '{"mode":"nightly","days":30}' }],
+    });
+    for (const [id, rule] of [
+      ['RollupIncrementalPermission', `tools-purgatory-rollup-incremental-${e}`],
+      ['RollupNightlyPermission', `tools-purgatory-rollup-nightly-${e}`],
+    ] as const) {
+      const perm = new lambda.CfnPermission(this, id, {
+        functionName: rollupFnArn,
+        action: 'lambda:InvokeFunction',
+        principal: 'events.amazonaws.com',
+        sourceArn: `arn:aws:events:${cfg.region}:${cfg.account}:rule/${rule}`,
+      });
+      perm.node.addDependency(rollupFn);
+    }
+
     // ── Review-UI API Lambda + API Gateway ──────────────────────────────────
     const apiFn = new lambda.Function(this, 'ApiFunction', {
       functionName: `tools-purgatory-api-${e}`,
@@ -262,6 +354,7 @@ export class PurgatoryStack extends cdk.Stack {
         INGEST_TABLE: ingestTable.tableName,
         RESORT_TABLE: resortTable.tableName,
         CAM_CONFIG_TABLE: camConfigTable.tableName,
+        ROLLUP_TABLE: rollupTable.tableName,
         S3_BUCKET: rawBucket.bucketName,
         ALLOWED_ORIGINS: isProd
           ? `https://${appSubdomain}.${cfg.domainRoot},http://localhost:5173`
@@ -276,6 +369,7 @@ export class PurgatoryStack extends cdk.Stack {
     ingestTable.grantReadWriteData(apiFn);
     resortTable.grantReadData(apiFn);
     camConfigTable.grantReadWriteData(apiFn);
+    rollupTable.grantReadData(apiFn);
     rawBucket.grantReadWrite(apiFn);
 
     const allowedOrigins = isProd
@@ -305,6 +399,7 @@ export class PurgatoryStack extends cdk.Stack {
     for (const route of [
       'GET /api/queue', 'GET /api/search', 'GET /api/image',
       'GET /api/neighbors', 'GET /api/history', 'POST /api/decisions',
+      'GET /api/series',
       'GET /api/cam-config', 'PUT /api/cam-config',
       'GET /api/label', 'POST /api/label',
       'GET /api/models', 'POST /api/model-upload-url',
@@ -362,6 +457,10 @@ export class PurgatoryStack extends cdk.Stack {
       parameterName: `/tools/${e}/purgatory/cam-config-table`,
       stringValue: camConfigTable.tableName,
     });
+    new ssm.StringParameter(this, 'SSMRollupTable', {
+      parameterName: `/tools/${e}/purgatory/rollup-table`,
+      stringValue: rollupTable.tableName,
+    });
     new ssm.StringParameter(this, 'SSMResortTable', {
       parameterName: `/tools/${e}/purgatory/resort-table`,
       stringValue: resortTable.tableName,
@@ -383,6 +482,10 @@ export class PurgatoryStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'IngestEcrUri', {
       value: ingestRepo.repositoryUri,
       exportName: `tools-app-purgatory-${e}-IngestEcrUri`,
+    });
+    new cdk.CfnOutput(this, 'RollupFunctionName', {
+      value: rollupFn.functionName,
+      exportName: `tools-app-purgatory-${e}-RollupFn`,
     });
     new cdk.CfnOutput(this, 'IngestFunctionName', {
       value: ingestFn.functionName,

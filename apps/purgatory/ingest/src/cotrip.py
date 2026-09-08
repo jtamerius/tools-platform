@@ -116,7 +116,14 @@ def fetch_rwis(cotrip_cam_id: str = None) -> dict:
     try:
         data = _post(CAMERA_RWIS_QUERY % cam_id)
     except Exception as e:
-        logger.warning("RWIS cameraQuery failed (cam %s): %s", cam_id, e)
+        # ERROR, not WARNING: this failing means every downstream record loses
+        # its road-weather context, and it silently did exactly that from
+        # 2026-08-12 for four weeks. COTRIP retired www.cotrip.org/api/graphql
+        # and moved to REST services under api-511x-co.carsprogram.org; the
+        # endpoint now answers requests with the SPA's HTML shell, so this
+        # surfaces as a JSON decode failure.
+        logger.error("RWIS cameraQuery failed (cam %s): %s — COTRIP GraphQL API "
+                     "may have moved; records will have no rwis_* fields", cam_id, e)
         return {}
 
     station = (
@@ -126,7 +133,7 @@ def fetch_rwis(cotrip_cam_id: str = None) -> dict:
         .get("nearbyWeatherStation")
     )
     if not station:
-        logger.warning("RWIS: no nearbyWeatherStation for cam %s", cam_id)
+        logger.error("RWIS: no nearbyWeatherStation for cam %s — schema change upstream?", cam_id)
         return {}
 
     fields = station.get("weatherStationFields") or {}
