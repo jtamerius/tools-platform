@@ -29,9 +29,9 @@ Resources:
       # Email address must be verified before the account is usable
       AutoVerifiedAttributes:
         - email
-      # Self sign-up is enabled; set AllowAdminCreateUserOnly: true to disable
+      # Self sign-up is disabled — accounts are created by invitation only.
       AdminCreateUserConfig:
-        AllowAdminCreateUserOnly: false
+        AllowAdminCreateUserOnly: true
         InviteMessageTemplate:
           EmailMessage: |
             You have been invited to the tools platform.

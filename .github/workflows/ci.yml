@@ -58,6 +58,8 @@ jobs:
               - 'apps/weather_app/finance-tracker/**'
             purgatory-rollup:
               - 'apps/purgatory/rollup/**'
+              - 'apps/purgatory/api/**'
+              - 'infra/cdk/lib/stacks/purgatory-stack.ts'
 
   # -----------------------------------------------------------------------
   # Job 2: Lint, test, and build the landing-page app
@@ -280,6 +282,10 @@ jobs:
       - name: Install test dependencies
         run: pip install pytest boto3
 
-      - name: Run tests
+      - name: Run rollup tests
         working-directory: apps/purgatory/rollup
+        run: python -m pytest tests/ -q
+
+      - name: Run API authorization tests
+        working-directory: apps/purgatory/api
         run: python -m pytest tests/ -q

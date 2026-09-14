@@ -721,6 +721,43 @@ def _export_labels(params):
     }
 
 
+
+# ── Group enforcement for mutating routes ───────────────────────────────────
+#
+# The API Gateway JWT authorizer proves a token came from our Cognito pool. It
+# does NOT prove the caller is allowed to write. Commit a1b0a7a removed this
+# check when the app went public, which left the write routes trusting mere
+# pool membership — and the pool had self-signup enabled, so anyone on the
+# internet could mint an acceptable token. Reads stay open; writes require a
+# group.
+WRITE_GROUPS = {"admin", "member"}
+
+# Routes that mutate state or export the training corpus. The public dashboard
+# reads nothing from this list.
+RESTRICTED = {
+    ("POST", "/api/decisions"),
+    ("PUT", "/api/cam-config"),
+    ("POST", "/api/label"),
+    ("POST", "/api/model-upload-url"),
+    ("PATCH", "/api/model-meta"),
+    ("GET", "/api/export-labels"),
+}
+
+
+def _caller_groups(event) -> set:
+    ctx = (event.get("requestContext") or {}).get("authorizer") or {}
+    claims = (ctx.get("jwt") or {}).get("claims") or {}
+    groups = claims.get("cognito:groups") or ""
+    if isinstance(groups, str):
+        # API Gateway flattens the claim to "[admin member]" or "admin,member".
+        groups = groups.strip("[]").replace(",", " ").split()
+    return {g.strip() for g in groups if g and g.strip()}
+
+
+def _may_write(event) -> bool:
+    return bool(_caller_groups(event) & WRITE_GROUPS)
+
+
 def handler(event, context):
     ctx_http = (event.get("requestContext") or {}).get("http") or {}
     method = ctx_http.get("method", "GET")
@@ -731,6 +768,13 @@ def handler(event, context):
 
     if method == "OPTIONS":
         return {"statusCode": 200, "headers": _cors(origin), "body": ""}
+
+    # Enforced here rather than per-route so a new mutating route cannot be
+    # added without either appearing in RESTRICTED or being a deliberate
+    # decision to leave it open.
+    if (method, path) in RESTRICTED and not _may_write(event):
+        logger.warning("blocked %s %s — caller groups: %s", method, path, _caller_groups(event))
+        return _resp(403, {"error": "forbidden"}, origin)
 
     try:
         if path == "/api/queue":

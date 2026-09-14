@@ -1394,6 +1394,9 @@ jobs:
         working-directory: apps/purgatory/frontend
         run: npm test
 
+      - name: Test API authorization
+        run: pip install pytest boto3 && python -m pytest apps/purgatory/api/tests/ -q
+
       - name: Build
         working-directory: apps/purgatory/frontend
         run: npm run build

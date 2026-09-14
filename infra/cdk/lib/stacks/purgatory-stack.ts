@@ -40,6 +40,11 @@ export class PurgatoryStack extends cdk.Stack {
 
     const appSubdomain = 'purg';
 
+    // Cognito ids for the JWT authorizer that guards the mutating routes.
+    // Same lookup adventure-builder-stack uses.
+    const cognitoUserPoolId = ssm.StringParameter.valueFromLookup(this, `/tools/${e}/cognito/user-pool-id`);
+    const cognitoUserPoolClientId = ssm.StringParameter.valueFromLookup(this, `/tools/${e}/cognito/client-id`);
+
     // ── S3: raw image storage ───────────────────────────────────────────────
     const rawBucket = new s3.Bucket(this, 'RawBucket', {
       bucketName: `tools-purgatory-raw-${e}-${cfg.account}`,
@@ -389,6 +394,21 @@ export class PurgatoryStack extends cdk.Stack {
       },
     });
 
+    // Declared in CDK, not just live in API Gateway. Making the app public
+    // deleted this resource from the stack while the routes kept referencing it,
+    // so the write routes were guarded by an authorizer CloudFormation no longer
+    // managed — one clean deploy away from being recreated wide open.
+    const authorizer = new apigwv2.CfnAuthorizer(this, 'CognitoAuthorizer', {
+      apiId: httpApi.ref,
+      authorizerType: 'JWT',
+      identitySource: ['$request.header.Authorization'],
+      name: 'CognitoJwt',
+      jwtConfiguration: {
+        audience: [cognitoUserPoolClientId],
+        issuer: `https://cognito-idp.${cfg.region}.amazonaws.com/${cognitoUserPoolId}`,
+      },
+    });
+
     const integration = new apigwv2.CfnIntegration(this, 'ApiIntegration', {
       apiId: httpApi.ref,
       integrationType: 'AWS_PROXY',
@@ -425,7 +445,11 @@ export class PurgatoryStack extends cdk.Stack {
         apiId: httpApi.ref,
         routeKey: route,
         target: `integrations/${integration.ref}`,
-        ...(PUBLIC_READ_ROUTES.includes(route) ? { authorizationType: 'NONE' } : {}),
+        // Explicit on BOTH branches. Omitting the property is what let the
+        // restricted routes drift onto an unmanaged authorizer in the first place.
+        ...(PUBLIC_READ_ROUTES.includes(route)
+          ? { authorizationType: 'NONE' }
+          : { authorizationType: 'JWT', authorizerId: authorizer.ref }),
       });
     }
 

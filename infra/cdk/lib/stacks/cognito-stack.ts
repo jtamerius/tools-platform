@@ -20,7 +20,11 @@ export class CognitoStack extends cdk.Stack {
       userPoolName: `tools-platform-${e}`,
       signInAliases: { email: true },
       autoVerify: { email: true },
-      selfSignUpEnabled: true,
+      // Self-signup is OFF. The pool backs admin tooling and a personal finance
+      // ledger; there is no product here for a stranger to sign up to. With it
+      // enabled, anyone on the internet could mint a token this pool's
+      // authorizers accept. Accounts are created by invitation instead.
+      selfSignUpEnabled: false,
       userInvitation: {
         emailSubject: 'Your tools platform invitation',
         emailBody: `You have been invited to the tools platform. Your username is {username} and your temporary password is {####}. Please sign in at ${e === 'production' ? 'https://investments.jtamerius.com' : 'https://staging.d1kqq0ntalvbmo.amplifyapp.com'} and set a new password.`,
