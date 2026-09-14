@@ -178,9 +178,9 @@ jobs:
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
             weather-collector:
-              - 'apps/weather_app/ensemble-plumes/**'
+              - 'apps/weather-pipeline/**'
             finance-tracker:
-              - 'apps/weather_app/finance-tracker/**'
+              - 'apps/finance-api/**'
 
   # -----------------------------------------------------------------------
   # Job 2a: Deploy Cognito stack
@@ -815,18 +815,18 @@ jobs:
           aws-region: us-east-1
 
       - name: Package Lambda
-        run: bash apps/weather_app/ensemble-plumes/package_lambda.sh
+        run: bash apps/weather-pipeline/package_lambda.sh
 
       - name: Upload zip to S3
         run: |
-          aws s3 cp apps/weather_app/ensemble-plumes/lambda_package.zip \
+          aws s3 cp apps/weather-pipeline/lambda_package.zip \
             s3://jtamerius-website-deploy/lambda_package.zip --no-cli-pager
 
       - name: Deploy CloudFormation stack
         run: |
           aws cloudformation deploy \
             --stack-name jtamerius-weather-collector \
-            --template-file apps/weather_app/ensemble-plumes/infrastructure/weather-collector/template.yaml \
+            --template-file apps/weather-pipeline/infrastructure/template.yaml \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset \
             --no-cli-pager \
@@ -864,18 +864,18 @@ jobs:
           aws-region: us-east-1
 
       - name: Package Lambda
-        run: bash apps/weather_app/finance-tracker/package_lambda.sh
+        run: bash apps/finance-api/package_lambda.sh
 
       - name: Upload zip to S3
         run: |
-          aws s3 cp apps/weather_app/finance-tracker/finance_package.zip \
+          aws s3 cp apps/finance-api/finance_package.zip \
             s3://jtamerius-website-deploy/finance_package.zip --no-cli-pager
 
       - name: Deploy CloudFormation stack
         run: |
           aws cloudformation deploy \
             --stack-name jtamerius-finance-tracker \
-            --template-file apps/weather_app/ensemble-plumes/infrastructure/finance-tracker/template.yaml \
+            --template-file apps/finance-api/infrastructure/template.yaml \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset \
             --no-cli-pager \

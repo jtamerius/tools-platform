@@ -2,10 +2,10 @@
 # package_lambda.sh — Package the weather-collector Lambda deployment zip.
 #
 # Usage:
-#   bash apps/weather_app/ensemble-plumes/package_lambda.sh
+#   bash apps/weather-pipeline/package_lambda.sh
 #
 # Output:
-#   apps/weather_app/ensemble-plumes/lambda_package.zip
+#   apps/weather-pipeline/lambda_package.zip
 
 set -euo pipefail
 

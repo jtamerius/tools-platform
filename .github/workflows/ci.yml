@@ -53,9 +53,9 @@ jobs:
             infra-landing-page:
               - 'infra/apps/landing-page/**'
             weather-collector:
-              - 'apps/weather_app/ensemble-plumes/**'
+              - 'apps/weather-pipeline/**'
             finance-tracker:
-              - 'apps/weather_app/finance-tracker/**'
+              - 'apps/finance-api/**'
             purgatory-rollup:
               - 'apps/purgatory/rollup/**'
               - 'apps/purgatory/api/**'
@@ -215,7 +215,7 @@ jobs:
         run: |
           echo "Validating weather-collector template..."
           aws cloudformation validate-template \
-            --template-body file://apps/weather_app/ensemble-plumes/infrastructure/weather-collector/template.yaml \
+            --template-body file://apps/weather-pipeline/infrastructure/template.yaml \
             --no-cli-pager
 
       - name: Validate finance-tracker template
@@ -223,7 +223,7 @@ jobs:
         run: |
           echo "Validating finance-tracker template..."
           aws cloudformation validate-template \
-            --template-body file://apps/weather_app/ensemble-plumes/infrastructure/finance-tracker/template.yaml \
+            --template-body file://apps/finance-api/infrastructure/template.yaml \
             --no-cli-pager
 
   # -----------------------------------------------------------------------
