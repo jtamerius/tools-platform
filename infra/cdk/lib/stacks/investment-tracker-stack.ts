@@ -113,7 +113,7 @@ export class InvestmentTrackerStack extends cdk.Stack {
       description: 'Parses uploaded seller-statement .eml/.mbox files and writes to DynamoDB.',
       runtime: lambda.Runtime.PYTHON_3_12,
       handler: 'handler.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/investment-tracker-parser')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '../../../../apps/investment-tracker/parser')),
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
       environment: {
@@ -139,7 +139,7 @@ export class InvestmentTrackerStack extends cdk.Stack {
       functionName: `tools-invest-tracker-api-${e}`,
       description: 'Express API for the investment tracker (DynamoDB-backed).',
       runtime: lambda.Runtime.NODEJS_20_X,
-      entry: path.join(__dirname, '../../../../apps/investment-tracker-api/src/handler.js'),
+      entry: path.join(__dirname, '../../../../apps/investment-tracker/api/src/handler.js'),
       handler: 'handler',
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,

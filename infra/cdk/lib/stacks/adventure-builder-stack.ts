@@ -48,7 +48,7 @@ export class AdventureBuilderStack extends cdk.Stack {
       functionName: `tools-adventure-builder-api-${e}`,
       description: 'Express API for the adventure builder (DynamoDB + Bedrock).',
       runtime: lambda.Runtime.NODEJS_20_X,
-      entry: path.join(__dirname, '../../../../apps/adventure-builder-api/src/handler.js'),
+      entry: path.join(__dirname, '../../../../apps/adventure-builder/api/src/handler.js'),
       handler: 'handler',
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,

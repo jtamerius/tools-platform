@@ -55,10 +55,10 @@ jobs:
               - 'apps/landing-page/**'
               - 'shared/**'
             weather-app:
-              - 'apps/weather-app/**'
+              - 'apps/weather/frontend/**'
               - 'shared/**'
             finance-app:
-              - 'apps/finance-app/**'
+              - 'apps/finance/frontend/**'
               - 'shared/**'
             investment-tracker:
               - 'apps/investment-tracker/**'
@@ -101,8 +101,8 @@ jobs:
               - 'infra/cdk/bin/app.ts'
             infra-investment-tracker:
               - 'infra/cdk/lib/stacks/investment-tracker-stack.ts'
-              - 'apps/investment-tracker-api/**'
-              - 'apps/investment-tracker-parser/**'
+              - 'apps/investment-tracker/api/**'
+              - 'apps/investment-tracker/parser/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
               - 'infra/cdk/package.json'
@@ -117,7 +117,7 @@ jobs:
               - 'infra/cdk/bin/app.ts'
             infra-adventure-builder:
               - 'infra/cdk/lib/stacks/adventure-builder-stack.ts'
-              - 'apps/adventure-builder-api/**'
+              - 'apps/adventure-builder/api/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
               - 'infra/cdk/package.json'
@@ -497,7 +497,7 @@ jobs:
           echo "VITE_ENV=staging" >> "$GITHUB_ENV"
 
       - name: Install and build
-        working-directory: apps/weather-app
+        working-directory: apps/weather/frontend
         run: |
           npm ci
           npm run build
@@ -505,7 +505,7 @@ jobs:
       - name: Package and deploy to Amplify
         id: deploy
         run: |
-          cd apps/weather-app/dist
+          cd apps/weather/frontend/dist
           zip -r ../dist.zip .
           cd ..
 
@@ -587,7 +587,7 @@ jobs:
           echo "VITE_ENV=staging" >> "$GITHUB_ENV"
 
       - name: Install and build
-        working-directory: apps/finance-app
+        working-directory: apps/finance/frontend
         run: |
           npm ci
           npm run build
@@ -595,7 +595,7 @@ jobs:
       - name: Package and deploy to Amplify
         id: deploy
         run: |
-          cd apps/finance-app/dist
+          cd apps/finance/frontend/dist
           zip -r ../dist.zip .
           cd ..
 

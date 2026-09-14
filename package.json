@@ -3,6 +3,8 @@
   "private": true,
   "workspaces": [
     "apps/*",
+    "apps/*/frontend",
+    "apps/*/api",
     "shared/*"
   ],
   "scripts": {

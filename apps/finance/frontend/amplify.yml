@@ -1,6 +1,6 @@
 version: 1
 applications:
-  - appRoot: apps/finance-app
+  - appRoot: apps/finance/frontend
     frontend:
       phases:
         preBuild:

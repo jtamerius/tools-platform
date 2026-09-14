@@ -22,9 +22,9 @@ This document captures the security decisions made for this platform, why they w
 |---|---|
 | API Gateway (CDK) | `infra/cdk/lib/stacks/investment-tracker-stack.ts` — `corsConfiguration.allowOrigins` |
 | API Gateway (CDK) | `infra/cdk/lib/stacks/adventure-builder-stack.ts` — `corsConfiguration.allowOrigins` |
-| Lambda URL (CFN) | `apps/finance-api/infrastructure/template.yaml` — `Cors.AllowOrigins` |
-| Express middleware | `apps/investment-tracker-api/src/app.js` — reads `ALLOWED_ORIGINS` env var |
-| Express middleware | `apps/adventure-builder-api/src/app.js` — reads `ALLOWED_ORIGINS` env var |
+| Lambda URL (CFN) | `apps/finance/api/infrastructure/template.yaml` — `Cors.AllowOrigins` |
+| Express middleware | `apps/investment-tracker/api/src/app.js` — reads `ALLOWED_ORIGINS` env var |
+| Express middleware | `apps/adventure-builder/api/src/app.js` — reads `ALLOWED_ORIGINS` env var |
 | CDK env var (sets Express) | `infra/cdk/lib/stacks/investment-tracker-stack.ts` — `ALLOWED_ORIGINS: isProd ? 'https://investments.jtamerius.com,...' : '*'` |
 | CDK env var (sets Express) | `infra/cdk/lib/stacks/adventure-builder-stack.ts` — `ALLOWED_ORIGINS: isProd ? 'https://adventure.jtamerius.com,...' : '*'` |
 
@@ -35,7 +35,7 @@ This document captures the security decisions made for this platform, why they w
 
 ```bash
 # Quick check: scan for wildcard CORS in production-facing stacks
-grep -rn "allowOrigins\|AllowOrigins" infra/cdk/lib/stacks/ apps/weather-pipeline/
+grep -rn "allowOrigins\|AllowOrigins" infra/cdk/lib/stacks/ apps/weather/pipeline/
 ```
 
 ---
@@ -95,7 +95,7 @@ grep -rn "api_key\|apikey\|secret\|password\|bearer\|sk-\|pk\." \
 | Amplify service role | `infra/cdk/lib/stacks/iam-stack.ts` — `AmplifyServiceRole` |
 | Investment tracker Lambda role | `infra/cdk/lib/stacks/investment-tracker-stack.ts` (CDK grants) |
 | Adventure builder Lambda role | `infra/cdk/lib/stacks/adventure-builder-stack.ts` (CDK grants) |
-| Finance tracker Lambda role | `apps/finance-api/infrastructure/template.yaml` — `LambdaRole` |
+| Finance tracker Lambda role | `apps/finance/api/infrastructure/template.yaml` — `LambdaRole` |
 
 ### What to check periodically
 - [ ] GitHub Actions role trust policy still scoped to `repo:jtamerius/website_hub:*`.
@@ -124,7 +124,7 @@ aws iam get-role --role-name tools-github-actions-staging \
 
 ### What to check periodically
 - [ ] New authenticated endpoints are added behind the API Gateway JWT authorizer, not as open Lambda URLs.
-- [ ] Finance tracker handler still calls `cognito.get_user(AccessToken=token)` and returns 401 on failure — check `apps/finance-api/lambda_handler.py`.
+- [ ] Finance tracker handler still calls `cognito.get_user(AccessToken=token)` and returns 401 on failure — check `apps/finance/api/lambda_handler.py`.
 - [ ] No new `AuthType: NONE` Lambda URLs are created for endpoints that serve user-specific data.
 
 ---
@@ -223,7 +223,7 @@ grep -rn "execute-api\|lambda-url\|amazonaws.com" \
 grep -B5 "allowOrigins.*\*\|AllowOrigins.*\*" \
   infra/cdk/lib/stacks/investment-tracker-stack.ts \
   infra/cdk/lib/stacks/adventure-builder-stack.ts \
-  apps/finance-api/infrastructure/template.yaml
+  apps/finance/api/infrastructure/template.yaml
 
 # 4. Confirm .env files are not tracked
 git ls-files apps/**/.env

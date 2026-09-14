@@ -1,5 +1,5 @@
 const APP_URL = 'https://weather.jtamerius.com'
-const ABOUT_URL = '/#/apps/weather-app'
+const ABOUT_URL = '/#/apps/weather/frontend'
 
 // Ensemble spaghetti lines: clustered start, fanning out rightward
 const LINES = [

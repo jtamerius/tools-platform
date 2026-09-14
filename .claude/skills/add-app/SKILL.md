@@ -15,7 +15,7 @@ Parse `$ARGUMENTS` as `<app-id> <display-name> <subdomain> [access-level]`:
 ## Files to create
 
 ### 1. `apps/{app-id}/package.json`
-Mirror `apps/weather-app/package.json` (if public, no auth) or `apps/finance-app/package.json` (if auth-gated).
+Mirror `apps/weather/frontend/package.json` (if public, no auth) or `apps/finance/frontend/package.json` (if auth-gated).
 Change:
 - `"name": "@tools/{app-id}"`
 - Remove/add `@tools/auth` dependency based on access level
@@ -30,8 +30,8 @@ Copy from `apps/landing-page/index.html`, update `<title>` to `{display-name}`.
 Copy verbatim from `apps/landing-page/src/`.
 
 ### 5. `apps/{app-id}/src/App.jsx`
-- If **public**: simple wrapper, no auth. Model after `apps/weather-app/src/App.jsx`.
-- If **auth-gated**: `useAuth` + `SignInModal`. Model after `apps/finance-app/src/App.jsx`.
+- If **public**: simple wrapper, no auth. Model after `apps/weather/frontend/src/App.jsx`.
+- If **auth-gated**: `useAuth` + `SignInModal`. Model after `apps/finance/frontend/src/App.jsx`.
 
 ### 6. `apps/{app-id}/src/pages/HomePage.jsx`
 Minimal placeholder page component.
@@ -42,7 +42,7 @@ Use the shared Nav from `@tools/ui` — see `/nav-standard` for the exact patter
 - If **auth-gated**: pass `user`, `onSignIn`, `onSignOut` props as well
 
 ### 8. `infra/shared/amplify/{app-id}-template.yaml`
-Copy `apps/weather-app`'s template (`infra/shared/amplify/weather-app-template.yaml`), replace:
+Copy `apps/weather/frontend`'s template (`infra/shared/amplify/weather-app-template.yaml`), replace:
 - All `WeatherApp` → `{PascalCase app-id}`
 - `tools-weather-app-${Environment}` → `tools-{app-id}-${Environment}`
 - `tools-shared-amplify-weather-` → `tools-shared-amplify-{app-id}-`

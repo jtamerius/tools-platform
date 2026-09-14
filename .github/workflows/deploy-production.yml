@@ -63,10 +63,10 @@ jobs:
               - 'apps/landing-page/**'
               - 'shared/**'
             weather-app:
-              - 'apps/weather-app/**'
+              - 'apps/weather/frontend/**'
               - 'shared/**'
             finance-app:
-              - 'apps/finance-app/**'
+              - 'apps/finance/frontend/**'
               - 'shared/**'
             infra-cognito:
               - 'infra/cdk/lib/stacks/cognito-stack.ts'
@@ -109,8 +109,8 @@ jobs:
               - 'infra/cdk/bin/app.ts'
             infra-investment-tracker:
               - 'infra/cdk/lib/stacks/investment-tracker-stack.ts'
-              - 'apps/investment-tracker-api/**'
-              - 'apps/investment-tracker-parser/**'
+              - 'apps/investment-tracker/api/**'
+              - 'apps/investment-tracker/parser/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
               - 'infra/cdk/package.json'
@@ -125,7 +125,7 @@ jobs:
               - 'infra/cdk/bin/app.ts'
             infra-adventure-builder:
               - 'infra/cdk/lib/stacks/adventure-builder-stack.ts'
-              - 'apps/adventure-builder-api/**'
+              - 'apps/adventure-builder/api/**'
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
               - 'infra/cdk/package.json'
@@ -178,9 +178,9 @@ jobs:
               - 'infra/cdk/lib/config.ts'
               - 'infra/cdk/bin/app.ts'
             weather-collector:
-              - 'apps/weather-pipeline/**'
+              - 'apps/weather/pipeline/**'
             finance-tracker:
-              - 'apps/finance-api/**'
+              - 'apps/finance/api/**'
 
   # -----------------------------------------------------------------------
   # Job 2a: Deploy Cognito stack
@@ -506,7 +506,7 @@ jobs:
           echo "VITE_ENV=production" >> "$GITHUB_ENV"
 
       - name: Install and build
-        working-directory: apps/weather-app
+        working-directory: apps/weather/frontend
         run: |
           npm ci
           npm run build
@@ -514,7 +514,7 @@ jobs:
       - name: Package and deploy to Amplify
         id: deploy
         run: |
-          cd apps/weather-app/dist
+          cd apps/weather/frontend/dist
           zip -r ../dist.zip .
           cd ..
 
@@ -595,7 +595,7 @@ jobs:
           echo "VITE_ENV=production" >> "$GITHUB_ENV"
 
       - name: Install and build
-        working-directory: apps/finance-app
+        working-directory: apps/finance/frontend
         run: |
           npm ci
           npm run build
@@ -603,7 +603,7 @@ jobs:
       - name: Package and deploy to Amplify
         id: deploy
         run: |
-          cd apps/finance-app/dist
+          cd apps/finance/frontend/dist
           zip -r ../dist.zip .
           cd ..
 
@@ -815,18 +815,18 @@ jobs:
           aws-region: us-east-1
 
       - name: Package Lambda
-        run: bash apps/weather-pipeline/package_lambda.sh
+        run: bash apps/weather/pipeline/package_lambda.sh
 
       - name: Upload zip to S3
         run: |
-          aws s3 cp apps/weather-pipeline/lambda_package.zip \
+          aws s3 cp apps/weather/pipeline/lambda_package.zip \
             s3://jtamerius-website-deploy/lambda_package.zip --no-cli-pager
 
       - name: Deploy CloudFormation stack
         run: |
           aws cloudformation deploy \
             --stack-name jtamerius-weather-collector \
-            --template-file apps/weather-pipeline/infrastructure/template.yaml \
+            --template-file apps/weather/pipeline/infrastructure/template.yaml \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset \
             --no-cli-pager \
@@ -864,18 +864,18 @@ jobs:
           aws-region: us-east-1
 
       - name: Package Lambda
-        run: bash apps/finance-api/package_lambda.sh
+        run: bash apps/finance/api/package_lambda.sh
 
       - name: Upload zip to S3
         run: |
-          aws s3 cp apps/finance-api/finance_package.zip \
+          aws s3 cp apps/finance/api/finance_package.zip \
             s3://jtamerius-website-deploy/finance_package.zip --no-cli-pager
 
       - name: Deploy CloudFormation stack
         run: |
           aws cloudformation deploy \
             --stack-name jtamerius-finance-tracker \
-            --template-file apps/finance-api/infrastructure/template.yaml \
+            --template-file apps/finance/api/infrastructure/template.yaml \
             --capabilities CAPABILITY_NAMED_IAM \
             --no-fail-on-empty-changeset \
             --no-cli-pager \

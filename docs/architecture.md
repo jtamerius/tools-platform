@@ -50,7 +50,7 @@ independent of one another.
 
 Two apps predate the CDK migration and still run from hand-written CloudFormation —
 `jtamerius-weather-collector` and `jtamerius-finance-tracker`, both sourced from
-`apps/weather-pipeline/`. They are deployed by dedicated jobs in the same workflows.
+`apps/weather/pipeline/`. They are deployed by dedicated jobs in the same workflows.
 
 ## Authentication
 
