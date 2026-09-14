@@ -27,6 +27,7 @@ jobs:
       weather-collector: ${{ steps.filter.outputs.weather-collector }}
       finance-tracker: ${{ steps.filter.outputs.finance-tracker }}
       purgatory-rollup: ${{ steps.filter.outputs.purgatory-rollup }}
+      python-tests: ${{ steps.filter.outputs.python-tests }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -53,6 +54,8 @@ jobs:
               - 'apps/weather/pipeline/**'
             finance-tracker:
               - 'apps/finance/api/**'
+            python-tests:
+              - 'apps/investment-tracker/parser/**'
             purgatory-rollup:
               - 'apps/purgatory/rollup/**'
               - 'apps/purgatory/api/**'
@@ -247,4 +250,26 @@ jobs:
 
       - name: Run API authorization tests
         working-directory: apps/purgatory/api
+        run: python -m pytest tests/ -q
+
+  # -----------------------------------------------------------------------
+  # Job 8: Test the seller-statement parser
+  #
+  # The parser turns inbound statement emails into the ledger. It had no tests
+  # at all until its synthetic-fixture suite was written; the prototype's tests
+  # loaded a real mailbox and could not be kept.
+  # -----------------------------------------------------------------------
+  test-statement-parser:
+    name: Test — statement parser
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.python-tests == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest
+      - name: Run parser tests
+        working-directory: apps/investment-tracker/parser
         run: python -m pytest tests/ -q
