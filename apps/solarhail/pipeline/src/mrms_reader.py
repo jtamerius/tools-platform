@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gzip
+import os
 import io
 import logging
 import tempfile

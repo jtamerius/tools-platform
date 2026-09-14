@@ -154,3 +154,29 @@ apps/news-scraper/output/
 purgatory_dataset/
 runs/
 *.pt
+
+# =============================================================================
+# Portfolio hygiene — added before making this repo public
+# =============================================================================
+# Bare .env.production / .env.staging were NOT covered above (only the *.local
+# variants were), which is exactly how a committed .env.production slipped in.
+.env.production
+.env.staging
+
+# Build artifacts. CI builds from source; committed archives only rot.
+*.zip
+*.tgz
+
+# Local tooling state
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+.claude/settings.local.json
+
+# Large local data — model weights and datasets belong in S3, not git
+*.pt
+*.pth
+*.onnx
+*.grib2
+*.parquet

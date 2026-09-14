@@ -6,7 +6,7 @@ Phase 1.0 (traffic-cam ingest) + Phase 1.1 (resort scrape).
 
 ```
 apps/purgatory/
-├── frontend/      React review UI (Cognito JWT-gated, admin group)
+├── frontend/      React UI — public read-only dashboard + review/annotate tools
 ├── ingest/        Container Lambda — image fetch + YOLO + RWIS + agent QC
 ├── scrape/        Python Lambda — Purgatory resort current conditions + forecast
 ├── api/           Python Lambda — review UI backend (DynamoDB + S3 presign)

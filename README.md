@@ -1,312 +1,293 @@
-# Internal Tools Platform
+# Tools Platform
 
-A serverless monorepo that hosts internal tools and personal projects at [jtamerius.com](https://jtamerius.com). Each app lives under `apps/`, shares a single AWS Cognito User Pool for authentication, and is deployed independently to AWS Amplify Hosting via GitHub Actions.
+Seven web apps I designed, built and run on AWS from a single monorepo — including a
+continental-scale hail-exposure pipeline for solar sites and a traffic-camera computer-vision
+system. Every production URL below is live right now.
 
----
+[![CI](https://github.com/jtamerius/tools-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/jtamerius/tools-platform/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## Architecture Overview
+**Live:** [Hailstoned](https://hailstoned.jtamerius.com) ·
+[Purgatory Crowding](https://purg.jtamerius.com) ·
+[Ensemble Weather](https://weather.jtamerius.com) ·
+[platform home](https://tools.jtamerius.com)
 
-```
-GitHub (jtamerius/website_hub)
-        │
-        ├── push → staging branch ──────► GitHub Actions (auto-deploy)
-        │                                         │
-        └── push → main branch ───────────► GitHub Actions (auto-deploy)
-                                                  │
-                                    ┌─────────────┼─────────────┐
-                                    ▼             ▼             ▼
-                              CloudFormation  CloudFormation  AWS Amplify
-                              shared stacks  app stacks      (frontend build
-                              (Cognito, IAM, (SSM params,    + hosting)
-                               DNS/ACM)       future APIs)
-```
-
-**Domain layout:**
-
-| Environment | Domain                        | Branch     |
-|-------------|-------------------------------|------------|
-| Production  | `tools.jtamerius.com`         | `main`     |
-| Staging     | `tools.staging.jtamerius.com` | `staging`  |
+<!-- SCREENSHOT SLOT — add before publishing:
+     docs/assets/hailstoned.png  (deck.gl CONUS hail map with the viewport stats panel visible)
+     Replace this comment with:  ![Hailstoned](docs/assets/hailstoned.png)
+-->
 
 ---
 
-## Repository Structure
+## Start here: the detector that was blind to the bug it existed to catch
 
-```
-website_hub/
-├── apps/
-│   └── landing-page/           # Vite + React SPA — tools.jtamerius.com
-│       ├── amplify.yml         # Amplify build spec (monorepo appRoot)
-│       ├── src/
-│       │   ├── config/apps.js  # Registry of all platform apps
-│       │   └── hooks/useAuth.js# Cognito auth hook
-│       └── .env.example        # Required environment variables
-│
-├── infra/
-│   ├── shared/
-│   │   ├── cognito/            # Cognito User Pool + groups + client
-│   │   ├── iam/                # GitHub Actions OIDC role + Amplify service role
-│   │   ├── amplify/            # Amplify Hosting app + branch resources
-│   │   └── dns/                # ACM certificates + Route 53 config
-│   └── apps/
-│       └── landing-page/       # SSM params (Cognito IDs) for the landing page
-│
-├── shared/
-│   ├── auth/                   # Shared auth package (useAuth, Cognito helpers)
-│   ├── ui/                     # Shared UI component library
-│   └── config/                 # Shared platform config (env, feature flags)
-│
-├── src/                        # Python data/geo utilities (legacy/research code)
-│
-├── docs/
-│   ├── architecture.md         # Deep-dive: CI/CD, auth, infra design decisions
-│   ├── adding-new-app.md       # Step-by-step guide to add a new app
-│   ├── auth.md                 # Cognito groups, useAuth hook, access control
-│   └── secrets.md              # What's safe to expose, GitHub Secrets reference
-│
-├── .github/
-│   └── workflows/
-│       ├── ci.yml              # Lint, test, build + validate CloudFormation on PRs
-│       ├── deploy-staging.yml  # Auto-deploy on push to staging
-│       └── deploy-production.yml # Deploy on push to production (manual approval)
-│
-└── config/
-    └── file_paths.yaml         # Shared path configuration
-```
+In July, camera 3291-E lost about three quarters of its vehicle counts in a single week and never
+recovered. Detector confidence and image brightness were unchanged across the drop, so the model
+was fine — the camera was looking somewhere else.
+
+The first version of the health check compared a trailing 21-day window against the 42 days before
+it. Run against production data, it returned `ok` for 3291-E. A trailing comparison only sees a
+break while the break is still recent; two months on, the broken level has become its own baseline
+and the camera reads as healthy again. That is exactly how the camera stayed invisible in the first
+place, and a detector that reproduces the bug it exists to catch is worse than none.
+
+The rewrite scans every admissible split point in the series and keeps the deepest sustained drop,
+then requires that detector confidence held steady across it — a drop in counts *without* a drop in
+confidence is a camera problem, not a quiet road. The failure mode is pinned by a test that builds
+50 healthy days followed by 60 broken ones, so the break is nowhere near the end of the series.
+
+- [`apps/purgatory/frontend/src/lib/health.js`](apps/purgatory/frontend/src/lib/health.js) — the
+  detector, with the reasoning in the header
+- [`apps/purgatory/frontend/src/lib/__tests__/detector-window.test.js`](apps/purgatory/frontend/src/lib/__tests__/detector-window.test.js)
+  — the regression test
+
+If you only read two files here, read those.
 
 ---
 
-## Getting Started
+## Hailstoned — hail exposure for US solar, from raw radar
 
-### Prerequisites
+**[hailstoned.jtamerius.com](https://hailstoned.jtamerius.com)** · public, no sign-in ·
+[`apps/solarhail/`](apps/solarhail/)
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| Node.js | 20.x | Use [nvm](https://github.com/nvm-sh/nvm) or [fnm](https://github.com/Schniz/fnm) |
-| npm | 10.x | Comes with Node 20 |
-| AWS CLI | v2 | Only needed for infra work |
-| Git | any | — |
+A single severe hail event can total a solar array. The radar record that would tell you where hail
+actually falls is public, but it arrives as terabytes of raw grids, so it mostly goes unread.
 
-### Setup
+The pipeline reads NOAA MRMS maximum-hail-size grids straight out of the public S3 archive —
+fetched and gunzipped in memory, staged to a temp file only because pygrib needs a path, and never cached — snaps hail pixels to H3 resolution-8 cells keeping
+the largest size seen per cell, then joins each cell to where solar actually sits: 6,611
+utility-scale facilities from the USGS photovoltaic database, residential estimates from Stanford's
+DeepSolar, and Overture building footprints. Output is catalogued in Glue with partition
+projection, so Athena needs no crawler and no manual partition registration.
 
-```bash
-# 1. Clone the repo
-git clone https://github.com/jtamerius/website_hub.git
-cd website_hub
+Decoding every grid for every day would dominate the runtime, so the run is gated on weather: an
+index of NWS severe-thunderstorm and tornado warning polygons is built once from Iowa State's IEM
+archive, and only (metro, date) pairs a warning actually covers get decoded. That removes 80–90% of
+the GRIB work, with a `--no-prefilter` flag so a known storm day can still be forced through in
+testing.
 
-# 2. Install dependencies for the landing page
-cd apps/landing-page
-npm ci
+It runs as an AWS Batch job on Fargate Spot with retry-on-reclaim. The frontend is deck.gl over
+Mapbox, served as a static site, and the statistics panel recomputes for whatever is in the viewport
+rather than serving a precomputed national total. It covers a fixed historical window in spring 2026
+rather than live radar, which is why it costs almost nothing to leave running.
 
-# 3. Copy and fill in the environment variables
-cp .env.example .env.local
-# Edit .env.local with real Cognito values (see docs/secrets.md)
-```
+Seven pipeline stages, one test file each, 50 tests:
+[`apps/solarhail/pipeline/`](apps/solarhail/pipeline/).
 
----
+## Purgatory — a corridor sensor, still collecting
 
-## Running Locally
+**[purg.jtamerius.com](https://purg.jtamerius.com)** · public, no sign-in ·
+[`apps/purgatory/`](apps/purgatory/)
 
-```bash
-cd apps/landing-page
-npm run dev
-# App available at http://localhost:5173
-```
+**There is no crowding prediction model yet, and there won't be until a full ski season is on
+disk.** What exists is the sensor and the labeled history it is building — more than 100,000 frames
+since May.
 
-Auth will work as long as `VITE_COGNITO_USER_POOL_ID` and `VITE_COGNITO_CLIENT_ID` point to a real User Pool. You can use staging Cognito values locally — they are safe to use in `.env.local` (see [docs/secrets.md](docs/secrets.md)).
+Every fifteen minutes, ten CDOT traffic cameras along the US-550 approach to Purgatory Resort are
+sampled. Each frame goes through a YOLO detector in a container Lambda with per-camera polygon zones
+(so a count is directional, not just "vehicles in frame"), and is enriched with image statistics,
+road-weather sensor readings, and solar geometry from the same moment. A three-tier Claude agent on
+Bedrock reviews flagged records — metadata first, image second, neighbour propagation third —
+behind a DynamoDB monthly invocation cap, so a bad day cannot run up a bill. A review UI lets me
+page through flagged frames and correct counts by hand; those corrections become the training
+labels.
 
----
+Two pieces are worth reading regardless of the missing model.
 
-## Adding a New App
+**Rollup cells.** The dashboard needs a baseline drawn from all history while the view shows a
+window. Those are different data extents, so no amount of client-side memoising is correct; before
+the rollup Lambda existed, the page pulled the entire ~82 MB ingest table into the browser, twice.
+Now one row per (camera × date × hour) stores sufficient statistics — count, sum, sum of squares —
+never pre-averaged values, so cells merge by addition at any depth and every time scale downstream
+is a summation depth over one artifact instead of a different query shape. Mountain-time DST is
+handled explicitly: a spring-forward day is 92 ticks, not 96.
+[`apps/purgatory/rollup/src/handler.py`](apps/purgatory/rollup/src/handler.py)
 
-See [docs/adding-new-app.md](docs/adding-new-app.md) for the full step-by-step guide covering:
+**The corridor is one-dimensional, so the UI is too.** Ten stations on a single road are not
+two-dimensional data; the display orders them by milepost instead of putting them on a map. The
+23-mile stretch between the resort pair and the next camera has no coverage at all, and the UI draws
+that gap explicitly — ten evenly spaced rows would imply even coverage that does not exist.
+[`apps/purgatory/frontend/src/lib/cams.js`](apps/purgatory/frontend/src/lib/cams.js)
 
-- Scaffolding a new Vite + React app under `apps/<app-name>/`
-- Creating an `infra/apps/<app-name>/template.yaml` stack
-- Registering the app in `apps/landing-page/src/config/apps.js`
-- Wiring up GitHub Actions path filters and Amplify secrets
-
----
-
-## Deployment
-
-### Staging (automatic)
-
-Push to the `staging` branch. GitHub Actions will:
-
-1. Detect which parts of the monorepo changed (paths-filter)
-2. Deploy any changed shared infra stacks via CloudFormation
-3. Deploy any changed app infra stacks
-4. Trigger an Amplify build for changed apps and poll until complete
-
-### Production (automatic on push to `main`)
-
-Merge to `main` (typically via PR from `staging`). The same workflow runs automatically — no manual approval step. Branch protection on `main` is the gate: require a passing PR review before merge.
-
-To promote staging → production:
-
-```bash
-# Open a PR from staging → main in GitHub, get it reviewed, then merge.
-# The deploy-production workflow fires automatically on merge.
-```
+The frontend entry bundle is 226 kB, down from 4,926 kB, mostly by importing
+`react-plotly.js/factory` against `plotly.js-dist-min` instead of the default full build.
 
 ---
 
-## Infrastructure
+## Everything that's deployed
 
-CloudFormation stacks are organized in two layers:
+| App | What it does | Live | Code |
+|---|---|---|---|
+| **Hailstoned** | Streams NOAA MRMS radar into an H3 hex grid and joins it to where solar hardware actually sits, across the lower 48 | [hailstoned.jtamerius.com](https://hailstoned.jtamerius.com) | [`apps/solarhail`](apps/solarhail/) |
+| **Purgatory Crowding** | Counts vehicles on ten CDOT traffic cameras every 15 minutes to build a labeled history of ski-day crowding | [purg.jtamerius.com](https://purg.jtamerius.com) | [`apps/purgatory`](apps/purgatory/) |
+| **Ensemble Weather** | Plots GFS / NAM / HRRR on shared axes so you can see how much the models disagree before trusting a forecast | [weather.jtamerius.com](https://weather.jtamerius.com) | [`apps/weather-app`](apps/weather-app/), [`apps/weather-pipeline`](apps/weather_app/) |
+| **Adventure Builder** | Branching-story editor that draws the story as a graph while you write, so dead ends are visible | [adventure.jtamerius.com](https://adventure.jtamerius.com) · *sign-in* | [`apps/adventure-builder`](apps/adventure-builder/), [`-api`](apps/adventure-builder-api/) |
+| **Investment Tracker** | Parses statement emails on arrival via SES into a payment ledger, with per-cell manual overrides | [investments.jtamerius.com](https://investments.jtamerius.com) · *sign-in* | [`apps/investment-tracker`](apps/investment-tracker/), [`-api`](apps/investment-tracker-api/) |
+| **Finance Tracker** | Personal spending ledger — one Python Lambda over flat files in S3, no database | [finance.jtamerius.com](https://finance.jtamerius.com) · *sign-in* | [`apps/finance-app`](apps/finance-app/) |
+| **Platform home** | App directory and a long-form page per app | [tools.jtamerius.com](https://tools.jtamerius.com) | [`apps/landing-page`](apps/landing-page/) |
 
-**Shared stacks** (deployed once per environment, reused by all apps):
+Four are public and need no account. Three hold my own financial and personal data and sit behind
+Cognito — those links resolve to a sign-in wall, not a broken page, so judge them by the code and
+the infrastructure rather than the URL.
 
-| Stack path | Purpose |
-|------------|---------|
-| `infra/shared/iam/` | GitHub Actions OIDC role, Amplify service role |
-| `infra/shared/cognito/` | Cognito User Pool, groups (guest/member/admin), app client |
-| `infra/shared/dns/` | ACM certificates, Route 53 config |
-| `infra/shared/amplify/` | Amplify Hosting app + branch resources |
-
-**App stacks** (one per app per environment):
-
-| Stack path | Purpose |
-|------------|---------|
-| `infra/apps/landing-page/` | SSM params for Cognito IDs; future: API Gateway, Lambda, DynamoDB |
-
-Stack outputs use CloudFormation exports (`!ImportValue`) so app stacks can reference shared resources without hard-coding IDs.
-
-See [docs/architecture.md](docs/architecture.md) for the full dependency graph and design decisions.
+App URLs and access rules live in one registry,
+[`shared/config/src/apps.js`](shared/config/src/apps.js), which the landing page reads rather than
+keeping its own copy.
 
 ---
 
-## Authentication
-
-All apps share a single Cognito User Pool (`tools-platform-<env>`). Access is controlled by group membership:
-
-| Group | Precedence | Intended use |
-|-------|-----------|--------------|
-| `admin` | 1 | Platform administrators |
-| `member` | 2 | Authenticated users with standard access |
-| `guest` | 3 | Limited / read-only access |
-
-The `useAuth` hook (in `shared/auth/` and mirrored in each app's `src/hooks/`) exposes `{ user, groups, isLoading, signIn, signOut }`. To gate a component:
-
-```jsx
-const { groups } = useAuth()
-if (!groups.includes('member')) return <AccessDenied />
-```
-
-See [docs/auth.md](docs/auth.md) for the full guide including invite flows, token lifecycle, and AWS CLI commands to manage users.
-
-### How Cognito config reaches the browser
-
-Cognito IDs (User Pool ID and Client ID) are never hard-coded. They flow from CloudFormation through SSM into Amplify's build environment:
+## How it ships
 
 ```mermaid
 flowchart LR
-    CFN["☁️ CloudFormation\nCognito stack"]
-    SSM["🗄 SSM Parameter Store\n/tools/env/cognito/user-pool-id\n/tools/env/cognito/client-id"]
-    AMP["🔨 Amplify Build\nnpm run build"]
-    ENV["📦 Vite Bundle\nVITE_COGNITO_USER_POOL_ID\nVITE_COGNITO_CLIENT_ID"]
-    HOOK["⚛️ useAuth() hook\nnew CognitoUserPool(config)"]
-
-    CFN -->|"deploy-app.sh\nwrites IDs"| SSM
-    SSM -->|"{{resolve:ssm:...}}\nat build time"| AMP
-    AMP -->|"injected as\nenv vars"| ENV
-    ENV -->|"import.meta.env\nin browser"| HOOK
+  P["push → main / staging"] --> GA["GitHub Actions"]
+  GA -->|"OIDC · assume role<br/>no long-lived keys"| F{"paths-filter<br/>what changed?"}
+  F -->|infra| CDK["cdk deploy"]
+  F -->|app| B["npm build →<br/>Amplify deploy"]
+  CDK --> AWS[("AWS account<br/>staging · production")]
+  B --> AWS
+  AWS --> D["*.jtamerius.com"]
 ```
 
-### Runtime auth flow
+| | |
+|---|---|
+| **Infrastructure as code** | 11 CDK stack classes → 16 stacks in staging, 17 in production ([`infra/cdk`](infra/cdk)) |
+| **Environments** | `staging` and `production`, same stacks, different context |
+| **CI/CD credentials** | GitHub Actions federates via OIDC and assumes a role per run — no long-lived access keys in the repo or in GitHub Secrets |
+| **Build selectivity** | `dorny/paths-filter` — a change to one app builds one app |
+| **Shared code** | npm workspaces: [`shared/auth`](shared/auth), [`shared/ui`](shared/ui), [`shared/config`](shared/config) |
+| **Auth** | One Cognito user pool, group-gated; the public apps skip it entirely |
+| **Hosting** | 7 Amplify apps, Route 53 + ACM, all on custom subdomains |
 
-What happens from page load through sign-in to access control:
+Push to `staging` deploys staging; merge to `main` deploys production. Production deploys use a
+`concurrency` group that queues rather than cancels — cancelling a half-finished production deploy
+is worse than waiting for it.
 
-```mermaid
-flowchart TD
-    LOAD(["🌐 App loads"])
-    SESSION{"Saved session\nin localStorage?"}
-    DECODE["Decode ID token\n→ email, sub, groups"]
-    AUTHED(["✅ Signed in\nuser + groups set"])
+Nothing here is a running server. Frontends are static builds on Amplify, backends are Lambdas, the
+heavy pipeline is Batch on Fargate Spot, and the Bedrock QC agent is capped by a counter in
+DynamoDB. The platform idles at close to nothing.
 
-    GATE["Apps page\n⚡ Sign in or Continue as guest"]
-    FORM["Sign-in form\nemail + password"]
-    COGNITO["☁️ Cognito User Pool\nauthenticateUser()"]
-    FAIL["❌ Error shown\nin modal"]
-    TOKENS["ID token\nAccess token\nRefresh token\n→ saved to localStorage"]
+---
 
-    REFRESH["🔁 Every 30 min\ngetSession() called"]
-    EXPIRED{"Access token\nexpired?"}
-    NEWTOKEN["SDK silently refreshes\nvia Refresh token"]
-    SIGNOUT(["🔒 Signed out\n→ back to gate"])
+## Where to look first
 
-    ACCESS{"App access\ncheck"}
-    PUBLIC(["🌍 Public app\nopen to all"])
-    ALLOWED(["🔓 Accessible\nuser in required group"])
-    BLOCKED(["🔒 Locked\nsign-in required\nor wrong group"])
+| File | Why |
+|---|---|
+| [`apps/purgatory/rollup/src/handler.py`](apps/purgatory/rollup/src/handler.py) | Sufficient statistics that merge at any depth, and why a 2-hour incremental pass must still rewrite the whole day row |
+| [`apps/purgatory/frontend/src/lib/health.js`](apps/purgatory/frontend/src/lib/health.js) | The changepoint detector, including the header explaining why the first version was blind |
+| [`apps/solarhail/pipeline/src/main.py`](apps/solarhail/pipeline/src/main.py) | Pipeline orchestration and the pre-filter trade-off, stated where it was made |
+| [`infra/cdk/bin/app.ts`](infra/cdk/bin/app.ts) | Every stack in both environments, in one file |
 
-    LOAD --> SESSION
-    SESSION -->|"yes"| DECODE --> AUTHED
-    SESSION -->|"no"| GATE
-    GATE -->|"Sign in"| FORM
-    FORM --> COGNITO
-    COGNITO -->|"onSuccess"| TOKENS --> DECODE
-    COGNITO -->|"onFailure"| FAIL --> FORM
+## Repository structure
 
-    AUTHED --> REFRESH
-    REFRESH --> EXPIRED
-    EXPIRED -->|"yes"| NEWTOKEN --> AUTHED
-    EXPIRED -->|"refresh token\nalso expired"| SIGNOUT
-    EXPIRED -->|"no"| AUTHED
-
-    AUTHED --> ACCESS
-    GATE -->|"Continue as guest"| ACCESS
-    ACCESS -->|"app.isPublic = true"| PUBLIC
-    ACCESS -->|"signed in +\ngroup matches"| ALLOWED
-    ACCESS -->|"not signed in or\ngroup mismatch"| BLOCKED
+```
+apps/
+  solarhail/               Hailstoned — pipeline/ (Python, Batch), api/, frontend/ (deck.gl)
+  purgatory/               ingest/ scrape/ rollup/ api/ (Python Lambdas) + frontend/ (React)
+  weather-app/             Ensemble Weather frontend (React)
+  weather-pipeline/        Ensemble collector and clustering (Python)
+  landing-page/            Platform home and per-app info pages
+  adventure-builder/       + adventure-builder-api/   (React + Express on Lambda)
+  investment-tracker/      + investment-tracker-api/  (React + Express on Lambda)
+  finance-app/             React frontend over a single Python Lambda
+shared/
+  config/                  App registry — URLs and access rules
+  auth/                    Cognito hooks
+  ui/                      Shared nav and sign-in
+infra/cdk/                 11 stack classes, two environments, one bin/app.ts
+.github/workflows/         ci · deploy-staging · deploy-production
+docs/                      Architecture notes for the two flagship systems
 ```
 
----
+## Running it locally
 
-## Domain Structure
+Requires Node 20+ and Python 3.11+.
 
-| Subdomain | App | Environment |
-|-----------|-----|-------------|
-| `tools.jtamerius.com` | landing-page | production |
-| `tools.staging.jtamerius.com` | landing-page | staging |
-| `<app>.jtamerius.com` | future apps | production |
-| `<app>.staging.jtamerius.com` | future apps | staging |
+```bash
+npm ci                                              # workspaces: apps/* and shared/*
+npm run dev  --workspace=apps/landing-page          # http://localhost:5173
+npm run lint --workspaces --if-present
+npm run test --workspaces --if-present
+```
 
-Certificates are managed by ACM (`infra/shared/dns/`) and validated via Route 53 DNS records. Custom domains are attached to Amplify apps in the Amplify console or via CloudFormation after the app is created.
+The Hailstoned and Purgatory frontends are standalone npm projects rather than workspace members:
 
----
+```bash
+cd apps/purgatory/frontend && npm ci && npm run dev
+cd apps/solarhail/frontend && npm ci && npm run dev
+```
 
-## GitHub Actions Workflows
+Python suites:
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| `ci.yml` | PR → `staging` or `main` | Lint, test, build apps; validate CloudFormation templates |
-| `deploy-staging.yml` | Push → `staging` | Deploy changed infra + trigger Amplify builds |
-| `deploy-production.yml` | Push → `main` | Same as staging, auto-deploy (branch protection is the gate) |
+```bash
+cd apps/solarhail/pipeline && pip install -r requirements.txt && pytest
+cd apps/purgatory/rollup   && pip install -r requirements.txt && pytest
+```
 
-All workflows use OIDC federation (`aws-actions/configure-aws-credentials`) — no long-lived AWS credentials are stored in GitHub.
+The public frontends read live production APIs and need no AWS credentials. The sign-in apps need
+`VITE_COGNITO_USER_POOL_ID` and `VITE_COGNITO_CLIENT_ID` in `.env.local`; staging values are safe to
+use locally.
 
----
+### Tests
 
-## Environment Variables Reference
+| Suite | Covers |
+|---|---|
+| [`apps/solarhail/pipeline/tests/`](apps/solarhail/pipeline/tests/) | 50 tests, one file per pipeline stage — radar read, H3 snap, the three joins, impact calc, pre-filter, downloader |
+| [`apps/purgatory/rollup/tests/`](apps/purgatory/rollup/tests/) | Cell merge associativity, store/rebuild round-trip, DST day lengths |
+| [`apps/purgatory/frontend/src/lib/__tests__/`](apps/purgatory/frontend/src/lib/__tests__/) | Corridor logic and the changepoint regression above |
 
-### `apps/landing-page`
+## Decisions worth defending
 
-| Variable | Required | Example | Notes |
-|----------|----------|---------|-------|
-| `VITE_COGNITO_USER_POOL_ID` | Yes | `us-east-1_AbCdEfGhI` | Safe to expose in frontend |
-| `VITE_COGNITO_CLIENT_ID` | Yes | `1abc2defghij3klmno4pqrst5` | Safe to expose in frontend |
-| `VITE_ENV` | No | `staging` | Set automatically by Amplify |
+Small choices, each with a reason recorded where it was made.
 
-For local development copy `apps/landing-page/.env.example` to `.env.local` and fill in real values.
+- **Sufficient statistics, not averages.** A day row rebuilt from stored hour cells is identical to
+  a direct rebuild, and the test asserts that equality, because it is the property the whole design
+  rests on.
+- **No client-side aggregation for the Purgatory dashboard.** The baseline and the view are
+  different data extents, so caching in the browser cannot be made correct. Hence the rollup tier.
+- **No trailing-window health check.** It goes blind about two months after a break, which is how
+  the broken camera stayed invisible in the first place.
+- **The rollup Lambda's `requirements.txt` is deliberately empty.** The CDK bundler runs `pip
+  install -t` on the build host, so any binary wheel would ship darwin/arm64 objects into an x86-64
+  Lambda and fail at import. Stdlib plus the runtime's boto3 is the whole dependency set, and the
+  file says so.
+- **Gate expensive work on cheap metadata.** The NWS warning pre-filter cuts MRMS decoding by
+  80–90%, with an explicit flag to bypass it when replaying a specific storm day.
+- **Two Batch queues, on purpose.** Long pipeline runs go to Fargate Spot with retry-on-reclaim;
+  short maintenance jobs go to an on-demand queue so they never compete with a Spot reclaim.
+- **No live radar for Hailstoned.** A fixed historical window deploys as a static site, which is
+  what makes it cost near zero to leave running. Making it live is a scheduling change, not a
+  redesign — it just isn't done.
 
-### GitHub Secrets (repository level)
+## Known rough edges
 
-| Secret | Used by | Purpose |
-|--------|---------|---------|
-| `AWS_ROLE_ARN` | All workflows | IAM role assumed via OIDC |
-| `GITHUB_OAUTH_TOKEN` | deploy workflows | Amplify-to-GitHub repo connection |
-| `AMPLIFY_APP_ID_LANDING_PAGE` | deploy workflows | Amplify app ID for triggering builds |
+I would rather you hear these from me than find them.
 
-See [docs/secrets.md](docs/secrets.md) for the full secrets guide.
+- **Two generations of infrastructure code.** `infra/cdk` is authoritative and is what the deploy
+  workflows actually run. Some earlier hand-written CloudFormation is still in the tree for stacks
+  that predate the migration.
+- **CI does not run every suite.** The solarhail pipeline tests and the Purgatory frontend tests —
+  the two best sets here — currently run locally rather than on every pull request. A wiring gap,
+  not a missing suite.
+- **The two deploy workflows are near-duplicates.** They should be one reusable workflow taking the
+  environment as an input. The OIDC and path-filtering design underneath is right; the packaging is
+  not.
+- **Purgatory has no model.** Ingest, QC, rollup and the review UI are finished. Prediction is not
+  started.
+- **Three apps are single-user.** Finance, Investments and Adventure Builder were built for me and
+  were never generalised. They are here because they are real, deployed and maintained — not as
+  products.
+
+## On AI assistance
+
+I use Claude Code heavily in this repository, and I would rather say so than have it inferred. It is
+fastest on infrastructure boilerplate and test scaffolding, and least reliable anywhere the
+correctness argument is subtle. The first version of the camera-health detector above was a
+trailing-window comparison that returned "healthy" for the very camera it was written to catch; I
+found that only by running it against production data and disbelieving the answer. The rewrite and
+the regression test that pins it came out of that review. Generate, distrust, verify against real
+data, encode the finding as a test — that loop is how the rest of this was built too.
+
+## License
+
+MIT — see [LICENSE](LICENSE).
