@@ -402,7 +402,14 @@ export class PurgatoryStack extends cdk.Stack {
       apiId: httpApi.ref,
       authorizerType: 'JWT',
       identitySource: ['$request.header.Authorization'],
-      name: 'CognitoJwt',
+      // NOT 'CognitoJwt'. An authorizer by that name already exists in this API
+      // — the orphan left behind when going public deleted the resource from the
+      // stack but not from API Gateway — and authorizer names must be unique, so
+      // creating it collided and rolled the whole stack back. A distinct name
+      // lets CloudFormation create the managed one and move the routes onto it
+      // in a single change set, with no window where the writes are unguarded.
+      // The orphan is deleted by hand afterwards.
+      name: 'PurgatoryCognitoJwt',
       jwtConfiguration: {
         audience: [cognitoUserPoolClientId],
         issuer: `https://cognito-idp.${cfg.region}.amazonaws.com/${cognitoUserPoolId}`,
