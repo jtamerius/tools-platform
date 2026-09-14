@@ -7,7 +7,7 @@ allowed-tools: Bash(python *), Bash(yolo *), Bash(aws *), Bash(pip *)
 # Retrain Purgatory YOLO Model
 
 One shared YOLOv8n model, single vehicle class (class 0), trained on labeled images from all cameras.
-S3 path: `models/shared/v{N}/model.pt` in `tools-purgatory-raw-production-606196119553`.
+S3 path: `models/shared/v{N}/model.pt` in `tools-purgatory-raw-production-<AWS_ACCOUNT_ID>`.
 
 ## When to retrain
 
@@ -58,7 +58,7 @@ purgatory_dataset/
 Determine the next version number first:
 
 ```bash
-AWS_PROFILE=jtam aws s3 ls s3://tools-purgatory-raw-production-606196119553/models/shared/ \
+AWS_PROFILE=jtam aws s3 ls s3://tools-purgatory-raw-production-<AWS_ACCOUNT_ID>/models/shared/ \
   --recursive | grep metadata.json
 ```
 
@@ -69,7 +69,7 @@ Then train (replace `vN` with the next version).
 Download the previous active model first:
 ```bash
 AWS_PROFILE=jtam aws s3 cp \
-  s3://tools-purgatory-raw-production-606196119553/models/shared/vPREV/model.pt \
+  s3://tools-purgatory-raw-production-<AWS_ACCOUNT_ID>/models/shared/vPREV/model.pt \
   prev_best.pt
 ```
 
@@ -141,7 +141,7 @@ import boto3, json
 session = boto3.Session(profile_name='jtam')
 s3 = session.client('s3', region_name='us-east-1')
 key = 'models/shared/vN/metadata.json'
-bucket = 'tools-purgatory-raw-production-606196119553'
+bucket = 'tools-purgatory-raw-production-<AWS_ACCOUNT_ID>'
 meta = json.loads(s3.get_object(Bucket=bucket, Key=key)['Body'].read())
 meta['inference']['conf'] = 0.35   # lower = more detections, more noise
 meta['inference']['iou'] = 0.50

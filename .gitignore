@@ -180,3 +180,12 @@ runs/
 *.onnx
 *.grib2
 *.parquet
+
+# Local-only agent runbooks. These are working tools (/sso, /info, /amplify-status)
+# that contain account ids and live resource inventories, and several had drifted
+# out of date with the code. Kept on disk, deliberately not published.
+.claude/skills/*
+!.claude/skills/add-app/
+!.claude/skills/nav-standard/
+!.claude/skills/security-policy/
+!.claude/skills/model-retrain-purgatory/
