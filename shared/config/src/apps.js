@@ -44,15 +44,6 @@ export const APPS = [
     requiredGroup: 'admin',
   },
   {
-    id: 'adventure-builder',
-    name: 'Adventure Builder',
-    description: 'Create and visualize choose-your-own-adventure stories.',
-    url: isProd ? 'https://adventure.jtamerius.com' : 'https://staging.d1sgxuayv4jvam.amplifyapp.com',
-    subdomain: 'adventure',
-    isPublic: false,
-    requiredGroup: 'admin',
-  },
-  {
     id: 'purgatory',
     name: 'Purgatory Crowding',
     description: 'Traffic-cam + RWIS ingestion and review for Purgatory Resort crowding prediction.',

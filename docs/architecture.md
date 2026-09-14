@@ -46,7 +46,6 @@ independent of one another.
 | `purgatory` | S3, 4 DynamoDB tables, 3 Lambdas, EventBridge, API Gateway |
 | `solarhail` + `solarhail-precompute` | S3, Glue, Athena, ECR, Batch, Lambda, API Gateway |
 | `investment-tracker` | DynamoDB, Lambdas, SES receipt rules, S3 |
-| `adventure-builder` | DynamoDB (single-table), Lambda, API Gateway, Bedrock access |
 
 Two apps predate the CDK migration and still run from hand-written CloudFormation —
 `jtamerius-weather-collector` and `jtamerius-finance-tracker`, both sourced from
@@ -59,7 +58,7 @@ platform serves both without forking the deployment path.
 
 Two enforcement styles are in use, which is a known inconsistency:
 
-- **API Gateway JWT authorizer** — adventure-builder, investment-tracker, and Purgatory's write
+- **API Gateway JWT authorizer** — investment-tracker, and Purgatory's write
   routes. The authorizer validates issuer and audience at the edge.
 - **In-Lambda validation** — finance-tracker calls `cognito-idp:GetUser` on the bearer token.
   This checks that a token is valid but not which pool or group it came from; it should move to an

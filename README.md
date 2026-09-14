@@ -121,7 +121,6 @@ The frontend entry bundle is 226 kB, down from 4,926 kB, mostly by importing
 | **Hailstoned** | Streams NOAA MRMS radar into an H3 hex grid and joins it to where solar hardware actually sits, across the lower 48 | [hailstoned.jtamerius.com](https://hailstoned.jtamerius.com) | [`apps/solarhail`](apps/solarhail/) |
 | **Purgatory Crowding** | Counts vehicles on ten CDOT traffic cameras every 15 minutes to build a labeled history of ski-day crowding | [purg.jtamerius.com](https://purg.jtamerius.com) | [`apps/purgatory`](apps/purgatory/) |
 | **Ensemble Weather** | Plots GFS / NAM / HRRR on shared axes so you can see how much the models disagree before trusting a forecast | [weather.jtamerius.com](https://weather.jtamerius.com) | [`apps/weather/frontend`](apps/weather/frontend/), [`apps/weather/pipeline`](apps/weather/pipeline/) |
-| **Adventure Builder** | Branching-story editor that draws the story as a graph while you write, so dead ends are visible | [adventure.jtamerius.com](https://adventure.jtamerius.com) · *sign-in* | [`apps/adventure-builder`](apps/adventure-builder/), [`-api`](apps/adventure-builder/api/) |
 | **Investment Tracker** | Parses statement emails on arrival via SES into a payment ledger, with per-cell manual overrides | [investments.jtamerius.com](https://investments.jtamerius.com) · *sign-in* | [`apps/investment-tracker`](apps/investment-tracker/), [`-api`](apps/investment-tracker/api/) |
 | **Finance Tracker** | Personal spending ledger — one Python Lambda over flat files in S3, no database | [finance.jtamerius.com](https://finance.jtamerius.com) · *sign-in* | [`apps/finance/frontend`](apps/finance/frontend/) |
 | **Platform home** | App directory and a long-form page per app | [tools.jtamerius.com](https://tools.jtamerius.com) | [`apps/landing-page`](apps/landing-page/) |
@@ -187,7 +186,6 @@ apps/
   weather-app/             Ensemble Weather frontend (React)
   weather-pipeline/        Ensemble collector and clustering (Python)
   landing-page/            Platform home and per-app info pages
-  adventure-builder/       + adventure-builder-api/   (React + Express on Lambda)
   investment-tracker/      + investment-tracker-api/  (React + Express on Lambda)
   finance-app/             React frontend over a single Python Lambda
 shared/
@@ -274,7 +272,7 @@ I would rather you hear these from me than find them.
   not.
 - **Purgatory has no model.** Ingest, QC, rollup and the review UI are finished. Prediction is not
   started.
-- **Three apps are single-user.** Finance, Investments and Adventure Builder were built for me and
+- **Two apps are single-user.** Finance and Investments were built for me and
   were never generalised. They are here because they are real, deployed and maintained — not as
   products.
 

@@ -130,35 +130,6 @@ export const APP_INFO = {
     ],
   },
 
-  'adventure-builder': {
-    name: 'Adventure Builder',
-    tagline: 'Write branching stories and see the structure as a graph.',
-    accent: '#7048c8',
-    access: 'Admin only',
-    status: 'Live',
-    host: 'adventure.jtamerius.com',
-    summary: [
-      'I wanted to write choose-your-own-adventure stories without losing track of the shape of ' +
-      'them. Past about ten pages you stop being able to remember which choices lead where, or ' +
-      'which pages nothing points at any more.',
-      'So the editor draws the story as a graph while you write it. Dead ends and orphaned pages ' +
-      'are visible on the page instead of something you discover on a replay. A writing assistant ' +
-      'sits next to the editor for drafting a page or suggesting where a branch could go.',
-    ],
-    pipeline: [
-      { label: 'Editor', detail: 'A React frontend handles page editing and draws the story graph.' },
-      { label: 'API', detail: 'A Node Express app runs on Lambda behind API Gateway, so routing stays ordinary Express.' },
-      { label: 'Storage', detail: 'Stories and pages share one DynamoDB table, keyed so a story and all its pages can be read together.' },
-      { label: 'Writing assist', detail: 'Draft text and branch suggestions come from Nova Lite on Bedrock, which keeps the whole app inside one AWS account.' },
-    ],
-    stack: ['React · Vite', 'Node · Express', 'API Gateway', 'DynamoDB', 'Bedrock'],
-    facts: [
-      { label: 'Model', value: 'Amazon Nova Lite via Bedrock' },
-      { label: 'Data model', value: 'Single DynamoDB table' },
-      { label: 'Layout', value: 'Separate frontend and API packages' },
-      { label: 'Access', value: 'Admin only' },
-    ],
-  },
 
   'investment-tracker': {
     name: 'Investment Tracker',

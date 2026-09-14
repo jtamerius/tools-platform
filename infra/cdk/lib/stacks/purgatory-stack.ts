@@ -41,7 +41,6 @@ export class PurgatoryStack extends cdk.Stack {
     const appSubdomain = 'purg';
 
     // Cognito ids for the JWT authorizer that guards the mutating routes.
-    // Same lookup adventure-builder-stack uses.
     const cognitoUserPoolId = ssm.StringParameter.valueFromLookup(this, `/tools/${e}/cognito/user-pool-id`);
     const cognitoUserPoolClientId = ssm.StringParameter.valueFromLookup(this, `/tools/${e}/cognito/client-id`);
 

@@ -8,7 +8,6 @@ import { MonitoringStack } from '../lib/stacks/monitoring-stack';
 import { AmplifyStack } from '../lib/stacks/amplify-stack';
 import { LandingPageStack } from '../lib/stacks/landing-page-stack';
 import { InvestmentTrackerStack } from '../lib/stacks/investment-tracker-stack';
-import { AdventureBuilderStack } from '../lib/stacks/adventure-builder-stack';
 import { SolarHailStack } from '../lib/stacks/solarhail-stack';
 import { SolarHailPrecomputeStack } from '../lib/stacks/solarhail-precompute-stack';
 import { PurgatoryStack } from '../lib/stacks/purgatory-stack';
@@ -93,15 +92,6 @@ const investmentTrackerAmplify = new AmplifyStack(app, `tools-shared-amplify-inv
   env: awsEnv,
 });
 
-const adventureBuilderAmplify = new AmplifyStack(app, `tools-shared-amplify-adventure-builder-${envName}`, {
-  cfg,
-  appName: 'adventure-builder',
-  subdomain: 'adventure',
-  amplifyServiceRoleArn,
-  exportPrefix: 'tools-shared-amplify-adventure-builder',
-  env: awsEnv,
-});
-
 const solarHailAmplify = new AmplifyStack(app, `tools-shared-amplify-solarhail-${envName}`, {
   cfg,
   appName: 'solarhail',
@@ -128,7 +118,6 @@ new MonitoringStack(app, `tools-shared-monitoring-${envName}`, {
     weatherAmplify.appId,
     financeAmplify.appId,
     investmentTrackerAmplify.appId,
-    adventureBuilderAmplify.appId,
     solarHailAmplify.appId,
     purgatoryAmplify.appId,
   ],
@@ -144,12 +133,6 @@ new LandingPageStack(app, `tools-app-landing-page-${envName}`, {
 
 /// ── App: investment-tracker (DynamoDB + S3 + Lambda API + SES inbound) ───────
 new InvestmentTrackerStack(app, `tools-app-investment-tracker-${envName}`, {
-  cfg,
-  env: awsEnv,
-});
-
-// ── App: adventure-builder (DynamoDB + Lambda API + Bedrock) ─────────────────
-new AdventureBuilderStack(app, `tools-app-adventure-builder-${envName}`, {
   cfg,
   env: awsEnv,
 });

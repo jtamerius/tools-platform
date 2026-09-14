@@ -13,7 +13,6 @@ This document captures the security decisions made for this platform, why they w
 ## 1. CORS
 
 ### Policy
-- **Authenticated API endpoints** (investment-tracker, adventure-builder): CORS must be scoped to known origins — production domain + `http://localhost:5173`. Never `*`.
 - **Public read endpoints** (solarhail, weather CDN): `allowOrigins: ['*']` is acceptable because there is no auth and the data is intentionally public.
 - **Finance tracker Lambda URL**: scoped to `https://finance.jtamerius.com`, `https://staging.d3r6r8egymbh24.amplifyapp.com`, `http://localhost:5173`.
 
@@ -21,12 +20,9 @@ This document captures the security decisions made for this platform, why they w
 | Layer | File |
 |---|---|
 | API Gateway (CDK) | `infra/cdk/lib/stacks/investment-tracker-stack.ts` — `corsConfiguration.allowOrigins` |
-| API Gateway (CDK) | `infra/cdk/lib/stacks/adventure-builder-stack.ts` — `corsConfiguration.allowOrigins` |
 | Lambda URL (CFN) | `apps/finance/api/infrastructure/template.yaml` — `Cors.AllowOrigins` |
 | Express middleware | `apps/investment-tracker/api/src/app.js` — reads `ALLOWED_ORIGINS` env var |
-| Express middleware | `apps/adventure-builder/api/src/app.js` — reads `ALLOWED_ORIGINS` env var |
 | CDK env var (sets Express) | `infra/cdk/lib/stacks/investment-tracker-stack.ts` — `ALLOWED_ORIGINS: isProd ? 'https://investments.jtamerius.com,...' : '*'` |
-| CDK env var (sets Express) | `infra/cdk/lib/stacks/adventure-builder-stack.ts` — `ALLOWED_ORIGINS: isProd ? 'https://adventure.jtamerius.com,...' : '*'` |
 
 ### What to check periodically
 - [ ] When adding a new authenticated app, ensure CORS is scoped in both the API Gateway config and the Express middleware env var.
@@ -53,7 +49,6 @@ grep -rn "allowOrigins\|AllowOrigins" infra/cdk/lib/stacks/ apps/weather/pipelin
 /tools/{env}/cognito/user-pool-id        # Cognito pool ID
 /tools/{env}/cognito/client-id           # Cognito app client ID
 /tools/{env}/investment-tracker/api-url  # API Gateway URL
-/tools/{env}/adventure-builder/api-url   # API Gateway URL
 /tools/{env}/solarhail/api-url           # API Gateway URL
 /tools/{env}/finance/api-url             # Finance tracker Lambda URL
 /tools/production/solarhail/mapbox       # Mapbox public token
@@ -94,7 +89,6 @@ grep -rn "api_key\|apikey\|secret\|password\|bearer\|sk-\|pk\." \
 | GitHub Actions role (CFN) | `infra/shared/iam/template.yaml` |
 | Amplify service role | `infra/cdk/lib/stacks/iam-stack.ts` — `AmplifyServiceRole` |
 | Investment tracker Lambda role | `infra/cdk/lib/stacks/investment-tracker-stack.ts` (CDK grants) |
-| Adventure builder Lambda role | `infra/cdk/lib/stacks/adventure-builder-stack.ts` (CDK grants) |
 | Finance tracker Lambda role | `apps/finance/api/infrastructure/template.yaml` — `LambdaRole` |
 
 ### What to check periodically
@@ -188,7 +182,6 @@ aws s3api list-buckets --query 'Buckets[].Name' --output text --profile jtam --n
 | weather-app | `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` | `/tools/{env}/cognito/*` |
 | finance-app | `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID`, `VITE_API_URL` | `/tools/{env}/cognito/*`, `/tools/{env}/finance/api-url` |
 | investment-tracker | `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID`, `VITE_API_URL` | `/tools/{env}/cognito/*`, `/tools/{env}/investment-tracker/api-url` |
-| adventure-builder | `VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID`, `VITE_API_URL` | `/tools/{env}/cognito/*`, `/tools/{env}/adventure-builder/api-url` |
 | solarhail | `VITE_API_URL`, `VITE_MAPBOX_TOKEN` | `/tools/{env}/solarhail/api-url`, `/tools/production/solarhail/mapbox` |
 
 ### What to check periodically
@@ -222,7 +215,6 @@ grep -rn "execute-api\|lambda-url\|amazonaws.com" \
 # 3. No wildcard CORS on authenticated endpoints
 grep -B5 "allowOrigins.*\*\|AllowOrigins.*\*" \
   infra/cdk/lib/stacks/investment-tracker-stack.ts \
-  infra/cdk/lib/stacks/adventure-builder-stack.ts \
   apps/finance/api/infrastructure/template.yaml
 
 # 4. Confirm .env files are not tracked
