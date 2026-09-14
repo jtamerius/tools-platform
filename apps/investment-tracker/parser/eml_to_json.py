@@ -332,7 +332,10 @@ def _parse_statement_text(text: str, source_label: str) -> StatementParseResult:
         "metadata": {
             "source_file": source_label,
             "parsed_at_utc": datetime.now(timezone.utc).isoformat(),
-            "parser": "investment_app.eml_to_json.v1",
+            # v2: renamed from investment_app.eml_to_json.v1 when the parser moved out of
+            # the prototype. Nothing reads this field; it is provenance stamped onto
+            # each record, and the bump marks where multi-statement splitting arrived.
+            "parser": "investment-tracker.eml_to_json.v2",
         },
         "statement": {
             "company": company,
